@@ -1,0 +1,261 @@
+---
+title: Two pointers
+description: Dois índices que só andam para frente percorrem todos os subarrays "interessantes" em O(n), em vez de testar os O(n²) pares de início e fim.
+---
+import Callout from '../../src/components/mdx/Callout.astro';
+import Quiz from '../../src/components/mdx/Quiz.tsx';
+
+## Motivação: o maior trecho que cabe
+
+O problema desta aula:
+
+> Dados $n \le 2 \cdot 10^5$ inteiros **positivos** e um valor $S$, qual é o comprimento do **maior subarray** (trecho contínuo) com soma no máximo $S$?
+
+Com $a = 3, 1, 2, 1, 4, 1, 1, 5$ e $S = 6$, a resposta é **3**: por exemplo, o trecho $3, 1, 2$ soma 6. Nenhum trecho de tamanho 4 cabe.
+
+A força bruta testa todo par (início, fim): são cerca de $\frac{n^2}{2} = 2 \cdot 10^{10}$ pares para $n = 2 \cdot 10^5$. Não passa.
+
+Esta aula resolve em $O(n)$ com **dois ponteiros**: dois índices, o começo `l` e o fim `r` de uma "janela", que só andam para a frente.
+
+## A ideia: uma janela que estica e encolhe
+
+Pense numa janela $[l, r]$ sobre o array, com a soma dos elementos dentro dela. Para cada novo fim $r$:
+
+1. **estique:** coloque $a_r$ na janela (some na soma);
+2. **encolha:** enquanto a soma passar de $S$, tire $a_l$ da janela e avance $l$;
+3. agora a janela cabe: compare o tamanho $r - l + 1$ com o melhor.
+
+O traço com $a = 3, 1, 2, 1, 4, 1, 1, 5$ e $S = 6$ (posições de 0 a 7):
+
+| $r$ | entra $a_r$ | sai pela esquerda | $l$ depois | soma | tamanho $r - l + 1$ | melhor |
+|---|---|---|---|---|---|---|
+| 0 | 3 | | 0 | 3 | 1 | 1 |
+| 1 | 1 | | 0 | 4 | 2 | 2 |
+| 2 | 2 | | 0 | 6 | 3 | 3 |
+| 3 | 1 | 3 | 1 | 4 | 3 | 3 |
+| 4 | 4 | 1, 2 | 3 | 5 | 2 | 3 |
+| 5 | 1 | | 3 | 6 | 3 | 3 |
+| 6 | 1 | 1 | 4 | 6 | 3 | 3 |
+| 7 | 5 | 4, 1 | 6 | 6 | 2 | 3 |
+
+O maior tamanho visto foi 3.
+
+### Por que isso não perde nenhuma resposta
+
+Quando a soma de $[l, r]$ passa de $S$, qualquer janela que **começa em $l$** e termina em $r$ **ou depois** também passa, porque os números são positivos: esticar só aumenta a soma. Então o início $l$ nunca mais serve para nada, e podemos descartá-lo para sempre. É por isso que $l$ só anda para a frente.
+
+### Por que é $O(n)$, mesmo com um `while` dentro do `for`
+
+<Callout type="tente">
+No traço acima, quantas vezes, **no total**, um elemento entrou ou saiu da janela?
+
+<details>
+<summary>Ver resposta</summary>
+
+14: 8 entradas (uma por $r$) e 6 saídas (o 3, depois 1 e 2, depois 1, depois 4 e 1). Cada elemento entra **uma** vez e sai **no máximo uma** vez, porque nem $l$ nem $r$ voltam. Então o total é no máximo $2n$, mesmo que um `while` sozinho às vezes rode várias voltas.
+
+</details>
+</Callout>
+
+Esse argumento ("cada ponteiro anda no máximo $n$ vezes no total") se chama **análise amortizada**. Ele é o motivo pelo qual um laço com um `while` dentro custa $O(n)$, e não $O(n^2)$:
+
+$$
+\underbrace{n}_{\text{passos de } r} + \underbrace{n}_{\text{passos de } l,\ \text{no total}} = O(n)
+$$
+
+O primeiro termo conta as voltas do `for`; o segundo conta todas as voltas do `while` juntas, ao longo da execução inteira, porque $l$ vai de 0 até no máximo $n$.
+
+## O que acontece com números negativos
+
+O argumento de "descartar $l$ para sempre" usou que os números são **positivos**. Sem isso, a janela erra.
+
+<Callout type="tente">
+Rode o algoritmo com $a = 1, -3$ e $S = 0$. Qual resposta ele dá, e qual é a certa?
+
+<details>
+<summary>Ver resposta</summary>
+
+| $r$ | entra | soma | passou de 0? | $l$ depois | tamanho |
+|---|---|---|---|---|---|
+| 0 | 1 | 1 | sim, sai o 1 | 1 | 0 |
+| 1 | $-3$ | $-3$ | não | 1 | 1 |
+
+O algoritmo responde **1**. Mas o array inteiro, $1 + (-3) = -2 \le 0$, cabe: a resposta certa é **2**. O 1 foi descartado cedo demais, porque com um negativo à frente, esticar a janela **diminui** a soma. Com negativos, a técnica certa é outra (prefix sums, milestone 7).
+
+</details>
+</Callout>
+
+## Outro formato: ponteiros vindo das duas pontas
+
+Os dois ponteiros também podem andar **um em direção ao outro**. O exemplo clássico: num array **ordenado**, existem dois elementos com soma $T$?
+
+Com $v = 1, 3, 4, 6, 8, 11$ e $T = 10$, comece com $i$ no começo e $j$ no fim:
+
+| $i$ | $j$ | $v_i + v_j$ | Comparação | Ação |
+|---|---|---|---|---|
+| 0 | 5 | $1 + 11 = 12$ | maior que 10 | $j$-- |
+| 0 | 4 | $1 + 8 = 9$ | menor que 10 | $i$++ |
+| 1 | 4 | $3 + 8 = 11$ | maior que 10 | $j$-- |
+| 1 | 3 | $3 + 6 = 9$ | menor que 10 | $i$++ |
+| 2 | 3 | $4 + 6 = 10$ | igual | achou: posições 2 e 3 |
+
+Se a soma é grande demais, o maior elemento ($v_j$) não serve com **nenhum** dos que sobraram à esquerda (todos são $\ge v_i$), então ele sai. Se é pequena demais, o menor ($v_i$) não serve com nenhum, então ele sai. Cada passo descarta um elemento, e o total é $O(n)$.
+
+```cpp
+// v ordenado; procura i < j com v[i] + v[j] == T
+int i = 0, j = (int)v.size() - 1;
+while (i < j) {
+    long long soma = v[i] + v[j];
+    if (soma == T) break;          // achou
+    if (soma < T) i++;             // v[i] é pequeno demais para qualquer parceiro
+    else j--;                      // v[j] é grande demais para qualquer parceiro
+}
+```
+
+## Código: o problema da motivação
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int main() {
+    int n;
+    long long S;
+    cin >> n >> S;
+    vector<long long> a(n);
+    for (int i = 0; i < n; i++) cin >> a[i];
+
+    int l = 0, melhor = 0;
+    long long soma = 0;                 // soma da janela a[l..r]
+    for (int r = 0; r < n; r++) {
+        soma += a[r];                   // estica: a[r] entra
+        while (soma > S) {              // encolhe até caber
+            soma -= a[l];
+            l++;
+        }
+        melhor = max(melhor, r - l + 1);
+    }
+    cout << melhor << "\n";
+}
+```
+
+**Entrada:**
+
+```
+8 6
+3 1 2 1 4 1 1 5
+```
+
+**Saída:**
+
+```
+3
+```
+
+É o traço da tabela, linha por linha.
+
+- **Tempo:** $O(n)$, pela análise amortizada: $l$ e $r$ andam no máximo $n$ passos cada.
+- **Memória:** $O(n)$ para o array.
+
+Repare num detalhe: se um único $a_r$ já for maior que $S$, o `while` tira o próprio $a_r$, e $l$ fica em $r + 1$. O tamanho $r - l + 1$ vira 0, que está certo (nenhum trecho terminando em $r$ cabe).
+
+### O mesmo código no formato de contest
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+typedef long long ll;
+#define rep(i,a,b) for(int i=(a);i<(b);i++)
+void fastio(){ ios::sync_with_stdio(false); cin.tie(nullptr); }
+
+int main(){
+    fastio();
+    int n; ll S; cin >> n >> S;
+    vector<ll> a(n);
+    rep(i, 0, n) cin >> a[i];
+    int l = 0, melhor = 0; ll soma = 0;
+    rep(r, 0, n) {
+        soma += a[r];
+        while (soma > S) soma -= a[l++];     // a[l++]: usa a[l] e depois avança l
+        melhor = max(melhor, r - l + 1);
+    }
+    cout << melhor << "\n";
+}
+```
+
+## O padrão geral
+
+A janela funciona sempre que a condição é **monótona em relação a encolher**: se uma janela é válida, qualquer janela **dentro** dela também é. Somas de positivos têm isso. "Todos os elementos distintos" também tem: se um trecho não tem repetidos, nenhum pedaço dele tem. Para condições assim, a receita é a mesma:
+
+1. avance $r$ e coloque $a_r$ na janela (atualize a informação: soma, contagens…);
+2. enquanto a janela estiver inválida, tire $a_l$ e avance $l$;
+3. use a janela válida $[l, r]$, a maior que termina em $r$.
+
+Quando a informação da janela é "quantas vezes cada valor aparece", ela cabe num `map` (milestone 4): entrar soma 1 na contagem, sair subtrai 1.
+
+<Callout type="dica" title="Contando em vez de maximizando">
+Se a pergunta é "**quantos** subarrays são válidos?", a janela também resolve: para cada $r$, os inícios válidos são exatamente $l, l + 1, \dots, r$, ou seja, $r - l + 1$ subarrays terminando em $r$. Some isso para todo $r$.
+</Callout>
+
+## Armadilhas comuns
+
+<Callout type="armadilha" title="A condição precisa ser monótona">
+Com números negativos (ou qualquer condição em que encolher pode piorar), a janela descarta inícios que ainda serviam. Verifique: "se $[l, r]$ é válida, toda janela dentro dela é válida?". Se não, a técnica não se aplica.
+</Callout>
+
+- **Esquecer de atualizar a informação ao tirar $a_l$.** Tirar da soma, ou decrementar a contagem no `map` (e apagar a chave quando chega a 0, se você usa o tamanho do `map`).
+- **Somas em `int`.** A soma da janela pode chegar a $2 \cdot 10^{14}$: use `long long`.
+- **Fora do vetor.** No formato das pontas, a condição é `i < j`. No formato da janela, o `while` só tira elementos que estão dentro dela.
+
+<details class="para-depois">
+<summary>Para depois: variações</summary>
+
+**Janela de tamanho fixo.** Quando o tamanho é sempre $k$, não há `while`: a cada passo entra $a_r$ e sai $a_{r-k}$. É o tema do milestone 6 (sliding window).
+
+**Dois arrays ordenados.** Um ponteiro em cada array, avançando sempre o que tem o menor valor: é o passo de "intercalar" do merge sort, e serve para comparar duas listas ordenadas em $O(n + m)$.
+
+**"No máximo $k$" e "exatamente $k$".** Contar subarrays com **exatamente** $k$ de alguma coisa costuma ser difícil com uma janela só. O truque é contar "no máximo $k$" e subtrair "no máximo $k - 1$".
+
+</details>
+
+## Referências
+
+- **CPH, capítulo 8 — Amortized analysis, seção 8.1 *Two pointers method*:** os dois exemplos clássicos (subarray com soma dada e 2SUM) e a análise de por que é $O(n)$.
+- [USACO Guide — Two Pointers](https://usaco.guide/silver/two-pointers)
+
+## Mini-quiz
+
+<Quiz
+  client:visible
+  questions={[
+    {
+      q: 'Com o programa da aula, S = 5 e a = 2, 2, 2, 2, o que é impresso?',
+      options: ['2', '3', '4', '1'],
+      answer: 0,
+      why: 'Qualquer trecho de 3 elementos soma 6 > 5. A janela nunca passa de 2 elementos: a cada novo 2, o mais antigo sai.',
+    },
+    {
+      q: 'No formato das duas pontas, v = 2, 5, 7, 9, 12 e T = 16. Quais pares (i, j) são testados até achar?',
+      options: ['(0,4) (1,4) (1,3) (2,3)', '(0,4) (0,3) (1,3)', '(0,4) (1,4) (2,4)', '(0,4) (1,3) (2,3)'],
+      answer: 0,
+      why: '2 + 12 = 14 < 16: i++. 5 + 12 = 17 > 16: j--. 5 + 9 = 14 < 16: i++. 7 + 9 = 16: achou nas posições 2 e 3.',
+    },
+    {
+      q: 'Por que o laço com `while` dentro do `for` custa O(n) e não O(n²)?',
+      options: [
+        'Porque o while roda no máximo uma vez por volta do for',
+        'Porque l só aumenta e nunca passa de n: somando todas as voltas do while ao longo da execução, são no máximo n',
+        'Porque o compilador otimiza',
+        'Não é O(n): é O(n²) no pior caso',
+      ],
+      answer: 1,
+      why: 'Uma única volta do for pode ter muitas voltas do while, mas o total delas é limitado pelo quanto l pode andar: no máximo n.',
+    },
+    {
+      q: 'Quantos subarrays de a = 1, 1, 1 têm soma no máximo 2? (Use a dica de contar r − l + 1.)',
+      options: ['3', '5', '6', '4'],
+      answer: 1,
+      why: 'r = 0: janela [0,0], conta 1. r = 1: [0,1], conta 2. r = 2: a soma passaria a 3, então l vai para 1: [1,2], conta 2. Total 5 (todos menos o array inteiro).',
+    },
+  ]}
+/>

@@ -1,0 +1,287 @@
+---
+title: Sweep por eventos e contagem por contribuição
+description: Duas formas de trocar "olhar todos os pares" por uma passada só. O sweep percorre a reta em ordem de eventos; a contribuição pergunta quanto cada elemento soma na resposta.
+---
+import Callout from '../../src/components/mdx/Callout.astro';
+import Quiz from '../../src/components/mdx/Quiz.tsx';
+
+Esta aula tem duas técnicas curtas, cada uma com seu problema resolvido do começo ao fim.
+
+## Parte 1 — Sweep por eventos
+
+### Motivação: quanto da reta está coberto
+
+> Dados $n \le 2 \cdot 10^5$ intervalos $[l_i, r_i)$ na reta, com coordenadas até $10^9$, qual o **comprimento total** coberto por pelo menos um deles?
+
+Com os intervalos $[1, 4)$, $[2, 6)$, $[8, 10)$, $[9, 12)$ e $[15, 16)$:
+
+- $[1, 4)$ e $[2, 6)$ se sobrepõem e juntos cobrem $[1, 6)$: comprimento 5;
+- $[8, 10)$ e $[9, 12)$ juntos cobrem $[8, 12)$: comprimento 4;
+- $[15, 16)$ cobre 1.
+
+O total é **10**. (Usamos intervalos semiabertos, $[l, r)$, para que o comprimento seja simplesmente $r - l$.)
+
+Marcar cada ponto coberto num array não funciona: as coordenadas vão até $10^9$. E comparar cada par de intervalos é $O(n^2)$.
+
+### A ideia: andar pela reta e só parar onde algo muda
+
+Imagine uma linha vertical varrendo a reta da esquerda para a direita, contando **quantos intervalos estão ativos** naquele ponto. Esse número só muda em dois tipos de **evento**: quando um intervalo começa ($+1$) e quando termina ($-1$). Entre dois eventos seguidos, nada muda.
+
+Então basta:
+
+1. criar os eventos $(l_i, +1)$ e $(r_i, -1)$ e ordená-los pela coordenada;
+2. percorrê-los em ordem; entre o evento anterior e o atual, se havia algum intervalo ativo, aquele pedaço da reta estava coberto: some o comprimento dele;
+3. aplique o $+1$ ou $-1$ do evento atual.
+
+O traço no exemplo:
+
+| Evento em $x$ | Tipo | Ativos **antes** | Pedaço desde o evento anterior | Coberto até aqui |
+|---|---|---|---|---|
+| 1 | começa | 0 | | 0 |
+| 2 | começa | 1 | $[1, 2)$ coberto: $+1$ | 1 |
+| 4 | termina | 2 | $[2, 4)$ coberto: $+2$ | 3 |
+| 6 | termina | 1 | $[4, 6)$ coberto: $+2$ | 5 |
+| 8 | começa | 0 | $[6, 8)$ vazio | 5 |
+| 9 | começa | 1 | $[8, 9)$ coberto: $+1$ | 6 |
+| 10 | termina | 2 | $[9, 10)$ coberto: $+1$ | 7 |
+| 12 | termina | 1 | $[10, 12)$ coberto: $+2$ | 9 |
+| 15 | começa | 0 | $[12, 15)$ vazio | 9 |
+| 16 | termina | 1 | $[15, 16)$ coberto: $+1$ | 10 |
+
+São $2n$ eventos: ordenar custa $O(n \log n)$ e a varredura, $O(n)$. As coordenadas grandes não importam, porque só olhamos para elas nos eventos.
+
+<Callout type="tente">
+Neste problema, quando um intervalo termina e outro começa **no mesmo $x$** (por exemplo, $[1, 3)$ e $[3, 5)$), importa a ordem em que os dois eventos são processados?
+
+<details>
+<summary>Ver resposta</summary>
+
+Aqui não: o comprimento somado entre dois eventos no mesmo $x$ é $x - x = 0$, qualquer que seja a contagem de ativos. Mas em **outros** problemas importa muito. Se a pergunta fosse "qual o **máximo** de intervalos ativos ao mesmo tempo?", processar o $+1$ antes do $-1$ em $x = 3$ faria a contagem passar por 2 e responder 2, como se os intervalos se tocassem. Processando o $-1$ antes, a resposta é 1. Qual está certa depende do enunciado (os intervalos são fechados ou abertos naquele ponto?). Decida e force a ordem no `sort`: com pares $(x, \text{tipo})$, o tipo $-1$ vem antes do $+1$ no mesmo $x$.
+
+</details>
+</Callout>
+
+### Código
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int main() {
+    int n;
+    cin >> n;
+    vector<pair<long long, int>> eventos;          // {coordenada, +1 ou -1}
+    for (int i = 0; i < n; i++) {
+        long long l, r;
+        cin >> l >> r;
+        eventos.push_back({l, +1});
+        eventos.push_back({r, -1});
+    }
+    sort(eventos.begin(), eventos.end());          // por coordenada (e -1 antes de +1 no empate)
+
+    long long coberto = 0, anterior = 0;
+    int ativos = 0;
+    for (auto [x, tipo] : eventos) {
+        if (ativos > 0) coberto += x - anterior;   // o pedaço [anterior, x) estava coberto
+        ativos += tipo;
+        anterior = x;
+    }
+    cout << coberto << "\n";
+}
+```
+
+**Entrada:**
+
+```
+5
+1 4
+2 6
+8 10
+9 12
+15 16
+```
+
+**Saída:**
+
+```
+10
+```
+
+- **Tempo:** $O(n \log n)$, por causa do `sort`.
+- **Memória:** $O(n)$ para os eventos.
+
+## Parte 2 — Contagem por contribuição
+
+### Motivação: somar todos os subarrays
+
+> Dados $n \le 2 \cdot 10^5$ inteiros entre 1 e 1000, calcule a soma das somas de **todos** os subarrays.
+
+Com $a = 3, 1, 2$, os 6 subarrays são:
+
+| Subarray | Soma |
+|---|---|
+| $[3]$ | 3 |
+| $[3, 1]$ | 4 |
+| $[3, 1, 2]$ | 6 |
+| $[1]$ | 1 |
+| $[1, 2]$ | 3 |
+| $[2]$ | 2 |
+
+A resposta é $3 + 4 + 6 + 1 + 3 + 2 = $ **19**. Mas existem $\frac{n(n+1)}{2} \approx 2 \cdot 10^{10}$ subarrays para $n = 2 \cdot 10^5$: não dá para listar.
+
+### A ideia: perguntar quanto cada elemento soma
+
+Em vez de somar subarray por subarray, inverta a pergunta: **quantas vezes cada elemento é somado?** O elemento $a_i$ entra na soma de todo subarray que o contém, então contribui com $a_i$ vezes o número desses subarrays.
+
+<Callout type="tente">
+Num array de tamanho $n$ (posições de 0 a $n - 1$), quantos subarrays contêm a posição $i$?
+
+<details>
+<summary>Ver resposta</summary>
+
+Um subarray $[l, r]$ contém $i$ quando $l \le i \le r$. O início $l$ pode ser qualquer um de $0, 1, \dots, i$: são $i + 1$ opções. O fim $r$ pode ser qualquer um de $i, \dots, n - 1$: são $n - i$ opções. As escolhas são independentes, então são $(i + 1)(n - i)$ subarrays.
+
+</details>
+</Callout>
+
+Então a resposta é
+
+$$
+\sum_{i=0}^{n-1} a_i \cdot (i + 1)(n - i)
+$$
+
+$a_i$ é o elemento, $(i + 1)$ conta os inícios possíveis e $(n - i)$ conta os fins possíveis. Conferindo com $a = 3, 1, 2$ ($n = 3$):
+
+| $i$ | $a_i$ | Subarrays que contêm $i$: $(i+1)(n-i)$ | Contribuição |
+|---|---|---|---|
+| 0 | 3 | $1 \cdot 3 = 3$ | 9 |
+| 1 | 1 | $2 \cdot 2 = 4$ | 4 |
+| 2 | 2 | $3 \cdot 1 = 3$ | 6 |
+
+$9 + 4 + 6 = 19$, como na lista. E o custo caiu de "todos os subarrays" para $O(n)$.
+
+**Os limites importam.** A maior contribuição possível é perto de $1000 \cdot \frac{n^3}{6} \approx 1{,}3 \cdot 10^{18}$, que ainda cabe num `long long` (até $9{,}2 \cdot 10^{18}$). Com valores até $10^9$, não caberia, e o enunciado precisaria pedir a resposta módulo algum número.
+
+### Código
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int main() {
+    int n;
+    cin >> n;
+    long long total = 0;
+    for (long long i = 0; i < n; i++) {           // i em long long: (i+1)*(n-i) passa de 2^31
+        long long a;
+        cin >> a;
+        total += a * (i + 1) * (n - i);           // a[i] aparece em (i+1)(n-i) subarrays
+    }
+    cout << total << "\n";
+}
+```
+
+**Entrada:**
+
+```
+3
+3 1 2
+```
+
+**Saída:**
+
+```
+19
+```
+
+- **Tempo:** $O(n)$.
+- **Memória:** $O(1)$: nem precisamos guardar o array.
+
+### Os dois no formato de contest
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+typedef long long ll;
+#define rep(i,a,b) for(int i=(a);i<(b);i++)
+#define all(x) (x).begin(),(x).end()
+void fastio(){ ios::sync_with_stdio(false); cin.tie(nullptr); }
+
+int main(){
+    fastio();
+    // Parte 1: comprimento coberto
+    int n; cin >> n;
+    vector<pair<ll,int>> ev;
+    rep(i, 0, n) { ll l, r; cin >> l >> r; ev.push_back({l, 1}); ev.push_back({r, -1}); }
+    sort(all(ev));
+    ll coberto = 0, ant = 0; int ativos = 0;
+    for (auto [x, t] : ev) { if (ativos) coberto += x - ant; ativos += t; ant = x; }
+    cout << coberto << "\n";
+    // Parte 2: soma das somas de subarrays
+    int m; cin >> m;
+    ll total = 0;
+    rep(i, 0, m) { ll a; cin >> a; total += a * (i + 1) * (m - i); }
+    cout << total << "\n";
+}
+```
+
+## Armadilhas comuns
+
+<Callout type="armadilha" title="Empates de eventos e overflow de contribuições">
+
+- No sweep, defina o que acontece quando um começo e um fim caem no **mesmo** ponto, e force essa ordem na ordenação.
+- Na contribuição, o produto $a_i \cdot (i+1) \cdot (n-i)$ é calculado no tipo dos operandos. Com `int i`, `(i + 1) * (n - i)` estoura para $n = 2 \cdot 10^5$. Faça a conta em `long long`.
+
+</Callout>
+
+- **Esquecer o pedaço antes de aplicar o evento.** No sweep, some o comprimento do trecho **antes** de mudar a contagem de ativos: o trecho $[\text{anterior}, x)$ tinha a contagem antiga.
+- **Contar pares ou subarrays em dobro.** Na contribuição, confira a fórmula num caso de 3 elementos, à mão, antes de confiar nela.
+
+<details class="para-depois">
+<summary>Para depois: compressão, sweep em 2D e contribuição com "primeira ocorrência"</summary>
+
+**Sweep com estrutura de dados.** Às vezes, além de contar os ativos, você precisa saber **quais** estão ativos (o maior, o menor, quantos têm certa propriedade). Aí a contagem vira um `multiset` ou, mais à frente, uma BIT ou segment tree. O padrão "ordenar eventos + estrutura" volta em geometria (milestone 28).
+
+**Contribuição com condição.** A pergunta "em quantos subarrays o elemento $i$ é ___?" (o primeiro de seu valor, o máximo, o mínimo…) é o coração de muitos problemas de contagem. A resposta costuma ser (escolhas de início) × (escolhas de fim), em que os limites vêm de "onde está o vizinho que atrapalha". Por exemplo, "$a_i$ é o máximo do subarray" limita o início a depois do último elemento maior à esquerda, e o fim a antes do primeiro elemento maior à direita (achar esses vizinhos é o tema do milestone 6).
+
+**Médias e esperança.** A mesma ideia, somar a contribuição de cada elemento em vez de enumerar objetos, é a "linearidade da esperança" do milestone 21.
+
+</details>
+
+## Referências
+
+- **CPH, capítulo 30 — Sweep line algorithms:** a ideia de eventos ordenados (os exemplos do capítulo são geométricos e mais avançados; leia 30.1 por enquanto). A contagem por contribuição não tem seção própria no CPH.
+- [USACO Guide — Sweep Line](https://usaco.guide/plat/sweep-line) (nível avançado; a primeira parte, de eventos em uma dimensão, já serve).
+- [USACO Guide — Two Pointers](https://usaco.guide/silver/two-pointers), que traz problemas que combinam varredura e janela.
+
+## Mini-quiz
+
+<Quiz
+  client:visible
+  questions={[
+    {
+      q: 'Quanto da reta os intervalos [0, 3), [5, 7) e [2, 6) cobrem?',
+      options: ['7', '9', '6', '5'],
+      answer: 0,
+      why: '[0, 3) e [2, 6) juntos cobrem [0, 6), e com [5, 7) a união é [0, 7): comprimento 7. Somar os tamanhos (3 + 2 + 4 = 9) conta as sobreposições duas vezes.',
+    },
+    {
+      q: 'Num array de tamanho 5 (posições 0 a 4), quantos subarrays contêm a posição 1?',
+      options: ['5', '8', '4', '10'],
+      answer: 1,
+      why: 'Início em 0 ou 1 (2 opções) e fim em 1, 2, 3 ou 4 (4 opções): 2 · 4 = 8.',
+    },
+    {
+      q: 'Qual é a soma das somas de todos os subarrays de a = 2, 5, 1, 4?',
+      options: ['48', '60', '52', '36'],
+      answer: 1,
+      why: 'Contribuições: 2·(1·4) + 5·(2·3) + 1·(3·2) + 4·(4·1) = 8 + 30 + 6 + 16 = 60.',
+    },
+    {
+      q: 'Contando o MÁXIMO de intervalos ativos ao mesmo tempo, com [1, 3] e [3, 5] fechados (que se tocam no 3), qual ordem de eventos no x = 3 dá a resposta 2?',
+      options: ['Processar o fim (−1) antes do começo (+1)', 'Processar o começo (+1) antes do fim (−1)', 'Qualquer ordem dá 2', 'Nenhuma ordem dá 2'],
+      answer: 1,
+      why: 'Com o +1 primeiro, a contagem vai a 2 antes de o −1 baixá-la. Como os intervalos são fechados e ambos contêm o 3, 2 é a resposta certa aqui.',
+    },
+  ]}
+/>

@@ -1,0 +1,105 @@
+# Dicas do milestone 5 — Two pointers, sweep por eventos e contribuição.
+problems:
+  1640: # Sum of Two Values
+    hints:
+      - >-
+        Se o array estivesse ordenado, você saberia procurar dois valores com soma $x$ andando com dois ponteiros, um de cada ponta. O que impede de ordenar?
+      - >-
+        Só a saída: ela pede as **posições originais**. Ordene pares (valor, posição original) e aplique os ponteiros nas pontas.
+      - >-
+        Soma grande demais: o maior não serve com ninguém, descarte-o. Pequena demais: o menor não serve, descarte-o. Igual: imprima as duas posições originais.
+    pitfalls:
+      - >-
+        As posições são 1-indexadas e precisam ser de elementos **diferentes** (os ponteiros nunca se cruzam: `i < j`). Valores iguais podem formar o par, como $4 + 4 = 8$. Sem solução: `IMPOSSIBLE`.
+
+  1641: # Sum of Three Values
+    hints:
+      - >-
+        $n \le 5000$: um laço externo, $O(n)$, mais algo $O(n)$ por volta cabe ($2{,}5 \cdot 10^7$).
+      - >-
+        Fixe o primeiro dos três valores. O que sobra é o problema anterior: achar dois outros valores com soma $x - a_i$.
+      - >-
+        Ordene pares (valor, posição) uma vez. Para cada $i$, rode os dois ponteiros no trecho à direita de $i$, procurando soma $x - a_i$.
+    pitfalls:
+      - >-
+        As três posições precisam ser distintas: os ponteiros começam depois de $i$. Imprima as posições originais (qualquer ordem).
+
+  1642: # Sum of Four Values
+    hints:
+      - >-
+        $n \le 1000$: $O(n^2)$ pares cabem, mas $O(n^3)$ não. Pense em quatro valores como **dois pares**.
+      - >-
+        Guarde num `map` a soma de cada par $(i, j)$ já visto. Se o par atual soma $s$, você procura um par antigo que some $x - s$.
+      - >-
+        O cuidado é não reusar posições. Percorra a posição $j$ do "meio": primeiro, para cada $k > j$, procure no `map` um par com soma $x - a_j - a_k$; só depois insira no `map` os pares $(i, j)$ com $i < j$. Assim, todo par do `map` usa posições **menores** que $j$, e nunca colide com $j$ e $k$.
+    pitfalls:
+      - >-
+        Um `map` com $\sim 5 \cdot 10^5$ pares é pesado; guarde só **um** par por soma, o que basta para responder. Somas até $2 \cdot 10^9$: `long long` na chave.
+
+  1660: # Subarray Sums I
+    hints:
+      - >-
+        Os números são **positivos**: esticar um subarray só aumenta a soma. Isso é exatamente o que a janela de dois ponteiros precisa.
+      - >-
+        Para cada fim $r$, encolha a janela pela esquerda enquanto a soma passar de $x$. Se depois disso a soma for exatamente $x$, achou um subarray.
+    pitfalls:
+      - >-
+        Soma da janela em `long long`. Para cada $r$ existe no máximo um início com soma exatamente $x$ (os positivos garantem isso).
+
+  1141: # Playlist
+    hints:
+      - >-
+        "Todas as músicas distintas" é uma condição monótona: se um trecho não tem repetidas, nenhum pedaço dele tem. Isso pede uma janela.
+      - >-
+        Avance o fim $r$. Se a música $k_r$ já está na janela, encolha pela esquerda até ela sair. A janela, então, é válida.
+      - >-
+        Guarde quais músicas estão na janela (um `set` ou um `map` de contagem) e responda o maior $r - l + 1$.
+    pitfalls:
+      - >-
+        Os ids vão até $10^9$: nada de array indexado pelo id (use `set`/`map` ou comprima). Ao tirar uma música pela esquerda, apague-a da estrutura.
+
+  3420: # Distinct Values Subarrays
+    hints:
+      - >-
+        É a mesma janela do Playlist (todos distintos), mas agora a pergunta é **quantos** subarrays, não o maior.
+      - >-
+        Para cada fim $r$, a janela $[l, r]$ é a maior válida terminando em $r$. Quantos subarrays válidos terminam em $r$?
+      - >-
+        Exatamente $r - l + 1$: os que começam em $l, l + 1, \dots, r$. Some isso para todo $r$.
+    pitfalls:
+      - >-
+        A resposta chega a $\frac{n(n+1)}{2} \approx 2 \cdot 10^{10}$: `long long`.
+
+  2428: # Distinct Values Subarrays II
+    hints:
+      - >-
+        "No máximo $k$ valores distintos" é monótona: se um trecho tem no máximo $k$ distintos, qualquer pedaço dele também tem.
+      - >-
+        Janela com um `map` de contagens: ao entrar, incremente; ao sair, decremente e **apague a chave** quando chegar a 0, para que o tamanho do `map` seja o número de distintos.
+      - >-
+        Enquanto o `map` tiver mais de $k$ chaves, encolha. Depois, some $r - l + 1$.
+    pitfalls:
+      - >-
+        Se você não apagar as chaves com contagem 0, o tamanho do `map` não é mais o número de distintos. Resposta em `long long`.
+
+  1619: # Restaurant Customers
+    hints:
+      - >-
+        O número de clientes só muda quando alguém chega ($+1$) ou sai ($-1$). Entre esses momentos, ele fica constante.
+      - >-
+        Transforme cada cliente em dois eventos, ordene todos por tempo e percorra mantendo a contagem atual. A resposta é o maior valor que a contagem atinge.
+    pitfalls:
+      - >-
+        O enunciado garante que todos os tempos são distintos, então não há empate de eventos. (Se houvesse, a ordem entre chegada e saída no mesmo instante mudaria a resposta.)
+
+  3150: # Distinct Values Sum (reservado: Checkpoint Cego)
+    hints:
+      - >-
+        Listar os subarrays é impossível. Inverta a pergunta: cada valor distinto de um subarray é "contado" por **uma** posição. Qual posição escolher para representar cada valor?
+      - >-
+        Diga que o valor $v$ é contado pela sua **primeira ocorrência dentro do subarray**. Em quantos subarrays a posição $i$ é a primeira ocorrência do seu valor?
+      - >-
+        O início precisa estar depois da ocorrência anterior do mesmo valor (e até $i$), e o fim pode ser qualquer um a partir de $i$. Guarde a última posição de cada valor num `map` e some (opções de início) × (opções de fim).
+    pitfalls:
+      - >-
+        Quando o valor ainda não apareceu, a "ocorrência anterior" é a posição $-1$ (em indexação 0). A soma chega a ~$\frac{n^3}{6}$: `long long`.
