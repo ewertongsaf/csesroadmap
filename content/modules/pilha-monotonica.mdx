@@ -1,0 +1,214 @@
+---
+title: Pilha monotônica
+description: Para cada elemento, achar o vizinho mais próximo que é maior (ou menor) em O(n) no total, mantendo uma pilha que só guarda candidatos ainda úteis.
+---
+import Callout from '../../src/components/mdx/Callout.astro';
+import Quiz from '../../src/components/mdx/Quiz.tsx';
+import MonotonicViz from '../../src/components/mdx/viz/MonotonicViz.tsx';
+
+## Motivação: quantos dias até esquentar
+
+O problema desta aula:
+
+> Dadas as temperaturas de $n \le 2 \cdot 10^5$ dias, para cada dia diga **quantos dias faltam** até um dia estritamente mais quente. Se não houver, imprima 0.
+
+Com as temperaturas $73, 74, 75, 71, 69, 72, 76, 73$ (dias 0 a 7):
+
+| Dia | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 |
+|---|---|---|---|---|---|---|---|---|
+| Temperatura | 73 | 74 | 75 | 71 | 69 | 72 | 76 | 73 |
+| Próximo mais quente | dia 1 | dia 2 | dia 6 | dia 5 | dia 5 | dia 6 | nenhum | nenhum |
+| **Espera** | **1** | **1** | **4** | **2** | **1** | **1** | **0** | **0** |
+
+A força bruta, para cada dia, anda para a direita até achar um mais quente: $O(n^2)$ no pior caso (temperaturas decrescentes). Esta aula resolve em $O(n)$.
+
+## A ideia: a fila de quem ainda espera
+
+Leia os dias da esquerda para a direita. Mantenha uma **pilha** com os dias que **ainda estão esperando** um dia mais quente. Quando chega um dia novo:
+
+1. enquanto o dia no **topo** da pilha for mais frio que o novo, o novo é a resposta dele: calcule a espera e tire-o da pilha;
+2. empilhe o dia novo (agora ele também espera).
+
+O traço:
+
+| Dia | Temp. | Sai da pilha (e sua espera) | Pilha depois (fundo → topo) |
+|---|---|---|---|
+| 0 | 73 | | 73 |
+| 1 | 74 | dia 0 (espera 1) | 74 |
+| 2 | 75 | dia 1 (espera 1) | 75 |
+| 3 | 71 | | 75, 71 |
+| 4 | 69 | | 75, 71, 69 |
+| 5 | 72 | dia 4 (espera 1), dia 3 (espera 2) | 75, 72 |
+| 6 | 76 | dia 5 (espera 1), dia 2 (espera 4) | 76 |
+| 7 | 73 | | 76, 73 |
+
+No fim, quem sobrou na pilha (dias 6 e 7) nunca achou um dia mais quente: espera 0.
+
+Repare num padrão: **a pilha está sempre em ordem decrescente** do fundo para o topo. Faz sentido: se um dia mais quente chega, todos os mais frios do topo saem antes de ele entrar. Por isso o nome **pilha monotônica**. E é por isso que basta olhar o topo: se o topo não é mais frio que o dia novo, ninguém abaixo dele é.
+
+<MonotonicViz client:visible mode="stack" />
+
+<Callout type="tente">
+O laço tem um `while` dentro de um `for`. Quantas vezes, **no total**, um dia é empilhado ou desempilhado, para $n$ dias?
+
+<details>
+<summary>Ver resposta</summary>
+
+No máximo $2n$. Cada dia é empilhado **exatamente uma vez** (quando é lido) e desempilhado **no máximo uma vez** (depois de sair, nunca volta). No traço: 8 empilhamentos e 6 desempilhamentos. É o mesmo argumento amortizado dos dois ponteiros: o `while` pode rodar várias vezes numa volta, mas o total de voltas dele, somando a execução inteira, é no máximo $n$.
+
+</details>
+</Callout>
+
+### Estrito ou não estrito
+
+A condição "mais quente" é **estrita**: um dia com a mesma temperatura não conta. Isso aparece no código como `<` (e não `<=`) na comparação com o topo.
+
+<Callout type="tente">
+Com as temperaturas $5, 5, 6$, a resposta certa é $2, 1, 0$: o dia 0 espera até o dia 2, porque o dia 1 tem a mesma temperatura. O que o algoritmo dá se você escrever `<=` no lugar de `<`?
+
+<details>
+<summary>Ver resposta</summary>
+
+$1, 1, 0$. Com `<=`, quando o dia 1 (5°) chega, ele "resolve" o dia 0 (também 5°), como se fosse mais quente. A diferença entre `<` e `<=` decide se empates contam, e cada problema define isso de um jeito. Leia o enunciado e escolha de propósito.
+
+</details>
+</Callout>
+
+## As quatro variações
+
+Mudando a direção da leitura e a comparação, a mesma ideia responde quatro perguntas:
+
+| Pergunta | Ler da | Tira do topo enquanto o topo for |
+|---|---|---|
+| próximo **maior** à **direita** (esta aula) | esquerda para a direita, resolvendo quem sai | menor que o atual |
+| próximo **menor** à **direita** | esquerda para a direita, resolvendo quem sai | maior que o atual |
+| mais próximo **menor** à **esquerda** | esquerda para a direita; a resposta é o topo depois de limpar | maior ou igual ao atual |
+| mais próximo **maior** à **esquerda** | esquerda para a direita; a resposta é o topo depois de limpar | menor ou igual ao atual |
+
+Nas duas últimas, a resposta do elemento atual é **quem sobrou no topo** depois de tirar os que não servem (e "nenhum", se a pilha esvaziou).
+
+## Código: o problema da motivação
+
+A pilha guarda **índices** (os dias), não temperaturas: precisamos do índice para calcular a espera.
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int main() {
+    int n;
+    cin >> n;
+    vector<int> t(n);
+    for (int i = 0; i < n; i++) cin >> t[i];
+
+    vector<int> espera(n, 0);         // quem nunca sai da pilha fica com 0
+    vector<int> pilha;                // índices dos dias que ainda esperam (vector como pilha)
+    for (int i = 0; i < n; i++) {
+        while (!pilha.empty() && t[pilha.back()] < t[i]) {   // o topo é mais frio que hoje
+            int j = pilha.back();
+            pilha.pop_back();
+            espera[j] = i - j;
+        }
+        pilha.push_back(i);
+    }
+    for (int i = 0; i < n; i++) cout << espera[i] << " ";
+    cout << "\n";
+}
+```
+
+Um `vector` serve de pilha: `push_back` empilha, `back()` mostra o topo e `pop_back()` desempilha. (A STL também tem `stack`, com `push`, `top` e `pop`; tanto faz.)
+
+**Entrada:**
+
+```
+8
+73 74 75 71 69 72 76 73
+```
+
+**Saída:**
+
+```
+1 1 4 2 1 1 0 0
+```
+
+- **Tempo:** $O(n)$, pelo argumento amortizado.
+- **Memória:** $O(n)$.
+
+### O mesmo código no formato de contest
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+typedef vector<int> vi;
+#define rep(i,a,b) for(int i=(a);i<(b);i++)
+#define pb push_back
+void fastio(){ ios::sync_with_stdio(false); cin.tie(nullptr); }
+
+int main(){
+    fastio();
+    int n; cin >> n;
+    vi t(n), esp(n, 0), st;
+    rep(i, 0, n) cin >> t[i];
+    rep(i, 0, n) {
+        while (!st.empty() && t[st.back()] < t[i]) { esp[st.back()] = i - st.back(); st.pop_back(); }
+        st.pb(i);
+    }
+    rep(i, 0, n) cout << esp[i] << " \n"[i == n - 1];
+}
+```
+
+## Armadilhas comuns
+
+<Callout type="armadilha" title="Topo de pilha vazia">
+Sempre teste `!pilha.empty()` **antes** de olhar `pilha.back()`. A ordem dentro do `while` importa: a condição da esquerda protege a da direita.
+</Callout>
+
+- **`<` contra `<=`.** Decide se empates contam (veja a pausa acima). Errar aqui passa nos exemplos e falha em testes com valores repetidos.
+- **Guardar valores em vez de índices.** Quase sempre a resposta precisa de posições (distâncias, larguras); empilhe índices e leia os valores com `t[i]`.
+- **Esquecer quem sobrou na pilha.** No fim, os índices que ficaram não têm resposta; o valor padrão (0, $-1$, $n$…) precisa estar certo.
+
+<details class="para-depois">
+<summary>Para depois: onde a pilha monotônica aparece</summary>
+
+**Contribuição.** "Em quantos subarrays $a_i$ é o máximo?" usa o maior mais próximo à esquerda e à direita para limitar inícios e fins (veja a contribuição no milestone 5).
+
+**Pilha + busca binária.** Como a pilha é ordenada, dá para fazer busca binária nela para perguntas como "o mais próximo à esquerda que é maior que $x$", com $x$ qualquer.
+
+</details>
+
+## Referências
+
+- **CPH, capítulo 8 — Amortized analysis, seção 8.2 *Nearest smaller elements*:** a mesma técnica, na variação "menor mais próximo à esquerda", com a análise amortizada.
+- [USACO Guide — Introduction to Data Structures](https://usaco.guide/bronze/intro-ds) (pilhas na STL).
+
+## Mini-quiz
+
+<Quiz
+  client:visible
+  questions={[
+    {
+      q: 'O que o programa da aula imprime para as temperaturas 30, 20, 25, 40?',
+      options: ['3 1 1 0', '1 1 1 0', '3 2 1 0', '0 1 1 0'],
+      answer: 0,
+      why: 'Dia 0 (30) espera até o 40 (dia 3): 3. Dia 1 (20) esquenta no dia 2 (25): 1. Dia 2 (25) espera o 40: 1. Dia 3: nunca, 0.',
+    },
+    {
+      q: 'Durante a leitura de 9, 7, 8, 3, 2, 6, como fica a pilha (temperaturas, fundo → topo) logo depois de processar o 6?',
+      options: ['9, 8, 6', '9, 6', '6', '9, 7, 8, 6'],
+      answer: 0,
+      why: '9 | 9 7 | o 8 tira o 7: 9 8 | 9 8 3 | 9 8 3 2 | o 6 tira o 2 e o 3, mas não o 8: 9 8 6.',
+    },
+    {
+      q: 'Para achar, para cada posição, o MENOR elemento mais próximo à ESQUERDA, quem você tira do topo antes de ler a resposta?',
+      options: ['Os menores que o atual', 'Os maiores ou iguais ao atual', 'Ninguém', 'Só o topo, uma vez'],
+      answer: 1,
+      why: 'Um elemento maior ou igual ao atual nunca será "o menor mais próximo à esquerda" de ninguém daqui em diante: o atual é tão bom quanto ele e está mais perto.',
+    },
+    {
+      q: 'Com n = 10^5 temperaturas em ordem crescente, quantas vezes o corpo do while roda no total?',
+      options: ['0', 'n − 1', 'n²/2', 'n log n'],
+      answer: 1,
+      why: 'Cada dia novo é mais quente que o anterior e tira exatamente um elemento (o anterior) da pilha: n − 1 desempilhamentos no total.',
+    },
+  ]}
+/>

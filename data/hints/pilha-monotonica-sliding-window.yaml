@@ -1,0 +1,149 @@
+# Dicas do milestone 6 — Pilha monotônica, deque e sliding window.
+problems:
+  1645: # Nearest Smaller Values
+    hints:
+      - >-
+        Se $x_j \ge x_i$ e $j < i$, a posição $j$ nunca mais será "a menor mais próxima à esquerda" de ninguém depois de $i$: a posição $i$ é tão boa quanto ela e está mais perto.
+      - >-
+        Mantenha uma pilha de posições candidatas. Para cada $i$, tire do topo as que têm valor $\ge x_i$; quem sobrar no topo é a resposta.
+    pitfalls:
+      - >-
+        "Menor" é estrito: valores iguais saem da pilha. As posições da saída são 1-indexadas, e 0 significa "nenhuma".
+
+  1142: # Advertisement
+    hints:
+      - >-
+        Um anúncio ótimo tem a altura de **alguma** tábua (a mais baixa que ele cobre). Fixe essa tábua: até onde o anúncio pode se estender para os lados?
+      - >-
+        Com a altura da tábua $i$, o anúncio vai até antes da primeira tábua **mais baixa** à esquerda e à direita. São duas perguntas de "menor mais próximo".
+      - >-
+        Calcule, com pilha monotônica, o menor mais próximo à esquerda e à direita de cada tábua. A área com a tábua $i$ como a mais baixa é $k_i \cdot (\text{direita} - \text{esquerda} - 1)$.
+    pitfalls:
+      - >-
+        A área chega a $2 \cdot 10^5 \cdot 10^9$: `long long`. Use "nenhuma" como $-1$ à esquerda e $n$ à direita para a conta da largura funcionar sozinha.
+
+  1147: # Maximum Building I
+    hints:
+      - >-
+        Fixe a linha de baixo do prédio. Para cada coluna, quantas casas livres consecutivas existem **subindo** a partir dessa linha?
+      - >-
+        Essas alturas formam um histograma, e o maior prédio com a base nessa linha é o maior retângulo desse histograma: o mesmo problema do Advertisement.
+      - >-
+        Atualize as alturas linha a linha (+1 se livre, 0 se árvore) e rode o "maior retângulo no histograma" com pilha em cada linha: $O(nm)$ no total.
+    pitfalls:
+      - >-
+        $n, m \le 1000$: um $O(nm \log)$ ainda passa, mas $O(n^2 m)$ não. Leia o grid como strings.
+
+  3220: # Sliding Window Sum
+    hints:
+      - >-
+        Uma janela de tamanho fixo muda pouco de uma posição para a próxima: entra um elemento, sai outro.
+      - >-
+        Mantenha a soma corrente: some quem entra, subtraia quem sai, e faça o xor da soma de cada janela completa.
+    pitfalls:
+      - >-
+        $n$ até $10^7$ com gerador: $a \cdot x_{i-1}$ chega a $10^{18}$, então use `long long` no gerador. A soma da janela chega a $10^{16}$. Para tirar quem sai, você precisa de $x_{i-k}$: guarde o array (40 MB com `int`) ou um buffer circular de tamanho $k$.
+
+  3426: # Sliding Window Xor
+    hints:
+      - >-
+        O xor tem uma propriedade que a soma também tem: dá para "desfazer". O que acontece ao fazer xor de um valor duas vezes?
+      - >-
+        $v \oplus v = 0$: para tirar quem sai da janela, faça xor com ele de novo. Mantenha o xor corrente da janela, como uma soma.
+    pitfalls:
+      - >-
+        Mesmos cuidados do Sliding Window Sum: gerador em `long long` e $O(n)$ estrito para $n = 10^7$.
+
+  3221: # Sliding Window Minimum
+    hints:
+      - >-
+        O mínimo não se desfaz como a soma. Quem, dentro da janela, nunca mais pode ser o mínimo de nenhuma janela futura?
+      - >-
+        Um elemento **maior ou igual** ao que acabou de entrar: ele sai antes e não é menor. Descarte-o.
+      - >-
+        Deque monotônica crescente de índices: tire do fundo os $\ge$ que o novo, coloque o novo, tire da frente se saiu da janela, e a frente é o mínimo.
+    pitfalls:
+      - >-
+        Com $n = 10^7$, um `multiset` ($O(n \log k)$) tende a estourar o tempo: use a deque. Se a `std::deque` ficar lenta, um vetor com dois índices (início e fim) faz o mesmo papel.
+
+  3405: # Sliding Window Or
+    hints:
+      - >-
+        O "ou" não se desfaz: se o bit 3 está ligado na janela e o elemento que sai tem o bit 3, ele continua ligado? Depende de outros elementos.
+      - >-
+        Pense bit a bit: um bit está ligado no "ou" da janela se **pelo menos um** elemento da janela o tem. Isso dá para manter com contadores, um por bit.
+      - >-
+        Para cada bit, conte quantos elementos da janela o têm (entra: +1 nos bits dele; sai: −1). O "ou" da janela é a soma de $2^b$ para os bits com contador positivo.
+    pitfalls:
+      - >-
+        São ~30 bits por elemento e $n = 10^7$: cerca de $6 \cdot 10^8$ operações simples, apertado. Uma alternativa $O(n)$ divide o array em blocos de tamanho $k$ e combina o "ou" de sufixo do bloco da esquerda com o de prefixo do bloco da direita.
+
+  3222: # Sliding Window Distinct Values
+    hints:
+      - >-
+        Guarde quantas vezes cada valor aparece na janela atual.
+      - >-
+        Com um `map` de contagens: entra → incrementa; sai → decrementa e apaga a chave quando chegar a 0. O número de distintos é o tamanho do `map`.
+    pitfalls:
+      - >-
+        Sem apagar as chaves com contagem 0, o tamanho do `map` deixa de ser o número de distintos.
+
+  3224: # Sliding Window Mode
+    hints:
+      - >-
+        Além da contagem de cada valor, você precisa saber, a cada janela, qual valor tem a **maior** contagem (e, no empate, o menor valor).
+      - >-
+        Guarde num `set` os pares (contagem, valor) de todos os valores da janela, ordenados de forma que o "melhor" fique numa ponta.
+      - >-
+        A cada entrada ou saída, a contagem de **um** valor muda: tire o par antigo do `set`, atualize, coloque o par novo. A moda é a ponta certa do `set`. Use $(-\text{contagem}, \text{valor})$ para que o primeiro elemento seja a resposta.
+    pitfalls:
+      - >-
+        Empate na contagem: a moda é o **menor** valor. Confira a ordem do par e o caso em que a contagem chega a 0 (não reinsira o par).
+
+  3219: # Sliding Window Mex
+    hints:
+      - >-
+        Uma janela tem $k$ elementos. Qual é o maior valor possível para o mex dela?
+      - >-
+        O mex é no máximo $k$, então valores maiores que $k$ nunca importam. Guarde as contagens dos valores $0..k$ num vetor.
+      - >-
+        Mantenha um `set` com os valores de $0..k$ que **não** estão na janela. O mex é o menor deles. Quando uma contagem vai de 0 para 1, tire o valor do `set`; quando volta a 0, coloque de volta.
+    pitfalls:
+      - >-
+        Os valores vão até $10^9$: ignore os maiores que $k$ (eles não mudam o mex) em vez de indexar o vetor por eles.
+
+  1076: # Sliding Window Median
+    hints:
+      - >-
+        A mediana divide a janela em duas metades: a dos menores e a dos maiores. Se você mantivesse as duas metades separadas, onde estaria a mediana?
+      - >-
+        Use dois `multiset`s: `baixo` com a metade menor (incluindo a mediana) e `alto` com o resto. A mediana é o maior de `baixo`.
+      - >-
+        A cada passo: insira o novo na metade certa, apague uma cópia de quem saiu (de onde ele estiver) e rebalanceie, passando o maior de `baixo` ou o menor de `alto` de um lado para o outro, até `baixo` ter $\lceil k/2 \rceil$ elementos.
+    pitfalls:
+      - >-
+        Com $k$ par, a mediana é a **menor** das duas do meio. Apague por iterador (`erase(find(x))`). Cuidado com $k = 1$.
+
+  1077: # Sliding Window Cost
+    hints:
+      - >-
+        Para um conjunto fixo de valores, qual alvo minimiza a soma das distâncias até ele? (Você viu isso no Stick Lengths.)
+      - >-
+        A mediana. Então, para cada janela, o custo é $\sum |x - \text{mediana}|$, e a mediana já sai do problema anterior.
+      - >-
+        Mantenha também a **soma** de cada metade. O custo é $\text{med} \cdot |\text{baixo}| - \text{soma}(\text{baixo}) + \text{soma}(\text{alto}) - \text{med} \cdot |\text{alto}|$.
+    pitfalls:
+      - >-
+        Atualize as somas em toda inserção, remoção e rebalanceamento. Tudo em `long long`.
+
+  3414: # Filled Subgrid Count II (reservado: Checkpoint Cego)
+    hints:
+      - >-
+        Conte os retângulos pelo canto **inferior direito**. Para uma célula, a "altura" é quantas células iguais a ela existem em linha reta para cima, contando ela mesma.
+      - >-
+        Numa linha, dentro de um trecho contínuo de mesma letra, as alturas formam um histograma. Contar retângulos monocromáticos com canto inferior direito na coluna $j$ é contar retângulos dentro desse histograma que terminam em $j$.
+      - >-
+        Com uma pilha, ache a coluna $p$ mais próxima à esquerda (no mesmo trecho) com altura menor que a de $j$. Então $\text{cnt}[j] = \text{cnt}[p] + h_j \cdot (j - p)$, e a resposta da letra soma $\text{cnt}[j]$ de todas as células.
+    pitfalls:
+      - >-
+        O histograma "quebra" quando a letra muda na linha: reinicie a pilha a cada trecho. $n = 3000$: $O(n^2)$ com constante baixa; contagens em `long long`.

@@ -1,0 +1,245 @@
+---
+title: Sliding window e deque monotônica
+description: Uma janela de tamanho fixo k desliza pelo array e você quer um resumo de cada posição dela. Somas se atualizam em O(1); máximos e mínimos precisam de uma deque que só guarda candidatos.
+---
+import Callout from '../../src/components/mdx/Callout.astro';
+import Quiz from '../../src/components/mdx/Quiz.tsx';
+import MonotonicViz from '../../src/components/mdx/viz/MonotonicViz.tsx';
+
+## Motivação: o máximo de cada janela
+
+O problema desta aula:
+
+> Dados $n \le 2 \cdot 10^5$ inteiros e um tamanho $k$, imprima o **máximo de cada janela** de $k$ elementos consecutivos, da esquerda para a direita (são $n - k + 1$ janelas).
+
+Com $a = 4, 2, 12, 3, 8, 5, 1, 7$ e $k = 3$:
+
+| Janela (posições) | Elementos | Máximo |
+|---|---|---|
+| 0–2 | 4, 2, 12 | 12 |
+| 1–3 | 2, 12, 3 | 12 |
+| 2–4 | 12, 3, 8 | 12 |
+| 3–5 | 3, 8, 5 | 8 |
+| 4–6 | 8, 5, 1 | 8 |
+| 5–7 | 5, 1, 7 | 7 |
+
+A saída é `12 12 12 8 8 7`. Calcular o máximo de cada janela do zero custa $O(k)$ por janela, $O(nk)$ no total: com $n = 2 \cdot 10^5$ e $k = 10^5$, são $10^{10}$ operações. Esta aula chega a $O(n)$ em três passos.
+
+## Passo 1: quando dá para desfazer (a soma)
+
+A janela anda uma posição por vez: **um** elemento entra pela direita e **um** sai pela esquerda. Para a soma, isso é fácil: some quem entra e subtraia quem sai. Com $a = 2, 7, 1, 8, 2, 8$ e $k = 3$:
+
+| Janela | Entra | Sai | Soma |
+|---|---|---|---|
+| 2, 7, 1 | (montagem inicial) | | 10 |
+| 7, 1, 8 | 8 | 2 | $10 + 8 - 2 = 16$ |
+| 1, 8, 2 | 2 | 7 | $16 + 2 - 7 = 11$ |
+| 8, 2, 8 | 8 | 1 | $11 + 8 - 1 = 18$ |
+
+Cada janela custa $O(1)$: o total é $O(n)$. O mesmo vale para o xor (fazer xor de novo com quem sai o "desfaz").
+
+## Passo 2: o máximo não se desfaz
+
+<Callout type="tente">
+Se você sabe que o máximo da janela atual é 12 e o 12 é justamente quem sai, qual é o novo máximo?
+
+<details>
+<summary>Ver resposta</summary>
+
+Não dá para saber só com esse número. O novo máximo é o maior entre os elementos **restantes**, e o "12" sozinho não guarda informação sobre eles. Ao contrário da soma, não existe "subtrair o máximo". Precisamos guardar mais do que um número.
+
+</details>
+</Callout>
+
+A saída mais direta é um `multiset` (milestone 4) com os $k$ elementos da janela: insira quem entra, apague **uma cópia** de quem sai, e o máximo é o último elemento. Custa $O(\log k)$ por passo, $O(n \log k)$ no total, e já passa para $n = 2 \cdot 10^5$:
+
+```cpp
+multiset<int> janela;
+for (int i = 0; i < n; i++) {
+    janela.insert(a[i]);                                   // entra a[i]
+    if (i >= k) janela.erase(janela.find(a[i - k]));       // sai a[i-k] (uma cópia só!)
+    if (i >= k - 1) cout << *janela.rbegin() << " ";       // rbegin: o maior
+}
+```
+
+## Passo 3: a deque monotônica, $O(n)$
+
+Olhe para a janela 2, 12, 3 e imagine que o 8 vai entrar. A partir de agora, o 3 **nunca mais** pode ser o máximo de nenhuma janela: ele sai antes do 8 (está mais à esquerda) e é menor que o 8. Ele pode ser descartado já.
+
+Generalizando: quando um elemento entra, todos os elementos **menores ou iguais** a ele que estão na janela viraram inúteis. Guarde só os úteis, numa **deque** (fila de duas pontas):
+
+1. ao entrar $a_i$: tire **do fundo** todos os elementos $\le a_i$, e coloque $a_i$ no fundo;
+2. se o elemento da **frente** já saiu da janela (posição $\le i - k$), tire-o da frente;
+3. o máximo da janela é o elemento da **frente**.
+
+A deque fica sempre em ordem **decrescente** da frente para o fundo: por isso o máximo está na frente. O traço com $a = 4, 2, 12, 3, 8, 5, 1, 7$ e $k = 3$:
+
+| $i$ | Entra | Sai por trás ($\le$ o que entra) | Sai pela frente (fora da janela) | Deque (frente → fundo) | Máximo |
+|---|---|---|---|---|---|
+| 0 | 4 | | | 4 | |
+| 1 | 2 | | | 4, 2 | |
+| 2 | 12 | 2, 4 | | 12 | 12 |
+| 3 | 3 | | | 12, 3 | 12 |
+| 4 | 8 | 3 | | 12, 8 | 12 |
+| 5 | 5 | | 12 (posição 2) | 8, 5 | 8 |
+| 6 | 1 | | | 8, 5, 1 | 8 |
+| 7 | 7 | 1, 5 | 8 (posição 4) | 7 | 7 |
+
+<MonotonicViz client:visible mode="deque" />
+
+Por que é $O(n)$: cada elemento entra na deque uma vez e sai no máximo uma vez (por trás ou pela frente). O mesmo argumento amortizado da pilha monotônica.
+
+### O que acontece se você esquecer a frente
+
+<Callout type="tente">
+Com $a = 9, 1, 2, 3$ e $k = 2$, as respostas certas são $9, 2, 3$. O que sai se você esquecer o passo 2 (tirar da frente quem saiu da janela)?
+
+<details>
+<summary>Ver resposta</summary>
+
+Sai $9, 9, 9$. O 9 entra primeiro e nada maior que ele chega, então ninguém o tira por trás. Sem o passo 2, ele fica na frente para sempre, embora tenha saído da janela depois da posição 1. É por isso que a deque guarda **índices**, e não valores: para saber se a frente ainda está dentro da janela, você compara a posição dela com $i - k$.
+
+</details>
+</Callout>
+
+## Código: o problema da motivação
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int main() {
+    int n, k;
+    cin >> n >> k;
+    vector<long long> a(n);
+    for (int i = 0; i < n; i++) cin >> a[i];
+
+    deque<int> dq;                                  // índices; valores decrescentes da frente ao fundo
+    for (int i = 0; i < n; i++) {
+        while (!dq.empty() && a[dq.back()] <= a[i]) dq.pop_back();   // inúteis saem por trás
+        dq.push_back(i);
+        if (dq.front() <= i - k) dq.pop_front();                     // saiu da janela
+        if (i >= k - 1) cout << a[dq.front()] << " ";                // a frente é o máximo
+    }
+    cout << "\n";
+}
+```
+
+`deque` é uma fila com as duas pontas abertas: `push_back`/`pop_back` mexem no fundo e `push_front`/`pop_front` na frente, todos em $O(1)$; `front()` e `back()` leem as pontas.
+
+**Entrada:**
+
+```
+8 3
+4 2 12 3 8 5 1 7
+```
+
+**Saída:**
+
+```
+12 12 12 8 8 7
+```
+
+- **Tempo:** $O(n)$.
+- **Memória:** $O(n)$ para o array e $O(k)$ para a deque.
+
+Basta um `if` (e não um `while`) para tirar da frente: a cada passo a janela anda uma posição, então no máximo um índice sai dela.
+
+### O mesmo código no formato de contest
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+typedef long long ll;
+#define rep(i,a,b) for(int i=(a);i<(b);i++)
+void fastio(){ ios::sync_with_stdio(false); cin.tie(nullptr); }
+
+int main(){
+    fastio();
+    int n, k; cin >> n >> k;
+    vector<ll> a(n);
+    rep(i, 0, n) cin >> a[i];
+    deque<int> dq;
+    rep(i, 0, n) {
+        while (!dq.empty() && a[dq.back()] <= a[i]) dq.pop_back();
+        dq.push_back(i);
+        if (dq.front() <= i - k) dq.pop_front();
+        if (i >= k - 1) cout << a[dq.front()] << " \n"[i == n - 1];
+    }
+}
+```
+
+Para o **mínimo**, troque `<=` por `>=`: a deque fica crescente e a frente é o menor.
+
+## Entradas gigantes, com gerador
+
+Alguns problemas têm $n$ até $10^7$, grande demais para ler da entrada em tempo. Eles dão uma **fórmula** para gerar o array, por exemplo $x_1 = x$ e $x_i = (a \cdot x_{i-1} + b) \bmod c$, e pedem um resumo da saída (como o xor de todas as respostas). Três cuidados:
+
+- **Overflow no gerador:** $a \cdot x_{i-1}$ chega a $10^{18}$. Calcule em `long long`.
+- **Só $O(n)$ passa:** $10^7 \cdot \log$ já é arriscado em 1 segundo. Prefira as versões $O(1)$ por passo (soma corrente, deque).
+- **Memória:** um `vector<int>` de $10^7$ posições usa 40 MB, o que é aceitável. Mas se você só precisa dos últimos $k$ elementos, nem precisa guardar tudo.
+
+## Armadilhas comuns
+
+<Callout type="armadilha" title="As duas que mais aparecem">
+
+- `multiset::erase(valor)` apaga todas as cópias: para tirar quem saiu da janela, use `erase(find(valor))`.
+- Na deque, guarde **índices**: sem eles, você não sabe quando a frente saiu da janela.
+
+</Callout>
+
+- **Contar as janelas.** São $n - k + 1$. A primeira resposta sai quando $i = k - 1$; antes disso a janela ainda está incompleta.
+- **`<` contra `<=` na deque.** Com `<=`, empates saem por trás (fica só o mais recente, que dura mais). Com `<`, ficam os dois. Para o máximo, os dois funcionam; o `<=` deixa a deque menor.
+- **Overflow** em somas de janela e no gerador: `long long`.
+
+<details class="para-depois">
+<summary>Para depois: operações que não se desfazem</summary>
+
+**Fila com duas pilhas.** Para operações que não têm "desfazer" e não são máximo/mínimo (por exemplo, o mdc ou o "ou" bit a bit), dá para simular a janela com **duas pilhas**, cada uma guardando, junto de cada elemento, o resumo de tudo abaixo dele. O resumo da janela é a combinação dos dois topos. Isso dá $O(1)$ amortizado para qualquer operação associativa. A página do cp-algorithms nas referências mostra a construção, com o mínimo como exemplo.
+
+**Janela de tamanho variável.** Quando o tamanho não é fixo, mas a condição é monótona, a técnica é a dos dois ponteiros (milestone 5); a deque pode ser combinada com ela para manter máximos de janelas variáveis.
+
+</details>
+
+## Referências
+
+- **CPH, capítulo 8 — Amortized analysis, seção 8.3 *Sliding window minimum*:** a deque monotônica, na versão do mínimo. A seção Sliding Window do CSES vai além do livro (moda, mex, mediana…); esses problemas combinam a janela com as estruturas do milestone 4.
+- [USACO Guide — Sliding Window](https://usaco.guide/gold/sliding-window)
+- [cp-algorithms — Minimum stack / Minimum queue](https://cp-algorithms.com/data_structures/stack_queue_modification.html): a deque monotônica e a fila com duas pilhas.
+
+## Mini-quiz
+
+<Quiz
+  client:visible
+  questions={[
+    {
+      q: 'O que o programa da aula imprime para a = 1, 3, 2, 5, 4 e k = 2?',
+      options: ['3 3 5 5', '3 2 5 4', '1 2 2 4', '3 5 5'],
+      answer: 0,
+      why: 'Janelas: (1,3) → 3, (3,2) → 3, (2,5) → 5, (5,4) → 5.',
+    },
+    {
+      q: 'Com a = 5, 3, 4 e k = 3, como fica a deque (valores, frente → fundo) depois de processar o 4?',
+      options: ['5, 4', '5, 3, 4', '4', '5'],
+      answer: 0,
+      why: '5 | 5, 3 | o 4 tira o 3 (3 ≤ 4) e entra: 5, 4. O 5 continua: a janela 0–2 ainda o contém.',
+    },
+    {
+      q: 'Soma das janelas de a = 5, 1, 6, 2, 4 com k = 2, usando "soma quem entra, subtrai quem sai". Quais são?',
+      options: ['6 7 8 6', '6 7 8 6 4', '5 6 7 8', '6 8 8 6'],
+      answer: 0,
+      why: '5+1 = 6; 6 + 6 − 5 = 7; 7 + 2 − 1 = 8; 8 + 4 − 6 = 6.',
+    },
+    {
+      q: 'Por que um elemento menor ou igual ao que acabou de entrar pode ser descartado da deque para sempre?',
+      options: [
+        'Porque ele é menor, então nunca foi máximo',
+        'Porque ele sai da janela antes do novo elemento e não é maior que ele: em nenhuma janela futura ele será o máximo',
+        'Para economizar memória, mesmo perdendo algumas respostas',
+        'Porque a deque só aceita elementos em ordem',
+      ],
+      answer: 1,
+      why: 'Toda janela futura que ainda o contém também contém o novo, que é pelo menos tão grande. Ele nunca mais é necessário.',
+    },
+  ]}
+/>
