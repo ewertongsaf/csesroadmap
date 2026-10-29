@@ -24,7 +24,23 @@ Site **pessoal** de estudos de programação competitiva do Ewerton (ITA, prepar
 6. Referências: CPH (número e nome do capítulo) + links verificados (USACO Guide, cp-algorithms, Codeforces EDU, vídeos bons).
 7. Mini-quiz de 2–4 perguntas conceituais.
 
-Ao escrever um módulo, mude `status` para `'written'` em `data/modules.ts`.
+### Princípios didáticos (feedback do usuário sobre os primeiros módulos)
+
+O leitor está vendo a técnica **pela primeira vez**: sabe C++ básico (laços, vetores, funções) e a notação O(·), nada além.
+
+1. **Concreto → abstrato.** Toda ideia aparece primeiro num exemplo minúsculo resolvido à mão (n = 3, vetor de 6–8 elementos); só depois vem a fórmula ou a notação. Nunca formalize (recorrência, invariante, notação de bits) antes do exemplo.
+2. **Traço no texto.** Para cada algoritmo, uma tabela passo a passo (estado em cada chamada/iteração) que funcione sem JavaScript. A visualização complementa, não substitui. Gere os números dos traços com código, nunca de cabeça.
+3. **Feche o problema motivador.** A aula termina com um programa COMPLETO que resolve exatamente o problema da motivação, com entrada e saída de exemplo e por que a saída é aquela.
+4. **Um conceito novo por vez.** Primeira versão do código com `for` normal, sem macros. Depois, "o mesmo código no formato de contest" com o template. Explique numa linha toda sintaxe fora do básico na primeira aparição (lambda `[&]`, `template <class F>`, iteradores, `prev`, `*max_element`).
+5. **Pausas ativas.** 2–3 `<Callout type="tente">` por aula: a pergunta no corpo e a resposta dentro de `<details><summary>Ver resposta</summary> … </details>`.
+6. **Contraexemplo.** Para cada condição necessária (desfazer o estado, monotonicidade, sentinela), mostre um caso pequeno em que ela falha e a saída errada resultante.
+7. **Essencial vs. avançado.** O que um iniciante não vai encontrar na primeira semana vai para `<details class="para-depois">` no fim.
+8. **Quiz que exige execução.** Pelo menos metade das perguntas pede para simular código (use o campo `code` do `Quiz`).
+9. **Cada bloco de código com `main` é testado:** compila com `-Wall -Wextra -Wshadow`, reproduz a saída de exemplo do texto e passa num teste de estresse contra força bruta.
+
+Cuidado com MDX: `{` e `<` em texto corrido são interpretados como JSX. Use `$\{1, 2\}$` ou crase.
+
+Os módulos `busca-completa` e `busca-binaria` são a referência de estilo (reescritos com esses princípios). Ao escrever um módulo, mude `status` para `'written'` em `data/modules.ts`.
 
 ## Dicas (data/hints/<milestone>.yaml)
 

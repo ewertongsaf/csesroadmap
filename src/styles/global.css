@@ -164,3 +164,52 @@ details.reveal > summary::-webkit-details-marker {
   outline: 2px solid var(--c-accent);
   outline-offset: 2px;
 }
+
+/* Resposta escondida das pausas ativas (<Callout type="tente">). */
+.callout-tente details {
+  margin-top: 0.9em;
+  border-top: 1px dashed var(--c-line);
+  padding-top: 0.7em;
+}
+.callout-tente summary {
+  cursor: pointer;
+  color: var(--c-hint);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.callout-tente details[open] > summary {
+  margin-bottom: 0.6em;
+}
+.callout-tente details > * + * {
+  margin-top: 0.8em;
+}
+
+/* Seção final "Para depois": conteúdo avançado, recolhido por padrão. */
+details.para-depois {
+  margin-top: 2.5em;
+  border: 1px solid var(--c-line);
+  border-radius: 0.75rem;
+  background: var(--c-surface);
+  padding: 0.9rem 1.2rem;
+}
+details.para-depois > summary {
+  cursor: pointer;
+  font-weight: 650;
+}
+details.para-depois[open] > summary {
+  margin-bottom: 0.8em;
+}
+details.para-depois > * + * {
+  margin-top: 0.9em;
+}
+
+/* Código mostra exatamente o que se digita: sem ligaduras (>= não vira ≥). */
+code,
+pre,
+kbd,
+textarea,
+.font-mono,
+.astro-code {
+  font-variant-ligatures: none;
+  font-feature-settings: "liga" 0, "calt" 0;
+}

@@ -6,14 +6,14 @@ const ITEMS = ['a', 'b', 'c'];
 const N = ITEMS.length;
 
 const CODE = [
-  'void gera(int i) {',
+  'void subconjuntos(int i) {',
   '    if (i == n) {',
   '        processa(atual); return;',
   '    }',
-  '    gera(i + 1);       // sem a[i]',
-  '    atual.pb(a[i]);    // com a[i]',
-  '    gera(i + 1);',
-  '    atual.pop_back();  // desfaz',
+  '    subconjuntos(i + 1);     // sem a[i]',
+  '    atual.push_back(a[i]);   // com a[i]',
+  '    subconjuntos(i + 1);',
+  '    atual.pop_back();        // desfaz',
   '}',
 ];
 
@@ -35,7 +35,7 @@ function simulate(): Ev[] {
       evs.push({ node, line: 2, cur: [...cur], out: out.map((o) => [...o]), text: `i == n: processa {${cur.join(', ') || '∅'}}` });
       return;
     }
-    evs.push({ node, line: 0, cur: [...cur], out: out.map((o) => [...o]), text: `gera(${i}): decidir sobre ${ITEMS[i]}. Primeiro sem ele.` });
+    evs.push({ node, line: 0, cur: [...cur], out: out.map((o) => [...o]), text: `subconjuntos(${i}): decidir sobre ${ITEMS[i]}. Primeiro sem ele.` });
     go(i + 1, `${node}0`);
     cur.push(ITEMS[i]);
     evs.push({ node, line: 5, cur: [...cur], out: out.map((o) => [...o]), text: `Voltou do ramo "sem ${ITEMS[i]}". Agora pega ${ITEMS[i]}: push.` });

@@ -3,6 +3,8 @@ import { Inline } from './inline.tsx';
 
 export interface QuizQuestion {
   q: string;
+  /** Trecho de código mostrado entre a pergunta e as alternativas (perguntas de "simule"). */
+  code?: string;
   options: string[];
   /** Índice da alternativa correta. */
   answer: number;
@@ -29,6 +31,9 @@ export default function Quiz({ questions }: { questions: QuizQuestion[] }) {
               <p className="font-medium">
                 {qi + 1}. <Inline text={qq.q} />
               </p>
+              {qq.code && (
+                <pre className="mt-2.5 overflow-x-auto rounded-lg border border-line bg-bg p-3 font-mono text-[12.5px] leading-relaxed">{qq.code}</pre>
+              )}
               <div className="mt-2.5 grid gap-2">
                 {qq.options.map((opt, oi) => {
                   const state = p === null ? 'idle' : oi === qq.answer ? 'right' : oi === p ? 'wrong' : 'off';

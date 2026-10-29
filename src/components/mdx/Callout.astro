@@ -1,7 +1,10 @@
 ---
-// Caixa de destaque nos módulos. type: armadilha | dica | cph | nota
+// Caixa de destaque nos módulos.
+// type: armadilha | dica | cph | nota | tente
+// "tente" é uma pausa ativa: a pergunta vem no corpo e a resposta dentro de um <details>
+// (<details><summary>Ver resposta</summary> … </details>), que funciona sem JavaScript.
 interface Props {
-  type?: 'armadilha' | 'dica' | 'cph' | 'nota';
+  type?: 'armadilha' | 'dica' | 'cph' | 'nota' | 'tente';
   title?: string;
 }
 const { type = 'nota', title } = Astro.props;
@@ -10,9 +13,10 @@ const style = {
   dica: { border: 'border-accent/50', label: 'text-accent', name: 'Dica' },
   cph: { border: 'border-try/50', label: 'text-try', name: 'No livro' },
   nota: { border: 'border-line', label: 'text-muted', name: 'Nota' },
+  tente: { border: 'border-hint/60', label: 'text-hint', name: 'Antes de continuar, tente' },
 }[type];
 ---
-<aside class:list={['my-6 rounded-xl border-l-4 bg-surface px-5 py-4', style.border]}>
+<aside class:list={['callout my-6 rounded-xl border-l-4 bg-surface px-5 py-4', style.border, type === 'tente' && 'callout-tente']}>
   <p class:list={['text-xs font-semibold uppercase tracking-wider', style.label]}>{title ?? style.name}</p>
   <div class="prose-cp mt-1.5 text-[15px]"><slot /></div>
 </aside>

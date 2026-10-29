@@ -8,35 +8,100 @@ import BinarySearchViz from '../../src/components/mdx/viz/BinarySearchViz.tsx';
 
 ## Motivação: cortar cabos
 
-Problema: *você tem $n \le 2 \cdot 10^5$ cabos, de comprimentos inteiros até $10^9$, e precisa de $k$ pedaços **do mesmo tamanho** inteiro $L$ (pode sobrar cabo, não pode emendar). Qual o maior $L$ possível?*
+O problema desta aula, do começo ao fim:
 
-Para um $L$ fixo, é fácil saber se dá: cada cabo de tamanho $a_i$ rende $\lfloor a_i / L \rfloor$ pedaços. Então
+> Você tem $n$ cabos de comprimentos inteiros e precisa de $k$ pedaços **do mesmo tamanho** inteiro $L$. Pode sobrar cabo, mas não pode emendar. Qual o **maior** $L$ possível?
+
+Um exemplo pequeno: cabos de comprimento $8$, $6$ e $5$, e você precisa de $k = 4$ pedaços.
+
+Para um $L$ fixo, é fácil contar quantos pedaços saem: um cabo de comprimento $a_i$ rende $\lfloor a_i / L \rfloor$ pedaços (a divisão inteira, arredondando para baixo). Testando todo $L$ de 1 a 9:
+
+| $L$ | Pedaços: $\lfloor 8/L \rfloor + \lfloor 6/L \rfloor + \lfloor 5/L \rfloor$ | Dá ($\ge 4$)? |
+|---|---|---|
+| 1 | $8 + 6 + 5 = 19$ | sim |
+| 2 | $4 + 3 + 2 = 9$ | sim |
+| 3 | $2 + 2 + 1 = 5$ | sim |
+| 4 | $2 + 1 + 1 = 4$ | sim |
+| 5 | $1 + 1 + 1 = 3$ | não |
+| 6 | $1 + 1 + 0 = 2$ | não |
+| 7 | $1 + 0 + 0 = 1$ | não |
+| 8 | $1 + 0 + 0 = 1$ | não |
+| 9 | $0 + 0 + 0 = 0$ | não |
+
+A resposta é **4**: o último "sim".
+
+Agora o problema de verdade: $n$ até $2 \cdot 10^5$ cabos, cada um até $10^9$. Testar todo $L$ de 1 a $10^9$, cada teste somando $n$ cabos, dá $2 \cdot 10^{14}$ operações. Não passa.
+
+Olhe de novo a última coluna: **sim, sim, sim, sim, não, não, não, …**. Ela nunca volta a ser "sim" depois de virar "não". Faz sentido: se dá para cortar pedaços de tamanho $L$, dá para cortar pedaços **menores** (cada cabo rende pelo menos tantos quanto antes). Esta aula mostra como achar a **fronteira** entre o último "sim" e o primeiro "não" com cerca de 30 testes em vez de $10^9$. Antes, dois exemplos mais simples da mesma ideia.
+
+## Primeiro passo: o jogo de adivinhar
+
+Alguém pensou num número de 1 a 100. Você chuta, e a pessoa responde "é maior", "é menor" ou "acertou". A estratégia esperta é **sempre chutar o meio** do intervalo que ainda é possível: cada resposta joga fora metade das possibilidades.
+
+Com o número secreto 37:
+
+| Pergunta | Intervalo possível | Chute (meio) | Resposta |
+|---|---|---|---|
+| 1 | 1 a 100 | 50 | é menor |
+| 2 | 1 a 49 | 25 | é maior |
+| 3 | 26 a 49 | 37 | acertou |
+
+<Callout type="tente">
+De 1 a 100, quantas perguntas você precisa **no pior caso**? E de 1 a 1000?
+
+<details>
+<summary>Ver resposta</summary>
+
+Cada pergunta corta o intervalo pela metade (mais ou menos). Começando com 100 números: 100 → 50 → 25 → 12 → 6 → 3 → 1. São no máximo **7** perguntas, porque $2^7 = 128 \ge 100$. Com 1000: $2^{10} = 1024 \ge 1000$, então **10** perguntas. Multiplicar o intervalo por 10 custou só 3 perguntas a mais.
+
+</details>
+</Callout>
+
+Esse é o poder da busca binária: o número de passos cresce como $\log_2$ do tamanho, não como o tamanho. Para $10^9$ são só 30 passos.
+
+## Segundo passo: busca num vetor ordenado
+
+Agora o "número secreto" é a posição de um valor num vetor **ordenado**:
+
+| índice | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 |
+|---|---|---|---|---|---|---|---|---|
+| `v` | 2 | 5 | 8 | 12 | 16 | 23 | 38 | 56 |
+
+Queremos saber se o 16 está no vetor e onde. Em vez de perguntar "é igual a 16?", faça uma pergunta de **sim/não que muda uma vez só**: "`v[i] >= 16`?".
+
+| índice | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 |
+|---|---|---|---|---|---|---|---|---|
+| `v[i] >= 16`? | não | não | não | não | **sim** | sim | sim | sim |
+
+Como o vetor está ordenado, as respostas são "não, não, …, não, sim, sim, …, sim". O 16, se existir, está no **primeiro "sim"**. A busca guarda dois índices:
+
+- `lo`: um índice onde **com certeza** a resposta é "não";
+- `hi`: um índice onde **com certeza** a resposta é "sim".
+
+No começo, não sabemos nenhum de verdade, então usamos posições imaginárias: `lo = -1` (antes do vetor, "não" por definição) e `hi = 8` (depois do vetor, "sim" por definição). A cada passo, testamos o meio e movemos o lado certo:
+
+| Passo | `lo` | `hi` | `mid` | `v[mid]` | `v[mid] >= 16`? | Ação |
+|---|---|---|---|---|---|---|
+| 1 | −1 | 8 | 3 | 12 | não | `lo = 3` |
+| 2 | 3 | 8 | 5 | 23 | sim | `hi = 5` |
+| 3 | 3 | 5 | 4 | 16 | sim | `hi = 4` |
+| fim | 3 | 4 | | | | `hi − lo = 1`: pare |
+
+Quando `lo` e `hi` ficam vizinhos, não há mais nada entre eles: `hi = 4` é o primeiro "sim". Como `v[4] = 16`, achamos o 16 na posição 4.
+
+E se o valor não está no vetor? Procurando o **10**, o mesmo processo termina com `hi = 3`, o primeiro índice com `v[i] >= 10`. Mas `v[3]` vale 12, e não 10; então o 10 não está no vetor (se estivesse, estaria na posição 3).
+
+## A ideia geral: fronteira de um predicado monótono
+
+Os dois exemplos têm a mesma estrutura. Existe uma pergunta de sim/não sobre um número $x$ (um índice, um tamanho, um tempo), que vamos chamar de **predicado** $P(x)$. Ela é **monótona**: muda de resposta uma vez só. Queremos a fronteira.
+
+O algoritmo mantém um **invariante**, uma afirmação que é verdade antes e depois de cada passo:
 
 $$
-\text{dá}(L) \iff \sum_{i=1}^{n} \left\lfloor \frac{a_i}{L} \right\rfloor \ge k
+P(\text{lo}) = \text{falso}, \qquad P(\text{hi}) = \text{verdadeiro}
 $$
 
-O lado esquerdo é o total de pedaços de tamanho $L$ que os $n$ cabos rendem; $k$ é quantos você precisa. Testar todo $L$ de $1$ a $10^9$, cada teste em $O(n)$, dá $2 \cdot 10^{14}$ operações.
-
-O que salva é que **$\text{dá}(L)$ é monótona**: se dá com $L$, dá com qualquer tamanho menor (pedaços menores rendem pelo menos tantos quanto). Olhando $L = 1, 2, 3, \dots$, as respostas são
-
-$$
-\underbrace{\text{sim}, \text{sim}, \dots, \text{sim}}_{L \le L^*},\ \underbrace{\text{não}, \text{não}, \dots}_{L > L^*}
-$$
-
-Queremos a **fronteira** $L^*$. Com busca binária, achamos a fronteira em $\log_2 10^9 \approx 30$ testes. São $30 \cdot n = 6 \cdot 10^6$ operações.
-
-## A ideia
-
-### O formato que nunca dá errado: achar a fronteira
-
-Esqueça "procurar um valor". Pense assim: existe um **predicado** $P(x)$ que é falso até certo ponto e verdadeiro daí em diante (ou o contrário):
-
-$$
-P(\text{lo}_0) = \text{falso},\quad P(\text{hi}_0) = \text{verdadeiro},\quad P \text{ monótono em } [\text{lo}_0, \text{hi}_0]
-$$
-
-$\text{lo}_0$ e $\text{hi}_0$ são dois pontos onde você **sabe** a resposta: o "sentinela falso" e o "sentinela verdadeiro". Mantenha o **invariante**: $P(\text{lo})$ é falso e $P(\text{hi})$ é verdadeiro. A cada passo, teste o meio e encolha o intervalo do lado certo. Quando $\text{hi} - \text{lo} = 1$, $\text{hi}$ é o **primeiro verdadeiro** e $\text{lo}$ é o **último falso**.
+$\text{lo}$ e $\text{hi}$ são os dois índices que a busca guarda, e a afirmação diz que a fronteira está sempre entre eles. Cada passo testa $\text{mid}$, o ponto do meio, e substitui $\text{lo}$ ou $\text{hi}$ por ele sem quebrar o invariante. Quando $\text{hi} - \text{lo} = 1$, $\text{hi}$ é o **primeiro verdadeiro** e $\text{lo}$ é o **último falso**.
 
 O número de passos é
 
@@ -44,75 +109,164 @@ $$
 \left\lceil \log_2 (\text{hi}_0 - \text{lo}_0) \right\rceil
 $$
 
-porque cada passo corta o intervalo pela metade. Para $10^9$ isso dá 30, e para $10^{18}$ dá 60.
+$\text{hi}_0$ e $\text{lo}_0$ são os valores iniciais, e $\lceil \cdot \rceil$ arredonda para cima. Cada passo divide a distância entre eles por 2: para $10^9$ são 30 passos, e para $10^{18}$ são 60.
+
+A visualização usa um vetor maior, com valores repetidos. Mude o alvo (tente um valor repetido, um que não existe e um maior que todos) e acompanhe `lo`, `hi` e `mid`:
 
 <BinarySearchViz client:visible />
 
-Com esse formato, não há "`mid + 1` ou `mid`?", "`<` ou `<=`?": o laço é sempre o mesmo. Você só precisa decidir **o que é $P$** e **onde estão os sentinelas**.
+### Duas versões: primeiro verdadeiro e último verdadeiro
 
-### No vetor ordenado: `lower_bound` e `upper_bound`
+A coluna dos cabos era "sim, …, sim, não, …, não", o **contrário** do vetor. Não tem problema: é a mesma busca com os papéis trocados. Guarde as duas versões:
 
-A busca da visualização é a `lower_bound` da STL: "primeiro índice com $a_i \ge x$". As duas que você vai usar sempre:
-
-| Função | Devolve | Pergunta que responde |
+| | Primeiro verdadeiro | Último verdadeiro |
 |---|---|---|
-| `lower_bound(all(v), x)` | primeiro elemento $\ge x$ | onde $x$ entraria mantendo a ordem |
-| `upper_bound(all(v), x)` | primeiro elemento $> x$ | o fim do bloco de $x$ |
-| `upper_bound − lower_bound` | quantidade de $x$ | quantas vezes $x$ aparece |
-| `prev(upper_bound(...))` | maior elemento $\le x$ | "o maior que cabe" |
+| Formato de $P$ | F, …, F, **V**, …, V | V, …, **V**, F, …, F |
+| Invariante | $P(\text{lo})$ falso, $P(\text{hi})$ verdadeiro | $P(\text{lo})$ verdadeiro, $P(\text{hi})$ falso |
+| Se $P(\text{mid})$ for verdadeiro | `hi = mid` | `lo = mid` |
+| Se $P(\text{mid})$ for falso | `lo = mid` | `hi = mid` |
+| Resposta | `hi` | `lo` |
+| Exemplo | primeiro `v[i] >= x` | maior $L$ que dá |
 
-### Busca binária na resposta
+O laço é sempre `while (hi - lo > 1)`, com `mid = lo + (hi - lo) / 2`. Não existe "`mid + 1` ou `mid`?" nem "`<` ou `<=`?". Você só decide **o que é $P$**, **qual das duas versões** e **onde ficam os sentinelas**.
 
-É a ideia do motivador, e é a forma mais útil da técnica. A receita:
+## Busca binária na resposta: os cabos
 
-1. O problema pede **o menor (ou maior) $x$** com alguma propriedade.
-2. Escreva $\text{ok}(x)$: "dá para fazer com $x$?". Geralmente é um greedy ou uma contagem em $O(n)$.
-3. Verifique a **monotonicidade**: se dá com $x$, dá com $x + 1$ (ou com $x - 1$)?
-4. Ache sentinelas seguros: um valor em que com certeza não dá e um em que com certeza dá.
-5. Busca binária na fronteira.
-
-Sinais de que é esse o caminho: "minimize o máximo", "maximize o mínimo", "menor tempo para…", "maior tamanho tal que…". Em todos eles, a pergunta de decisão ("dá em tempo $T$?") é muito mais fácil que a de otimização.
-
-### Valores reais
-
-Se a resposta é um número real, não há "$\text{hi} - \text{lo} = 1$". Faça um **número fixo de iterações**, por exemplo 100: cada uma divide o intervalo por 2, então 100 iterações reduzem o erro por $2^{100}$. É mais seguro que `while (hi - lo > eps)`, que pode nunca terminar por causa da precisão de `double`.
-
-## O formato interativo
-
-Em problemas **interativos**, o programa não recebe a entrada toda de uma vez: ele **pergunta** ao juiz e lê a resposta, com um limite de perguntas. A busca binária é a estratégia mais comum, porque cada pergunta sim/não corta o espaço pela metade. Então:
+Voltando à motivação. O predicado é $\text{dá}(L)$:
 
 $$
-\text{perguntas necessárias} = \lceil \log_2 (\text{tamanho do espaço}) \rceil
+\text{dá}(L) \iff \sum_{i=1}^{n} \left\lfloor \frac{a_i}{L} \right\rfloor \ge k
 $$
 
-Para um número secreto em $[1, 10^9]$, são 30 perguntas.
+O lado esquerdo é o total de pedaços de tamanho $L$ que os $n$ cabos rendem, e $k$ é quantos você precisa. Ele é "V, …, V, F, …, F", então usamos a versão **último verdadeiro**. Faltam os sentinelas:
 
-<Callout type="armadilha" title="Flush, sempre">
-A saída do C++ fica num buffer e só é enviada quando o buffer enche ou é "descarregado" (*flush*). Num interativo, se a pergunta ficar no buffer, o juiz nunca a recebe, os dois ficam esperando um pelo outro e você toma TLE ou *Idleness limit*. Depois de **cada** pergunta, use `cout << ... << endl;` ou `cout.flush()`.
+- **$\text{hi}$, onde com certeza não dá:** $\max a_i + 1$. Nenhum cabo rende um pedaço maior que ele mesmo, então ali a soma é 0.
+- **$\text{lo}$, onde com certeza dá:** $L = 0$. Pedaço de tamanho 0 não existe, mas **combinamos** que conta como "dá". É um sentinela imaginário, como o −1 do vetor. Isso é seguro porque a busca nunca testa o próprio `lo`: `mid` fica sempre estritamente entre `lo` e `hi`. Se nem $L = 1$ der, a busca termina com `lo = 0`, e imprimir 0 significa "impossível".
 
-Cuidado com o template: `fastio()` faz `cin.tie(nullptr)`, que desliga o flush automático que o `cin` faria antes de ler. Com `fastio()`, o flush explícito é obrigatório.
+Com os cabos 8, 6, 5 e $k = 4$, os sentinelas são $\text{lo} = 0$ e $\text{hi} = 9$:
+
+| Passo | `lo` | `hi` | `mid` | Pedaços com `mid` | Dá? | Ação |
+|---|---|---|---|---|---|---|
+| 1 | 0 | 9 | 4 | $2 + 1 + 1 = 4$ | sim | `lo = 4` |
+| 2 | 4 | 9 | 6 | $1 + 1 + 0 = 2$ | não | `hi = 6` |
+| 3 | 4 | 6 | 5 | $1 + 1 + 1 = 3$ | não | `hi = 5` |
+| fim | 4 | 5 | | | | resposta `lo = 4` |
+
+Três testes em vez de nove. Com $10^9$ valores possíveis, seriam 30 testes em vez de $10^9$.
+
+<Callout type="tente">
+E se você escolhesse $\text{hi} = \max a_i$, achando que "o maior possível é o maior cabo"? Teste com um único cabo de comprimento 8 e $k = 1$ (a resposta certa é 8).
+
+<details>
+<summary>Ver resposta</summary>
+
+Com $\text{lo} = 0$ e $\text{hi} = 8$, a busca **supõe** que $\text{dá}(8)$ é falso, mas ele é verdadeiro. Ela testa `mid = 4` (dá), `mid = 6` (dá), `mid = 7` (dá) e termina com `lo = 7, hi = 8`, imprimindo **7**. A resposta certa, 8, estava justamente no sentinela que nunca é testado. Por isso o sentinela precisa ser um valor em que você tem **certeza** da resposta: $\max a_i + 1$.
+
+</details>
 </Callout>
 
-## Código
+**A receita da busca binária na resposta:**
+
+1. O problema pede **o menor (ou o maior) $x$** com alguma propriedade.
+2. Escreva $\text{ok}(x)$: "dá para fazer com $x$?". Geralmente é um laço $O(n)$ ou um greedy.
+3. Confira a **monotonicidade** com uma frase: "se dá com $x$, dá com $x - 1$ porque…".
+4. Escolha a versão (primeiro ou último verdadeiro) e sentinelas em que você tem certeza da resposta.
+5. Rode o laço.
+
+Sinais de que é esse o caminho: "minimize o máximo", "maximize o mínimo", "menor tempo para…", "maior tamanho tal que…". Em todos eles, a pergunta de decisão ("dá em tempo $T$?") é muito mais fácil que a de otimização ("qual o menor $T$?").
+
+### O que dá errado sem monotonicidade
+
+A busca **confia** que o predicado muda uma vez só. Se não muda, ela devolve uma resposta errada sem avisar. Exemplo: as temperaturas de 8 dias, e você quer o **primeiro dia com temperatura $\ge 30$**:
+
+| dia | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 |
+|---|---|---|---|---|---|---|---|---|
+| temperatura | 25 | 27 | **31** | 28 | 26 | 29 | 33 | 35 |
+| $\ge 30$? | não | não | **sim** | não | não | não | sim | sim |
+
+A resposta certa é o dia 2. A busca binária (primeiro verdadeiro, `lo = -1`, `hi = 8`) testa o dia 3 (não, `lo = 3`), o dia 5 (não, `lo = 5`), o dia 6 (sim, `hi = 6`) e devolve **dia 6**. Ela nunca olhou o dia 2. Temperaturas não são ordenadas, então o predicado não é monótono, e a busca binária não se aplica: aqui, o certo é um laço simples.
+
+## Código: o problema dos cabos completo
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int n;
+long long k;
+vector<long long> a;
+
+// da(L): com pedaços de tamanho L, conseguimos pelo menos k pedaços?
+bool da(long long L) {
+    long long pedacos = 0;
+    for (int i = 0; i < n; i++) {
+        pedacos += a[i] / L;
+        if (pedacos >= k) return true;   // já basta; parar cedo evita overflow
+    }
+    return false;
+}
+
+int main() {
+    cin >> n >> k;
+    a.resize(n);
+    long long maior = 0;
+    for (int i = 0; i < n; i++) {
+        cin >> a[i];
+        maior = max(maior, a[i]);
+    }
+
+    // Versão "último verdadeiro". Invariante: da(lo) verdadeiro, da(hi) falso.
+    // lo = 0 é um verdadeiro combinado (nunca é testado); hi = maior + 1 é falso de verdade.
+    long long lo = 0, hi = maior + 1;
+    while (hi - lo > 1) {
+        long long mid = lo + (hi - lo) / 2;
+        if (da(mid)) lo = mid;    // mid dá: a resposta é mid ou maior
+        else hi = mid;            // mid não dá: a resposta é menor que mid
+    }
+    cout << lo << "\n";           // 0 significa que nem L = 1 dá
+}
+```
+
+**Entrada:**
+
+```
+3 4
+8 6 5
+```
+
+**Saída:**
+
+```
+4
+```
+
+O programa faz exatamente os três testes da tabela acima (`mid` = 4, 6, 5) e imprime `lo = 4`.
+
+- **Tempo:** $O(n \log V)$, com $V = \max a_i$: cerca de 30 rodadas de um teste $O(n)$.
+- **Memória:** $O(n)$.
+
+### O mesmo código no formato de contest
+
+Como a busca é sempre igual, vale escrevê-la uma vez como função reutilizável. Duas novidades de C++ aparecem aqui:
+
+- `template <class F>` faz a função aceitar **qualquer** coisa que possa ser chamada como `P(x)`;
+- `[&](ll L) { ... }` é uma **lambda**: uma função sem nome, escrita no meio do código. O `&` permite que ela use as variáveis locais de `main` (como `a` e `k`).
 
 ```cpp
 #include <bits/stdc++.h>
 using namespace std;
 typedef long long ll;
-#define rep(i,a,b) for(int i=(a);i<(b);i++)
-#define all(x) (x).begin(),(x).end()
 void fastio(){ ios::sync_with_stdio(false); cin.tie(nullptr); }
 
-// Primeiro x em (lo, hi] com P(x) verdadeiro.
-// Exige: P(lo) falso, P(hi) verdadeiro, P monótono (F...F T...T).
-template <class F>
-ll primeiro_verdadeiro(ll lo, ll hi, F P) {
-    while (hi - lo > 1) {
-        ll mid = lo + (hi - lo) / 2;   // evita overflow de (lo + hi)
-        if (P(mid)) hi = mid;
-        else lo = mid;
-    }
+// Primeiro x em (lo, hi] com P(x) verdadeiro. Exige P(lo) falso, P(hi) verdadeiro, P = F..F V..V.
+template <class F> ll primeiro_verdadeiro(ll lo, ll hi, F P) {
+    while (hi - lo > 1) { ll mid = lo + (hi - lo) / 2; if (P(mid)) hi = mid; else lo = mid; }
     return hi;
+}
+// Último x em [lo, hi) com P(x) verdadeiro. Exige P(lo) verdadeiro, P(hi) falso, P = V..V F..F.
+template <class F> ll ultimo_verdadeiro(ll lo, ll hi, F P) {
+    while (hi - lo > 1) { ll mid = lo + (hi - lo) / 2; if (P(mid)) lo = mid; else hi = mid; }
+    return lo;
 }
 
 int main(){
@@ -120,53 +274,138 @@ int main(){
     int n; ll k;
     cin >> n >> k;
     vector<ll> a(n);
-    for (ll& x : a) cin >> x;
+    for (ll& x : a) cin >> x;          // 'x' é uma referência para cada elemento: ler em x lê em a[i]
 
-    // Cortar cabos: maior L com pedacos(L) >= k.
-    // "Não dá com L" é monótono F...F T...T em L, então achamos o primeiro L que NÃO dá
-    // e a resposta é o anterior.
-    auto nao_da = [&](ll L) {
+    auto da = [&](ll L) {
         ll pedacos = 0;
-        for (ll x : a) {
-            pedacos += x / L;
-            if (pedacos >= k) return false;   // para cedo: evita somar além do necessário
-        }
-        return true;
+        for (ll x : a) if ((pedacos += x / L) >= k) return true;
+        return false;
     };
-    ll maxA = *max_element(all(a));
-    // Sentinelas: L = 0 conta como "dá" (P falso); L = maxA + 1 com certeza não dá (P verdadeiro).
-    ll L = primeiro_verdadeiro(0, maxA + 1, nao_da) - 1;
-    cout << L << "\n";                      // 0 se nem L = 1 dá
-
-    // lower_bound / upper_bound num vetor ordenado.
-    sort(all(a));
-    ll x = 10;
-    int qtd = upper_bound(all(a), x) - lower_bound(all(a), x);   // quantos iguais a x
-    cout << qtd << "\n";
+    ll maior = *max_element(a.begin(), a.end());   // max_element aponta para o maior; * lê o valor
+    cout << ultimo_verdadeiro(0, maior + 1, da) << "\n";
 }
 ```
 
-- **Cortar cabos:** tempo $O(n \log V)$, com $V = \max a_i$ (cerca de 30 rodadas de um teste $O(n)$); memória $O(n)$.
-- **`lower_bound`/`upper_bound`:** $O(\log n)$ cada, sobre o vetor já ordenado.
+## `lower_bound` e `upper_bound`
 
-A busca no formato interativo é a mesma função `primeiro_verdadeiro`, com um `P` que **pergunta ao juiz** em vez de calcular:
+A busca do vetor ordenado já vem pronta na STL:
+
+```cpp
+vector<int> v = {2, 5, 8, 12, 16, 23, 38, 56};
+auto it = lower_bound(v.begin(), v.end(), 16);   // primeiro elemento >= 16
+int pos = it - v.begin();                         // 4
+int valor = *it;                                  // 16
+```
+
+`lower_bound` não devolve um índice, devolve um **iterador**: uma espécie de ponteiro para uma posição do vetor. `*it` lê o valor naquela posição. Subtrair dois iteradores do mesmo vetor dá **quantas posições há entre eles**; então `it - v.begin()` é o índice.
+
+| Função | Aponta para | Pergunta que responde |
+|---|---|---|
+| `lower_bound(v.begin(), v.end(), x)` | primeiro elemento $\ge x$ | onde $x$ entraria mantendo a ordem |
+| `upper_bound(v.begin(), v.end(), x)` | primeiro elemento $> x$ | onde termina o bloco de valores $x$ |
+| `upper_bound(...) - lower_bound(...)` | (um número) | quantas vezes $x$ aparece |
+| `prev(upper_bound(...))` | maior elemento $\le x$ | "o maior que cabe" |
+
+`prev(it)` é o iterador da posição anterior. Cuidado: se **nenhum** elemento é $\le x$, `upper_bound` devolve `v.begin()`, e `prev(v.begin())` aponta para fora do vetor. Teste `it == v.begin()` antes. Do mesmo jeito, se nenhum elemento é $\ge x$, `lower_bound` devolve `v.end()`, que não pode ser lido com `*`.
+
+## Valores reais
+
+Se a resposta é um número real (por exemplo, $\sqrt{2}$), não existe "$\text{hi} - \text{lo} = 1$". Faça um **número fixo de iterações**:
+
+```cpp
+double lo = 0, hi = 2;                  // sqrt(2) está entre 0 e 2
+for (int it = 0; it < 100; it++) {
+    double mid = (lo + hi) / 2;
+    if (mid * mid >= 2) hi = mid;       // primeiro verdadeiro de "mid^2 >= 2"
+    else lo = mid;
+}
+cout << fixed << setprecision(9) << hi << "\n";   // 1.414213562
+```
+
+As primeiras iterações:
+
+| Iteração | `lo` | `hi` | `mid` | `mid² >= 2`? |
+|---|---|---|---|---|
+| 1 | 0 | 2 | 1 | não |
+| 2 | 1 | 2 | 1,5 | sim |
+| 3 | 1 | 1,5 | 1,25 | não |
+| 4 | 1,25 | 1,5 | 1,375 | não |
+| 5 | 1,375 | 1,5 | 1,4375 | sim |
+| 6 | 1,375 | 1,4375 | 1,40625 | não |
+
+Cada iteração divide o intervalo por 2, então 100 iterações reduzem o erro por $2^{100}$, muito além da precisão de um `double`. É mais seguro que `while (hi - lo > 1e-9)`, que pode nunca terminar por causa de arredondamento.
+
+## O formato interativo
+
+Em problemas **interativos**, o programa não recebe a entrada toda de uma vez: ele **pergunta** ao juiz e lê a resposta, com um limite de perguntas. O jogo de adivinhar do começo da aula, com o juiz no papel da outra pessoa, é exatamente isso.
+
+Num problema típico, o juiz esconde $x$ entre 1 e 10, você pergunta `? y` e ele responde `YES` se $y < x$ e `NO` caso contrário. O predicado "a resposta foi `NO`", ou seja, $y \ge x$, é "F, …, F, V, …, V", e o primeiro verdadeiro é o próprio $x$. Com $x = 6$, `lo = 0` e `hi = 10`:
+
+| Programa escreve | Juiz responde | Conclusão | `lo`, `hi` |
+|---|---|---|---|
+| `? 5` | `YES` | $5 < x$ | 5, 10 |
+| `? 7` | `NO` | $7 \ge x$ | 5, 7 |
+| `? 6` | `NO` | $6 \ge x$ | 5, 6 |
+| `! 6` | | `hi = 6` é a resposta | |
+
+O número de perguntas é
+
+$$
+\lceil \log_2 (\text{tamanho do espaço}) \rceil
+$$
+
+que dá 4 para 10 valores e 30 para $10^9$.
+
+<Callout type="armadilha" title="Flush, sempre">
+A saída do C++ fica num buffer e só é enviada quando o buffer enche ou é "descarregado" (*flush*). Num interativo, se a pergunta ficar no buffer, o juiz nunca a recebe, os dois ficam esperando um pelo outro e você toma TLE. Depois de **cada** pergunta, use `cout << ... << endl;` (o `endl` faz o flush) ou `cout.flush()`.
+
+Cuidado com o template: `fastio()` faz `cin.tie(nullptr)`, que desliga o flush automático que o `cin` faria antes de ler. Com `fastio()`, o flush explícito é obrigatório.
+</Callout>
+
+O predicado do interativo, usando a `primeiro_verdadeiro` da seção de código:
 
 ```cpp
 auto P = [&](ll y) {
-    cout << "? " << y << endl;   // endl = quebra de linha + flush
-    string resposta; cin >> resposta;
-    return resposta == "YES";
+    cout << "? " << y << endl;          // pergunta + flush
+    string resposta;
+    cin >> resposta;
+    return resposta == "NO";            // NO significa y >= x
 };
+ll x = primeiro_verdadeiro(0, 1000000000, P);
+cout << "! " << x << endl;
 ```
 
 ## Armadilhas comuns
 
-- **Laço infinito com `lo = mid`.** Acontece no formato `while (lo < hi)` quando `mid` arredonda para baixo e `lo = mid`. O formato com invariante (`while (hi - lo > 1)`) não tem esse problema.
-- **`(lo + hi) / 2` estoura** quando os dois passam de $\approx 4{,}6 \cdot 10^{18}$, e com `int` já estoura acima de $\approx 10^9$. Use `lo + (hi - lo) / 2`.
-- **Sentinela errado.** Se $\text{hi}_0$ pode ser falso (a resposta pode estar fora do intervalo), o resultado está errado em silêncio. Confira os dois extremos, ou trate "não existe" à parte.
-- **Overflow dentro do teste.** Somas e produtos em $\text{ok}(x)$ crescem com $x$: $x$ perto de $10^{18}$ vezes $10^5$ estoura. Pare a soma assim que passar do alvo, como no `nao_da` acima.
-- **Predicado não monótono.** Antes de escrever o código, prove a monotonicidade com uma frase ("se dá em tempo $T$, dá em tempo $T + 1$, porque…"). Se não conseguir, a busca binária não se aplica.
-- **`lower_bound` em `set`/`map`:** use o método do container (`s.lower_bound(x)`), não o `std::lower_bound`, que é $O(n)$ nesses iteradores.
+- **Overflow dentro do teste.** Nos cabos, a soma chega no máximo a $2 \cdot 10^5 \cdot 10^9 = 2 \cdot 10^{14}$ e cabe em `long long`. Mas quando o candidato $x$ vai até $10^{18}$ (como em "quantos produtos as máquinas fazem em $T$ segundos"), uma única parcela pode valer $10^{18}$ e a soma de várias estoura. O hábito que resolve: pare de somar assim que atingir o alvo, como o `da` acima já faz.
+- **`(lo + hi) / 2` estoura** quando os dois são grandes: com `int`, acima de $\approx 10^9$; com `long long`, acima de $\approx 4{,}6 \cdot 10^{18}$. Use `lo + (hi - lo) / 2`.
+- **Sentinela errado.** Se o $\text{hi}_0$ que você escolheu pode ser a resposta, ela nunca é testada (veja o exemplo do cabo de comprimento 8). Os sentinelas precisam ser valores em que você tem **certeza** do predicado.
+- **Predicado não monótono.** Antes de escrever o código, prove a monotonicidade com uma frase. Se não conseguir, a busca binária não se aplica (veja as temperaturas).
+- **Esquecer o flush** em interativos.
+
+<details class="para-depois">
+<summary>Para depois: outros formatos e detalhes que você vai encontrar em códigos alheios</summary>
+
+**O formato `while (lo < hi)` e o laço infinito.** Muitos códigos usam outro formato, em que `lo` e `hi` são candidatos **reais** (não sentinelas):
+
+```cpp
+// primeiro verdadeiro em [lo, hi], supondo que P(hi) é verdadeiro
+while (lo < hi) {
+    int mid = (lo + hi) / 2;
+    if (P(mid)) hi = mid;
+    else lo = mid + 1;        // o "+ 1" é obrigatório aqui
+}
+```
+
+Ele funciona, mas cada detalhe importa. Se você escrever `lo = mid` em vez de `lo = mid + 1`, com `lo = 0, hi = 1` e `P(0)` falso, o `mid` dá 0, `lo` continua 0 e o laço **nunca termina**. Na versão "último verdadeiro" desse formato, o `mid` precisa arredondar para cima, `(lo + hi + 1) / 2`, pelo mesmo motivo. O formato com invariante desta aula (`while (hi - lo > 1)`) não tem esse problema, porque `mid` fica sempre estritamente entre `lo` e `hi`.
+
+**Inverter o predicado em vez de trocar de versão.** Dá para resolver os cabos só com `primeiro_verdadeiro`, usando o predicado "não dá" (que é F…F V…V) e subtraindo 1 do resultado. Funciona, mas é mais fácil errar o sentinela. Prefira escolher a versão que combina com o formato do predicado.
+
+**`lower_bound` em `set` e `map`.** Use o método do container, `s.lower_bound(x)`, e não `std::lower_bound(s.begin(), s.end(), x)`, que é $O(n)$ nesses iteradores.
+
+**Busca em reais com critério de parada.** `while (hi - lo > eps)` funciona se `eps` não for pequeno demais para a precisão do `double` em relação aos valores envolvidos. O número fixo de iterações dispensa essa análise.
+
+</details>
 
 ## Referências
 
@@ -181,33 +420,46 @@ auto P = [&](ll y) {
   client:visible
   questions={[
     {
-      q: 'Você quer o MENOR tempo T em que algo fica pronto, e "fica pronto em T" é monótono. Qual é o formato?',
-      options: [
-        'P(T) = "fica pronto em T"; a resposta é o primeiro T com P verdadeiro',
-        'P(T) = "fica pronto em T"; a resposta é o último T com P falso',
-        'Busca ternária',
-        'Não dá para usar busca binária em tempo',
-      ],
-      answer: 0,
-      why: 'Para T pequeno não dá (F), a partir de certo T dá (T). A fronteira que você quer é o primeiro verdadeiro.',
+      q: 'Primeiro verdadeiro de `v[i] >= 38` com `lo = -1, hi = 8`. Qual é o `mid` na 3ª iteração?',
+      code: 'v = [2, 5, 8, 12, 16, 23, 38, 56]\nwhile (hi - lo > 1) {\n    mid = lo + (hi - lo) / 2;\n    if (v[mid] >= 38) hi = mid; else lo = mid;\n}',
+      options: ['4', '5', '6', '7'],
+      answer: 2,
+      why: '1ª: mid = 3 (12, não) → lo = 3. 2ª: mid = 5 (23, não) → lo = 5. 3ª: mid = 6 (38, sim) → hi = 6. Fim: hi = 6.',
     },
     {
-      q: 'Num interativo com resposta em [1, 10^9], quantas perguntas "y < x?" bastam no pior caso?',
+      q: 'Cabos 7 e 7, k = 3. O programa da aula começa com lo = 0, hi = 8. Quais `mid` ele testa, e o que imprime?',
+      options: ['4, 2, 3 → imprime 3', '4, 6, 5 → imprime 4', '4, 2, 3 → imprime 4', '3, 5, 4 → imprime 3'],
+      answer: 0,
+      why: 'mid = 4: 1 + 1 = 2 pedaços, não dá → hi = 4. mid = 2: 3 + 3 = 6, dá → lo = 2. mid = 3: 2 + 2 = 4, dá → lo = 3. Fim com lo = 3.',
+    },
+    {
+      q: 'Na busca das temperaturas (25, 27, 31, 28, 26, 29, 33, 35), por que a resposta saiu errada?',
+      options: [
+        'Porque os sentinelas estavam errados',
+        'Porque "temperatura ≥ 30" não é monótono ao longo dos dias, e a busca nunca testou o dia 2',
+        'Porque faltou o flush',
+        'Porque deveria usar a versão último verdadeiro',
+      ],
+      answer: 1,
+      why: 'A busca só funciona se o predicado muda uma vez. Aqui ele vai sim → não → sim, e a busca, que só olha 3 dias, não tem como perceber.',
+    },
+    {
+      q: 'Num interativo com x entre 1 e 10^9, quantas perguntas `? y` bastam no pior caso?',
       options: ['10', '20', '30', '1000'],
       answer: 2,
       why: '2^30 ≈ 1,07·10^9 ≥ 10^9: cada pergunta corta o intervalo pela metade.',
     },
     {
-      q: 'Seu programa interativo está correto mas toma TLE no primeiro teste. Causa mais provável?',
+      q: 'Seu programa interativo está correto, mas toma TLE já no primeiro teste. Causa mais provável?',
       options: ['Busca binária lenta', 'Faltou flush depois das perguntas', 'Overflow', 'O juiz está fora do ar'],
       answer: 1,
       why: 'Sem flush a pergunta fica no buffer: o juiz espera a pergunta e o programa espera a resposta.',
     },
     {
-      q: 'Num vetor ordenado v, o que `upper_bound(all(v), x) - lower_bound(all(v), x)` calcula?',
-      options: ['O índice de x', 'Quantos elementos são iguais a x', 'Quantos são menores que x', 'Sempre 1'],
+      q: 'Com `v = {2, 5, 5, 5, 9}`, quanto vale `upper_bound(v.begin(), v.end(), 5) - lower_bound(v.begin(), v.end(), 5)`?',
+      options: ['1', '3', '4', '5'],
       answer: 1,
-      why: 'lower_bound aponta para o primeiro ≥ x e upper_bound para o primeiro > x; o que fica entre os dois é o bloco de valores iguais a x.',
+      why: 'lower_bound aponta para o índice 1 (primeiro ≥ 5) e upper_bound para o índice 4 (primeiro > 5). A diferença, 3, é quantas vezes o 5 aparece.',
     },
   ]}
 />
