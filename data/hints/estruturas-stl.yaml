@@ -1,0 +1,109 @@
+# Dicas do milestone 4 — Estruturas da STL. Da observação à ideia; nunca código da solução.
+problems:
+  1091: # Concert Tickets
+    hints:
+      - >-
+        Cada cliente leva o ingresso **mais caro que ainda cabe** no orçamento dele. Os preços podem se repetir, e cada ingresso só pode ser vendido uma vez.
+      - >-
+        Guarde os preços disponíveis numa estrutura que fica ordenada, aceita repetidos e deixa remover **uma** cópia.
+      - >-
+        Num `multiset`, "o maior preço $\le t$" é o elemento logo antes de `upper_bound(t)`. Se `upper_bound(t)` for o `begin()`, não há ingresso; senão, imprima o preço e apague **essa** cópia pelo iterador.
+    pitfalls:
+      - >-
+        `s.erase(preco)` apaga todas as cópias daquele preço: apague pelo iterador. Antes de voltar um passo a partir de `upper_bound`, confira que ele não é o `begin()`.
+
+  1073: # Towers
+    hints:
+      - >-
+        Quando um cubo chega, ele pode ir em cima de qualquer torre cujo topo seja **maior** que ele. Qual dessas torres "desperdiça" menos?
+      - >-
+        Coloque-o na torre de **menor topo** que ainda é maior que ele. As torres de topo grande ficam reservadas para cubos grandes que vierem depois. Se nenhuma torre serve, comece uma nova.
+      - >-
+        Guarde só os topos das torres num `multiset`. `upper_bound(k)` acha o menor topo estritamente maior que $k$: troque esse topo por $k$. A resposta é o tamanho final do `multiset`.
+    pitfalls:
+      - >-
+        Um cubo **não** pode ir sobre outro de mesmo tamanho (o de cima precisa ser menor): por isso `upper_bound`, e não `lower_bound`. Vários topos podem ser iguais, então use `multiset`.
+
+  1163: # Traffic Lights
+    hints:
+      - >-
+        Quando um semáforo é colocado na posição $p$, só um trecho da rua muda: o trecho sem semáforos que contém $p$, que se divide em dois.
+      - >-
+        Você precisa de duas coisas: achar os semáforos vizinhos de $p$ (os mais próximos à esquerda e à direita) e saber qual é o maior trecho a cada momento. Use uma estrutura para cada uma.
+      - >-
+        Um `set` com as posições (comece com 0 e $x$ como bordas) acha os vizinhos $a < p < b$. Um `multiset` com os comprimentos dos trechos guarda o maior: tire **uma** cópia de $b - a$, insira $p - a$ e $b - p$, e a resposta é o último elemento do `multiset`.
+    pitfalls:
+      - >-
+        Vários trechos podem ter o mesmo comprimento: apague só uma cópia (`erase(find(...))`). O maior elemento de um `multiset` é `*s.rbegin()` (ou `*prev(s.end())`).
+
+  1164: # Room Allocation
+    hints:
+      - >-
+        Processe os clientes em ordem de **chegada**. Quando um cliente chega, existe algum quarto que já está livre?
+      - >-
+        Um quarto está livre se o último hóspede dele saiu **antes** do dia de chegada. Entre os quartos ocupados, só interessa o que libera primeiro: se nem ele está livre, nenhum está.
+      - >-
+        Ordene por chegada, guardando o índice original de cada cliente. Use uma fila de prioridade de menor no topo com pares (dia de saída, número do quarto): se o topo já saiu antes da chegada, reutilize esse quarto; senão, abra um quarto novo.
+    pitfalls:
+      - >-
+        A condição é estrita: quem sai no dia 2 e quem chega no dia 2 **não** podem dividir o quarto. A segunda linha da saída é na ordem da **entrada**, então guarde o índice antes de ordenar.
+
+  1632: # Movie Festival II
+    hints:
+      - >-
+        Com $k = 1$, este é o Movie Festival do milestone 3: ordenar pelo fim e pegar sempre o filme que termina primeiro. O que muda quando há $k$ pessoas?
+      - >-
+        Continue ordenando pelo fim. Para cada filme, entre os membros que estão livres no início dele, **qual** deveria assisti-lo?
+      - >-
+        O membro livre que terminou o filme anterior **mais tarde**: os que ficaram livres cedo continuam disponíveis para filmes que começam cedo. Guarde em um `multiset` o horário em que cada membro fica livre (começando com $k$ zeros) e use `upper_bound(inicio)` e um passo para trás.
+    pitfalls:
+      - >-
+        Vários membros podem ficar livres no mesmo horário: `multiset`. Um filme pode começar exatamente quando o anterior termina. Se nenhum membro está livre, o filme é simplesmente pulado.
+
+  3421: # Distinct Values Subsequences
+    hints:
+      - >-
+        Numa subsequência com elementos distintos, cada **valor** aparece no máximo uma vez. As escolhas para valores diferentes dependem umas das outras?
+      - >-
+        Não dependem. Se o valor $v$ aparece $c$ vezes no array, há $c + 1$ opções para ele: não usar, ou usar uma das $c$ ocorrências. Conte as ocorrências com um `map`.
+      - >-
+        Multiplique $(c + 1)$ para todos os valores distintos, módulo $10^9 + 7$, e desconte a subsequência vazia.
+    pitfalls:
+      - >-
+        Reduza módulo depois de cada multiplicação, em `long long`. Ao descontar 1, some o módulo antes (`(prod - 1 + MOD) % MOD`) para não ficar negativo.
+
+  2162: # Josephus Problem I
+    hints:
+      - >-
+        Simule o círculo. A cada passo: uma criança é "pulada" e a seguinte sai.
+      - >-
+        Uma `queue` faz o papel do círculo: tirar da frente e recolocar no fim é "pular"; tirar da frente sem recolocar é "remover".
+      - >-
+        Enquanto houver crianças: passe a da frente para o fim e depois remova (e imprima) a nova da frente. Cada remoção custa um movimento extra, então o total é $O(n)$.
+    pitfalls:
+      - >-
+        Confira com $n = 1$ (a única criança sai) e com o exemplo de $n = 7$. Imprima com `"\n"`/espaços, não `endl`.
+
+  1161: # Stick Divisions (reservado: Checkpoint Cego)
+    hints:
+      - >-
+        Pense ao contrário: em vez de cortar o bastão de comprimento $x$, imagine que você **cola** os pedaços de volta, pagando o comprimento do resultado de cada colagem. O custo total é o mesmo?
+      - >-
+        Cada pedaço é "pago" uma vez para cada colagem de que participa (ele está dentro do bastão resultante). Para pagar pouco, os pedaços **pequenos** é que devem participar de muitas colagens.
+      - >-
+        Cole sempre os dois menores pedaços disponíveis e devolva o resultado ao conjunto: uma fila de prioridade de menor no topo faz isso. É o algoritmo de Huffman (CPH 6.5).
+    pitfalls:
+      - >-
+        Com $n = 1$ não há corte: custo 0. O custo total chega a ~$2 \cdot 10^5 \cdot 10^9$: `long long`.
+
+  2426: # Programmers and Artists (reservado: Checkpoint Cego)
+    hints:
+      - >-
+        Se você já soubesse **quem** vai ser contratado ($a + b$ pessoas), como decidiria quem vira programador? Olhe a diferença $x - y$ de cada pessoa.
+      - >-
+        Ordene os candidatos por $x - y$, do maior para o menor. Existe uma solução ótima em que, nessa ordem, todo programador vem antes de todo artista (se não, trocar os papéis de um par melhora ou empata).
+      - >-
+        Então existe um ponto de corte: os programadores são os $a$ maiores $x$ de um prefixo, e os artistas são os $b$ maiores $y$ do sufixo restante. Calcule, para todo prefixo, a soma dos $a$ maiores $x$ (uma fila de prioridade de tamanho $a$, como no módulo), faça o mesmo para os sufixos com $y$, e teste todos os cortes.
+    pitfalls:
+      - >-
+        Só valem cortes em que o prefixo tem pelo menos $a$ pessoas e o sufixo pelo menos $b$. $a$ ou $b$ podem ser 0. Somas em `long long`.

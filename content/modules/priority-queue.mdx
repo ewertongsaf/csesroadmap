@@ -1,0 +1,285 @@
+---
+title: priority_queue e simulação por eventos
+description: Uma fila que sempre entrega o maior (ou o menor) elemento em O(log n). É a estrutura certa quando você só precisa do extremo, e o motor das simulações "o próximo evento é o que acontece primeiro".
+---
+import Callout from '../../src/components/mdx/Callout.astro';
+import Quiz from '../../src/components/mdx/Quiz.tsx';
+import ContainerPlayground from '../../src/components/mdx/viz/ContainerPlayground.tsx';
+
+## Motivação: os $k$ maiores, a cada momento
+
+O problema desta aula:
+
+> Você recebe $n \le 2 \cdot 10^5$ números, um de cada vez, e um valor $k$. Depois de **cada** número lido, imprima a soma dos $k$ maiores lidos até agora (ou de todos, se ainda forem menos que $k$).
+
+Com $k = 3$ e os números $5, 1, 8, 3, 9, 2$:
+
+| Lido | Os 3 maiores até agora | Soma impressa |
+|---|---|---|
+| 5 | 5 | 5 |
+| 1 | 5, 1 | 6 |
+| 8 | 8, 5, 1 | 14 |
+| 3 | 8, 5, 3 | 16 |
+| 9 | 9, 8, 5 | 22 |
+| 2 | 9, 8, 5 | 22 |
+
+A saída é `5 6 14 16 22 22`.
+
+A ideia ingênua é ordenar tudo o que foi lido, a cada passo, e somar os $k$ primeiros. São $n$ ordenações de até $n$ elementos: $O(n^2 \log n)$, muito acima do limite.
+
+Olhe a tabela de novo. Quando chega um número, só uma coisa importa: ele é maior que **o menor dos $k$ guardados**? Se for, ele entra e o menor sai (como o 3 empurrando o 1 para fora). Se não for, nada muda (como o 2 no fim). Então precisamos de uma estrutura que entregue rápido **o menor** de um grupo que muda o tempo todo. Essa é a `priority_queue`.
+
+## A `priority_queue` básica
+
+Uma `priority_queue<int>` é uma fila em que você não escolhe quem sai: **sai sempre o maior**.
+
+| Operação | O que faz | Custo |
+|---|---|---|
+| `pq.push(x)` | coloca $x$ | $O(\log n)$ |
+| `pq.top()` | mostra o maior (sem tirar) | $O(1)$ |
+| `pq.pop()` | tira o maior (e **não** devolve o valor) | $O(\log n)$ |
+| `pq.size()`, `pq.empty()` | tamanho, e se está vazia | $O(1)$ |
+
+Um traço:
+
+```cpp
+priority_queue<int> pq;
+pq.push(4); pq.push(9); pq.push(1);
+cout << pq.top();     // 9
+pq.pop();             // tira o 9
+cout << pq.top();     // 4
+```
+
+Repare no que **não existe**: não dá para ver o segundo maior sem tirar o primeiro, não dá para percorrer em ordem e não dá para apagar um elemento do meio. Em troca, ela é mais simples e mais rápida que um `multiset`. Quando você só precisa do extremo, ela é a escolha certa.
+
+<Callout type="tente">
+Depois de `pq.push(3); pq.push(7); pq.push(5); pq.pop(); pq.push(6);`, quanto vale `pq.top()`? E quantos elementos sobram?
+
+<details>
+<summary>Ver resposta</summary>
+
+`top()` é 6, e sobram 3 elementos. O `pop()` tirou o 7 (o maior naquele momento), deixando 3 e 5. Depois o 6 entrou e virou o novo maior. A fila fica com 6, 5, 3.
+
+</details>
+</Callout>
+
+Experimente:
+
+<ContainerPlayground client:visible mode="pq" />
+
+### Saindo o menor: `greater`
+
+Por padrão sai o **maior**. Para sair o **menor**, a declaração fica mais comprida:
+
+```cpp
+priority_queue<int, vector<int>, greater<int>> pq;   // sai sempre o menor
+pq.push(4); pq.push(9); pq.push(1);
+cout << pq.top();     // 1
+```
+
+Os três tipos entre `<>` são: o tipo dos elementos (`int`), onde eles ficam guardados por dentro (`vector<int>`, sempre esse) e a regra de comparação (`greater<int>`, que inverte a ordem). Na prática, copie a linha e troque só o tipo.
+
+## A ideia: guarde só os $k$ maiores
+
+Mantenha uma fila com **no máximo $k$ elementos**: os $k$ maiores vistos até agora. Use uma fila de **menor no topo**, porque o elemento que pode precisar sair é justamente o menor desses $k$. Para cada número lido:
+
+1. coloque-o na fila e some-o na soma;
+2. se a fila passou de $k$ elementos, tire o topo (o menor) e subtraia-o da soma.
+
+O traço com $k = 3$:
+
+| Lido | Fila depois do push | Passou de 3? Tira o topo | Fila final | Soma |
+|---|---|---|---|---|
+| 5 | 5 | não | 5 | 5 |
+| 1 | 1, 5 | não | 1, 5 | 6 |
+| 8 | 1, 5, 8 | não | 1, 5, 8 | 14 |
+| 3 | 1, 3, 5, 8 | sim, tira o 1 | 3, 5, 8 | 16 |
+| 9 | 3, 5, 8, 9 | sim, tira o 3 | 5, 8, 9 | 22 |
+| 2 | 2, 5, 8, 9 | sim, tira o 2 | 5, 8, 9 | 22 |
+
+(A coluna "fila" lista os elementos em ordem só para facilitar a leitura; o topo é o primeiro.) No último passo, o 2 entra e sai logo em seguida: ele era o menor de todos, então não pertence aos 3 maiores.
+
+<Callout type="tente">
+E se você usasse a fila padrão (**maior** no topo) com o mesmo algoritmo? O que seria impresso depois do 4º número (o 3)?
+
+<details>
+<summary>Ver resposta</summary>
+
+Depois de 5, 1 e 8, a fila tem os três. Ao entrar o 3, ela passa de 3 elementos e o `pop()` tira o **maior**, o 8. Ficam 5, 3, 1, com soma **9** em vez de 16. O algoritmo passaria a guardar os 3 **menores**. Com a fila errada, o código compila e roda, mas responde outra pergunta.
+
+</details>
+</Callout>
+
+## Código: o problema da motivação
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int main() {
+    int n, k;
+    cin >> n >> k;
+    priority_queue<long long, vector<long long>, greater<long long>> menores;   // menor no topo
+    long long soma = 0;
+    for (int i = 0; i < n; i++) {
+        long long x;
+        cin >> x;
+        menores.push(x);
+        soma += x;
+        if ((int)menores.size() > k) {     // passou de k: o menor sai
+            soma -= menores.top();
+            menores.pop();
+        }
+        cout << soma << " ";
+    }
+    cout << "\n";
+}
+```
+
+**Entrada:**
+
+```
+6 3
+5 1 8 3 9 2
+```
+
+**Saída:**
+
+```
+5 6 14 16 22 22
+```
+
+São exatamente as somas da tabela.
+
+- **Tempo:** $O(n \log k)$: cada número faz no máximo um `push` e um `pop` numa fila de até $k + 1$ elementos.
+- **Memória:** $O(k)$.
+
+### O mesmo código no formato de contest
+
+Com o template (`ll` é `long long`, `rep` é o laço `for`, `sz(x)` é o tamanho como `int`):
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+typedef long long ll;
+#define rep(i,a,b) for(int i=(a);i<(b);i++)
+#define sz(x) (int)(x).size()
+void fastio(){ ios::sync_with_stdio(false); cin.tie(nullptr); }
+
+int main(){
+    fastio();
+    int n, k; cin >> n >> k;
+    priority_queue<ll, vector<ll>, greater<ll>> pq;
+    ll soma = 0;
+    rep(i, 0, n) {
+        ll x; cin >> x;
+        pq.push(x); soma += x;
+        if (sz(pq) > k) { soma -= pq.top(); pq.pop(); }
+        cout << soma << " \n"[i == n - 1];   // espaço entre números, quebra de linha no último
+    }
+}
+```
+
+O `" \n"[i == n - 1]` é um truque comum: a string `" \n"` tem dois caracteres, e o índice `i == n - 1` (0 ou 1) escolhe o espaço ou a quebra de linha.
+
+## Simulação por eventos
+
+O segundo uso clássico da `priority_queue` é **simular um processo no tempo**: a fila guarda os eventos futuros, e o próximo a acontecer é sempre o que tem o **menor tempo**.
+
+Exemplo: um mercado com 2 caixas e uma fila de 5 clientes, com tempos de atendimento $4, 2, 3, 1, 5$. Cada cliente, na ordem da fila, vai para o caixa que ficar livre **primeiro** (no empate, o de número menor). Quando cada cliente termina?
+
+Guarde, para cada caixa, o par $(\text{tempo em que fica livre}, \text{número do caixa})$, numa fila de menor no topo. Como pares são comparados pelo primeiro valor e depois pelo segundo, o topo é o caixa que libera primeiro, com o empate resolvido pelo número.
+
+| Cliente | Duração | Topo da fila (livre em, caixa) | Começa | Termina | Volta para a fila |
+|---|---|---|---|---|---|
+| 1 | 4 | (0, caixa 1) | 0 | 4 | (4, caixa 1) |
+| 2 | 2 | (0, caixa 2) | 0 | 2 | (2, caixa 2) |
+| 3 | 3 | (2, caixa 2) | 2 | 5 | (5, caixa 2) |
+| 4 | 1 | (4, caixa 1) | 4 | 5 | (5, caixa 1) |
+| 5 | 5 | (5, caixa 1) | 5 | 10 | (10, caixa 1) |
+
+Cada cliente custa um `pop` e um `push`: $O(\log m)$ com $m$ caixas. Um laço simples procurando o caixa livre custaria $O(m)$ por cliente.
+
+```cpp
+// m caixas, durações em d[0..n-1]
+priority_queue<pair<long long,int>, vector<pair<long long,int>>, greater<pair<long long,int>>> livre;
+for (int c = 1; c <= m; c++) livre.push({0, c});     // todos livres no tempo 0
+for (int i = 0; i < n; i++) {
+    auto [t, c] = livre.top(); livre.pop();           // caixa que libera primeiro
+    long long fim = t + d[i];
+    cout << "cliente " << i + 1 << ": caixa " << c << ", termina em " << fim << "\n";
+    livre.push({fim, c});
+}
+```
+
+## Armadilhas comuns
+
+<Callout type="armadilha" title="Fila vazia e fila invertida">
+
+- `top()` ou `pop()` com a fila **vazia** é comportamento indefinido (lixo ou RE). Teste `!pq.empty()` antes.
+- O padrão é **maior no topo**. Se você precisa do menor e esquece o `greater`, o código roda e responde outra pergunta (veja a pausa acima).
+
+</Callout>
+
+- **`pop()` não devolve o valor.** Leia `top()` **antes** de chamar `pop()`.
+- **Pares na fila.** Com `pair`, a comparação é pelo primeiro valor e, no empate, pelo segundo. Coloque primeiro o que define a prioridade (o tempo, no exemplo dos caixas).
+- **Somas em `int`.** Somas de muitos valores grandes: `long long`.
+
+<details class="para-depois">
+<summary>Para depois: como funciona por dentro, comparadores e remoção preguiçosa</summary>
+
+**Por dentro: um heap.** A `priority_queue` guarda os elementos num vetor que representa uma árvore binária: o pai fica na posição $i$ e os filhos em $2i + 1$ e $2i + 2$, e todo pai é maior ou igual aos filhos. O topo é a raiz. `push` coloca o elemento no fim e o faz "subir" trocando com o pai enquanto for maior; `pop` coloca o último no topo e o faz "descer". A árvore tem altura $\log_2 n$, daí o custo.
+
+**O truque do negativo.** Para ter "menor no topo" sem a declaração longa, dá para guardar $-x$ numa fila normal e negar de volta ao ler. Funciona, mas é fácil esquecer um sinal; prefira o `greater`.
+
+**Comparador próprio.** Para structs, você pode definir `operator<` na struct ou passar uma struct comparadora como terceiro tipo. A regra é a mesma do `sort`: comparação estrita. Cuidado com a inversão: o comparador diz quem tem **menos** prioridade.
+
+**Remoção preguiçosa.** A fila não apaga um elemento do meio. Quando um elemento "deixa de valer" (por exemplo, uma distância desatualizada), deixe-o lá e, ao tirá-lo do topo, confira se ainda vale; se não, descarte e tire o próximo. Essa é a técnica do Dijkstra (milestone 11).
+
+**`multiset` como fila de prioridade.** Um `multiset` dá acesso ao menor (`*s.begin()`) **e** ao maior (`*s.rbegin()`), e permite apagar do meio. É mais flexível, porém mais lento. Use quando precisar dos dois extremos ou de remoções arbitrárias.
+
+</details>
+
+## Referências
+
+- **CPH, capítulo 4 — Data structures, seção 4.5 *Other structures*:** a parte sobre *priority queue* (e as outras estruturas da seção: `deque`, `stack`, `queue`, `bitset`).
+- [USACO Guide — Priority Queues](https://usaco.guide/silver/priority-queues)
+- [USACO Guide — Introduction to Data Structures](https://usaco.guide/bronze/intro-ds) (visão geral de `stack`, `queue` e `deque`).
+
+## Mini-quiz
+
+<Quiz
+  client:visible
+  questions={[
+    {
+      q: 'O que este código imprime?',
+      code: 'priority_queue<int> pq;\nfor (int x : {6, 2, 8, 4}) pq.push(x);\npq.pop();\ncout << pq.top() << " ";\npq.pop();\ncout << pq.top();',
+      options: ['8 6', '6 4', '2 4', '6 2'],
+      answer: 1,
+      why: 'Maior no topo. O primeiro pop tira o 8: o topo vira 6. O segundo pop tira o 6: o topo vira 4.',
+    },
+    {
+      q: 'Com o programa da aula, k = 2 e os números 4, 7, 1, 9. O que é impresso?',
+      options: ['4 11 11 16', '4 11 8 16', '4 7 7 9', '4 11 12 21'],
+      answer: 0,
+      why: '4 → {4}: 4. 7 → {4, 7}: 11. 1 → entra e sai (é o menor): 11. 9 → entra, sai o 4: {7, 9} = 16.',
+    },
+    {
+      q: 'Qual declaração deixa o MENOR elemento no topo?',
+      options: [
+        '`priority_queue<int> pq;`',
+        '`priority_queue<int, vector<int>, greater<int>> pq;`',
+        '`priority_queue<int, greater<int>> pq;`',
+        '`priority_queue<int, vector<int>, less<int>> pq;`',
+      ],
+      answer: 1,
+      why: 'O terceiro tipo é a comparação, e para passá-lo é preciso passar o segundo (o vector) também. `less` é o padrão: maior no topo.',
+    },
+    {
+      q: 'No exemplo dos caixas, com 2 caixas e durações 3, 3, 1: em que tempo termina o terceiro cliente?',
+      options: ['1', '3', '4', '7'],
+      answer: 2,
+      why: 'Clientes 1 e 2 começam em 0 nos caixas 1 e 2 e terminam em 3. O topo vira (3, caixa 1): o cliente 3 começa em 3 e termina em 4.',
+    },
+  ]}
+/>

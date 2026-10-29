@@ -1,0 +1,314 @@
+---
+title: set, multiset e map
+description: Estruturas que se mantêm ordenadas sozinhas enquanto você insere e remove, com cada operação em O(log n). O cuidado está nos detalhes, como repetidos, iteradores e end().
+---
+import Callout from '../../src/components/mdx/Callout.astro';
+import Quiz from '../../src/components/mdx/Quiz.tsx';
+import ContainerPlayground from '../../src/components/mdx/viz/ContainerPlayground.tsx';
+
+## Motivação: uma agenda que muda o tempo todo
+
+O problema desta aula:
+
+> Uma agenda recebe $q \le 2 \cdot 10^5$ operações, uma por linha:
+> - `+ t`: marca um compromisso no horário $t$ (pode haver vários no mesmo horário);
+> - `- t`: desmarca **um** compromisso do horário $t$ (garantido que existe);
+> - `? t`: qual é o primeiro compromisso no horário $t$ **ou depois**? Imprima o horário, ou $-1$ se não houver.
+
+Um exemplo, com o conteúdo da agenda depois de cada operação:
+
+| Operação | Agenda depois | Saída |
+|---|---|---|
+| `+ 10` | 10 | |
+| `+ 4` | 4, 10 | |
+| `+ 10` | 4, 10, 10 | |
+| `? 5` | 4, 10, 10 | 10 |
+| `- 10` | 4, 10 | |
+| `? 5` | 4, 10 | 10 |
+| `? 11` | 4, 10 | $-1$ |
+| `+ 7` | 4, 7, 10 | |
+| `? 5` | 4, 7, 10 | 7 |
+
+A saída é `10 10 -1 7`. Repare no segundo `? 5`: o `- 10` tirou **um** dos dois compromissos das 10, e o outro continua lá.
+
+Com um `vector`, cada `? t` teria que percorrer a agenda inteira: $O(q)$ por operação e $O(q^2) \approx 4 \cdot 10^{10}$ no total. Manter o vetor ordenado não resolve, porque inserir no meio de um vetor também custa $O(q)$, já que todos os elementos depois da posição precisam andar.
+
+O que precisamos é de uma estrutura que **se mantém ordenada sozinha** e faz inserir, remover e "achar o primeiro $\ge t$" em $O(\log q)$. A STL tem três: `set`, `multiset` e `map`.
+
+## `set`: um conjunto ordenado, sem repetidos
+
+Um `set<int>` guarda valores **distintos**, sempre **em ordem crescente**:
+
+```cpp
+set<int> s;
+s.insert(5);
+s.insert(1);
+s.insert(5);                   // o 5 já está: nada muda
+s.insert(3);
+for (int x : s) cout << x << " ";   // 1 3 5
+cout << s.size();                   // 3
+```
+
+Não importa a ordem das inserções: percorrer o `set` sempre dá os valores em ordem. Por dentro, ele é uma árvore balanceada (você não precisa saber como funciona para usar), e é por isso que as operações custam $O(\log n)$:
+
+| Operação | O que faz | Custo |
+|---|---|---|
+| `s.insert(x)` | coloca $x$ (se já existe, nada muda) | $O(\log n)$ |
+| `s.erase(x)` | tira $x$ (se não existe, nada acontece) | $O(\log n)$ |
+| `s.count(x)` | 1 se $x$ está, 0 se não | $O(\log n)$ |
+| `s.size()` | quantos elementos | $O(1)$ |
+| `for (int x : s)` | percorre em ordem crescente | $O(n)$ |
+
+<Callout type="tente">
+Depois de `s.insert(4); s.insert(2); s.insert(4); s.insert(9); s.erase(2); s.erase(7);`, o que `for (int x : s) cout << x << " ";` imprime, e quanto vale `s.size()`?
+
+<details>
+<summary>Ver resposta</summary>
+
+Imprime `4 9`, e o tamanho é 2. O segundo `insert(4)` não faz nada (o `set` não guarda repetidos), o `erase(2)` tira o 2, e o `erase(7)` não faz nada, porque o 7 não está lá (e isso não é erro).
+
+</details>
+</Callout>
+
+## `multiset`: o mesmo, mas com repetidos
+
+A agenda pode ter dois compromissos no mesmo horário, então precisamos guardar **repetidos**. O `multiset` é igual ao `set`, só que mantém todas as cópias:
+
+```cpp
+multiset<int> s;
+s.insert(5); s.insert(1); s.insert(5); s.insert(3);
+for (int x : s) cout << x << " ";   // 1 3 5 5
+cout << s.count(5);                 // 2
+```
+
+E aqui está a armadilha mais famosa da STL: **`s.erase(x)` apaga todas as cópias de $x$**. Para apagar uma só, você precisa apontar para uma cópia específica, com `s.erase(s.find(x))`.
+
+<Callout type="tente">
+No exemplo da agenda, troque o tratamento de `- 10` por `s.erase(10)`. O que muda na saída?
+
+<details>
+<summary>Ver resposta</summary>
+
+O `s.erase(10)` apaga **as duas** cópias do 10, e a agenda fica só com o 4. O segundo `? 5` passa a imprimir $-1$ em vez de 10, e o último `? 5` imprime 7. A saída vira `10 -1 -1 7` em vez de `10 10 -1 7`.
+
+Sem erro, sem aviso: só um WA. Com `s.erase(s.find(10))`, só uma cópia sai e a resposta fica certa.
+
+</details>
+</Callout>
+
+## Iteradores: apontando para uma posição
+
+Para responder `? t`, precisamos de "o primeiro elemento $\ge t$". As funções que fazem isso não devolvem um número: devolvem um **iterador**, uma espécie de seta que aponta para uma posição dentro do container.
+
+- `*it` lê o valor para onde a seta aponta;
+- `++it` move a seta para o próximo elemento (em ordem), e `--it` para o anterior;
+- `s.begin()` aponta para o menor elemento;
+- `s.end()` aponta para **depois do último**: uma posição que não existe e que **não pode ser lida** com `*`. Ela serve como resposta para "não achei".
+
+As duas buscas, com `s = {1, 3, 5, 8}`:
+
+| Chamada | Significa | Aponta para |
+|---|---|---|
+| `s.lower_bound(4)` | primeiro elemento $\ge 4$ | o 5 |
+| `s.lower_bound(5)` | primeiro elemento $\ge 5$ | o 5 |
+| `s.upper_bound(5)` | primeiro elemento $> 5$ | o 8 |
+| `s.lower_bound(9)` | primeiro elemento $\ge 9$ | `end()`: não existe |
+
+O padrão de uso é sempre o mesmo: busque, **teste se deu `end()`** e só então leia o valor.
+
+```cpp
+auto it = s.lower_bound(t);        // auto: o compilador deduz o tipo do iterador
+if (it == s.end()) cout << -1;     // nenhum elemento >= t
+else cout << *it;                  // o primeiro elemento >= t
+```
+
+**E "o maior elemento $\le x$"?** É o elemento **antes** do primeiro $> x$. Com `s = {1, 3, 5, 8}` e $x = 6$: `s.upper_bound(6)` aponta para o 8, e um passo para trás (`--it` ou `prev(it)`) chega no 5. Mas se $x = 0$, `upper_bound(0)` aponta para o 1, que é o `begin()`: não existe nada antes, e voltar um passo seria inválido. Teste `it == s.begin()` antes de voltar.
+
+Experimente: insira e apague valores, e veja para onde `lower_bound` e `upper_bound` apontam. Tente um `erase` num valor repetido e compare com `erase(find(x))`.
+
+<ContainerPlayground client:visible mode="multiset" />
+
+## `map`: um dicionário ordenado
+
+Um `map<K, V>` guarda pares **chave → valor**, com chaves distintas e em ordem. O uso mais comum é **contar**: quantas vezes cada coisa aparece.
+
+```cpp
+map<string, int> conta;
+for (string w : {"ana", "bia", "ana", "caio", "bia", "ana"})
+    conta[w]++;
+for (auto [nome, vezes] : conta)          // percorre em ordem de chave
+    cout << nome << " " << vezes << "\n";
+// ana 3
+// bia 2
+// caio 1
+```
+
+`conta[w]++` funciona mesmo na primeira vez que `w` aparece, porque `conta[w]` **cria a chave com valor 0** quando ela não existe. O `auto [nome, vezes]` abre cada par em duas variáveis.
+
+O traço do laço:
+
+| Palavra | `conta` depois |
+|---|---|
+| ana | ana → 1 |
+| bia | ana → 1, bia → 1 |
+| ana | ana → 2, bia → 1 |
+| caio | ana → 2, bia → 1, caio → 1 |
+| bia | ana → 2, bia → 2, caio → 1 |
+| ana | ana → 3, bia → 2, caio → 1 |
+
+Esse "criar com 0" é útil para contar, mas vira armadilha quando você só quer **consultar**: `if (conta["zé"] > 0)` cria a chave `"zé"` com 0 só por ter perguntado. Num laço de consultas, o `map` vai crescendo sem você perceber. Para perguntar sem criar, use `conta.count("zé")`.
+
+<ContainerPlayground client:visible mode="map" />
+
+## Código: o problema da motivação
+
+Um `multiset` é a agenda: insere com `insert`, desmarca uma cópia com `erase(find(t))` e responde `? t` com `lower_bound`.
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int main() {
+    int q;
+    cin >> q;
+    multiset<long long> agenda;
+    for (int i = 0; i < q; i++) {
+        char op;
+        long long t;
+        cin >> op >> t;
+        if (op == '+') {
+            agenda.insert(t);
+        } else if (op == '-') {
+            agenda.erase(agenda.find(t));        // apaga UMA cópia (o enunciado garante que existe)
+        } else {
+            auto it = agenda.lower_bound(t);     // primeiro compromisso >= t
+            if (it == agenda.end()) cout << -1 << "\n";
+            else cout << *it << "\n";
+        }
+    }
+}
+```
+
+**Entrada:**
+
+```
+9
++ 10
++ 4
++ 10
+? 5
+- 10
+? 5
+? 11
++ 7
+? 5
+```
+
+**Saída:**
+
+```
+10
+10
+-1
+7
+```
+
+É exatamente a tabela da motivação.
+
+- **Tempo:** $O(q \log q)$: cada operação custa $O(\log)$ do tamanho atual da agenda.
+- **Memória:** $O(q)$.
+
+### O mesmo código no formato de contest
+
+Com o template (`ll` é `long long`, `rep` é o laço `for`):
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+typedef long long ll;
+#define rep(i,a,b) for(int i=(a);i<(b);i++)
+void fastio(){ ios::sync_with_stdio(false); cin.tie(nullptr); }
+
+int main(){
+    fastio();
+    int q; cin >> q;
+    multiset<ll> s;
+    rep(i, 0, q) {
+        char op; ll t; cin >> op >> t;
+        if (op == '+') s.insert(t);
+        else if (op == '-') s.erase(s.find(t));
+        else { auto it = s.lower_bound(t); cout << (it == s.end() ? -1 : *it) << "\n"; }
+    }
+}
+```
+
+## Armadilhas comuns
+
+<Callout type="armadilha" title="As quatro que mais dão WA e RE">
+
+- `multiset::erase(x)` apaga **todas** as cópias. Para uma só: `s.erase(s.find(x))`.
+- Ler `*it` sem testar `it == s.end()`. Ler `end()` é comportamento indefinido: lixo ou RE.
+- `s.erase(s.find(x))` quando $x$ **não está** no container: `find` devolve `end()`, e apagar `end()` também é comportamento indefinido. Teste antes, se não for garantido que existe.
+- Consultar `m[k]` num `map` cria a chave. Para só perguntar, use `m.count(k)`.
+
+</Callout>
+
+- **`lower_bound(s.begin(), s.end(), x)` num `set`** (a versão "solta", sem o `s.` na frente) funciona, mas custa $O(n)$, porque os iteradores de `set` não sabem pular para o meio. Use sempre o método: `s.lower_bound(x)`.
+- **Usar `set` quando pode haver repetidos.** O segundo valor igual simplesmente some.
+- **Voltar um passo a partir de `begin()`.** Antes de `--it` ou `prev(it)`, confira que `it != s.begin()`.
+
+<details class="para-depois">
+<summary>Para depois: unordered, pares, apagar durante o percurso e ordered_set</summary>
+
+**`unordered_set` e `unordered_map`.** Fazem as operações em $O(1)$ em média, mas não guardam ordem (nada de `lower_bound`), e testes adversariais podem forçar colisões e deixá-los lentos. No CSES, prefira as versões ordenadas, a menos que o tempo esteja muito apertado.
+
+**`set` de pares.** `set<pair<int,int>>` ordena pelo primeiro valor e, no empate, pelo segundo. É o jeito comum de guardar "valor e índice" juntos, e de ter um `set` que aceita valores repetidos distinguindo-os pelo índice.
+
+**Apagar enquanto percorre.** `s.erase(it)` invalida o iterador `it`. Mas ele devolve o iterador do próximo elemento, então o padrão é `it = s.erase(it);` (e não `++it` depois).
+
+**Comparador próprio.** `set<int, greater<int>>` mantém a ordem decrescente. Para tipos seus, dá para passar um comparador, com as mesmas regras do `sort`: ele precisa ser estrito.
+
+**"Qual é o $k$-ésimo menor?"** `set` não responde isso em $O(\log n)$: avançar um iterador $k$ vezes custa $O(k)$. A estrutura que responde é o `ordered_set`, que aparece no milestone 13.
+
+</details>
+
+## Referências
+
+- **CPH, capítulo 4 — Data structures:** 4.2 *Set structures*, 4.3 *Map structures* e 4.4 *Iterators and ranges* (`lower_bound`, `upper_bound`, `begin`/`end`).
+- [USACO Guide — Introduction to Sets & Maps](https://usaco.guide/bronze/intro-sets)
+- [USACO Guide — More Operations on Sorted Sets](https://usaco.guide/silver/intro-sorted-sets) (iteradores, `lower_bound`, "maior ≤ x").
+
+## Mini-quiz
+
+<Quiz
+  client:visible
+  questions={[
+    {
+      q: 'O que este código imprime?',
+      code: 'multiset<int> s = {2, 7, 7, 7, 9};\ns.erase(s.find(7));\ncout << s.count(7) << " ";\ns.erase(7);\ncout << s.size();',
+      options: ['2 2', '2 3', '0 2', '1 2'],
+      answer: 0,
+      why: 'erase(find(7)) tira uma cópia: sobram duas (count = 2). erase(7) tira as duas restantes: sobram {2, 9}, tamanho 2.',
+    },
+    {
+      q: 'Com `set<int> s = {10, 20, 30}`, para onde aponta `s.upper_bound(20)`?',
+      options: ['Para o 20', 'Para o 30', 'Para o 10', 'Para end()'],
+      answer: 1,
+      why: 'upper_bound procura o primeiro elemento estritamente maior que 20, que é o 30.',
+    },
+    {
+      q: 'Com `set<int> s = {10, 20, 30}` e x = 5, o que acontece neste código?',
+      code: 'auto it = s.upper_bound(x);\n--it;\ncout << *it;',
+      options: ['Imprime 10', 'Imprime 5', 'Comportamento indefinido: upper_bound(5) é begin(), e não existe elemento antes', 'Imprime 30'],
+      answer: 2,
+      why: 'Nenhum elemento é ≤ 5. upper_bound(5) aponta para o 10, que é o begin(); voltar um passo sai do container. Teste `it == s.begin()` antes.',
+    },
+    {
+      q: 'Depois deste código, quanto vale `m.size()`?',
+      code: 'map<int, int> m;\nm[1]++;\nm[1]++;\nif (m[2] == 0) cout << "nao tem";\nif (m.count(3)) cout << "tem";',
+      options: ['1', '2', '3', '0'],
+      answer: 1,
+      why: 'm[1]++ cria a chave 1. A consulta m[2] CRIA a chave 2 com valor 0. m.count(3) só pergunta e não cria nada. Total: 2 chaves.',
+    },
+  ]}
+/>
