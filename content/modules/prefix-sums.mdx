@@ -1,0 +1,265 @@
+---
+title: Prefix sums 1D/2D e prefix + hashmap
+description: Pré-calcule "quanto tem do começo até aqui" uma vez, e qualquer soma de intervalo vira uma subtração. Em 2D, retângulos viram quatro termos; com um hashmap, contar subarrays vira contar prefixos iguais.
+---
+import Callout from '../../src/components/mdx/Callout.astro';
+import Quiz from '../../src/components/mdx/Quiz.tsx';
+
+## Motivação: muitas perguntas sobre intervalos
+
+O problema desta aula:
+
+> Dado um array de $n \le 2 \cdot 10^5$ inteiros e $q \le 2 \cdot 10^5$ perguntas $(l, r)$, responda para cada uma: **quantos números pares** existem entre as posições $l$ e $r$ (inclusive)?
+
+Com $a = 3, 8, 6, 1, 4, 7, 2$ (posições 1 a 7):
+
+| Pergunta $(l, r)$ | Trecho | Pares |
+|---|---|---|
+| $(2, 5)$ | 8, 6, 1, 4 | 3 |
+| $(1, 7)$ | o array inteiro | 4 |
+| $(4, 4)$ | 1 | 0 |
+
+Contar cada trecho do zero custa até $O(n)$ por pergunta: $O(nq) = 4 \cdot 10^{10}$ no pior caso. Esta aula mostra como responder cada pergunta em $O(1)$, depois de $O(n)$ de preparação.
+
+## A ideia: quanto tem do começo até aqui
+
+Defina $P_i$ como a quantidade de pares entre as posições $1$ e $i$, com $P_0 = 0$ (nada antes do começo):
+
+| $i$ | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 |
+|---|---|---|---|---|---|---|---|---|
+| $a_i$ | | 3 | 8 | 6 | 1 | 4 | 7 | 2 |
+| é par? | | 0 | 1 | 1 | 0 | 1 | 0 | 1 |
+| $P_i$ | 0 | 0 | 1 | 2 | 2 | 3 | 3 | 4 |
+
+Cada $P_i$ é o anterior mais o elemento atual: $P_i = P_{i-1} + [a_i \text{ é par}]$. Um laço só, $O(n)$.
+
+Agora, os pares entre $l$ e $r$ são os pares de $1$ a $r$ **menos** os pares de $1$ a $l - 1$:
+
+$$
+\text{pares}(l, r) = P_r - P_{l-1}
+$$
+
+$P_r$ conta tudo até $r$, e $P_{l-1}$ conta exatamente a parte antes de $l$, que não queremos. Conferindo $(2, 5)$: $P_5 - P_1 = 3 - 0 = 3$. E $(4, 4)$: $P_4 - P_3 = 2 - 2 = 0$.
+
+Isso vale para qualquer coisa que se **soma**: a soma dos valores, a quantidade de pares, de letras "a", de árvores… A versão mais comum é a soma dos próprios valores: $P_i = a_1 + \dots + a_i$.
+
+<Callout type="tente">
+Por que $P_{l-1}$, e não $P_l$? O que daria $P_r - P_l$ na pergunta $(2, 5)$?
+
+<details>
+<summary>Ver resposta</summary>
+
+$P_5 - P_2 = 3 - 1 = 2$, errado. $P_l$ inclui o elemento $a_l$, que **faz parte** do trecho. Subtraí-lo tira o 8 da conta. O que precisa sair é só o que vem **antes** de $l$, ou seja, $P_{l-1}$. É por isso que $P$ começa em $P_0 = 0$: para que $l = 1$ funcione sem caso especial ($P_r - P_0 = P_r$).
+
+</details>
+</Callout>
+
+## Código: o problema da motivação
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int main() {
+    int n, q;
+    cin >> n >> q;
+    vector<int> P(n + 1, 0);                  // P[0] = 0
+    for (int i = 1; i <= n; i++) {
+        int a;
+        cin >> a;
+        P[i] = P[i - 1] + (a % 2 == 0);       // (a % 2 == 0) vale 1 ou 0
+    }
+    while (q--) {                             // repete q vezes
+        int l, r;
+        cin >> l >> r;
+        cout << P[r] - P[l - 1] << "\n";
+    }
+}
+```
+
+**Entrada:**
+
+```
+7 3
+3 8 6 1 4 7 2
+2 5
+1 7
+4 4
+```
+
+**Saída:**
+
+```
+3
+4
+0
+```
+
+- **Tempo:** $O(n + q)$: $O(n)$ para montar $P$ e $O(1)$ por pergunta.
+- **Memória:** $O(n)$.
+
+O mesmo, no formato de contest:
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+#define rep(i,a,b) for(int i=(a);i<(b);i++)
+void fastio(){ ios::sync_with_stdio(false); cin.tie(nullptr); }
+
+int main(){
+    fastio();
+    int n, q; cin >> n >> q;
+    vector<int> P(n + 1, 0);
+    rep(i, 1, n + 1) { int a; cin >> a; P[i] = P[i - 1] + (a % 2 == 0); }
+    while (q--) { int l, r; cin >> l >> r; cout << P[r] - P[l - 1] << "\n"; }
+}
+```
+
+## Em duas dimensões
+
+Num grid, a mesma ideia responde "quanto tem dentro deste retângulo?". Defina $S_{i,j}$ como a soma do retângulo que vai do canto $(1, 1)$ até $(i, j)$. Com o grid
+
+| | col 1 | col 2 | col 3 | col 4 |
+|---|---|---|---|---|
+| linha 1 | 1 | 2 | 0 | 3 |
+| linha 2 | 4 | 1 | 1 | 2 |
+| linha 3 | 0 | 3 | 2 | 1 |
+
+a tabela $S$ (com a linha e a coluna 0 valendo 0) fica:
+
+| | 0 | 1 | 2 | 3 | 4 |
+|---|---|---|---|---|---|
+| **0** | 0 | 0 | 0 | 0 | 0 |
+| **1** | 0 | 1 | 3 | 3 | 6 |
+| **2** | 0 | 5 | 8 | 9 | 14 |
+| **3** | 0 | 5 | 11 | 14 | 20 |
+
+Para montar: o retângulo até $(i, j)$ é a célula $(i, j)$ mais o retângulo de cima e o da esquerda, **menos** o canto que os dois contaram duas vezes:
+
+$$
+S_{i,j} = g_{i,j} + S_{i-1,j} + S_{i,j-1} - S_{i-1,j-1}
+$$
+
+$g_{i,j}$ é o valor da célula, e $S_{i-1,j-1}$ é a parte em comum entre o retângulo de cima e o da esquerda.
+
+Para responder o retângulo de $(y_1, x_1)$ até $(y_2, x_2)$, a conta é a inversa (inclusão-exclusão): pegue o retângulo grande, tire a faixa de cima e a da esquerda, e devolva o canto que foi tirado duas vezes:
+
+$$
+S_{y_2,x_2} - S_{y_1-1,x_2} - S_{y_2,x_1-1} + S_{y_1-1,x_1-1}
+$$
+
+Para o retângulo das linhas 2–3 e colunas 2–4 (valores $1, 1, 2$ e $3, 2, 1$, soma 10): $S_{3,4} - S_{1,4} - S_{3,1} + S_{1,1} = 20 - 6 - 5 + 1 = 10$.
+
+```cpp
+// g é o grid n x m, com índices a partir de 1; S tem uma linha e uma coluna 0 a mais.
+vector<vector<long long>> S(n + 1, vector<long long>(m + 1, 0));
+for (int i = 1; i <= n; i++)
+    for (int j = 1; j <= m; j++)
+        S[i][j] = g[i][j] + S[i - 1][j] + S[i][j - 1] - S[i - 1][j - 1];
+
+// soma do retângulo (y1, x1) até (y2, x2), em O(1)
+long long soma = S[y2][x2] - S[y1 - 1][x2] - S[y2][x1 - 1] + S[y1 - 1][x1 - 1];
+```
+
+`vector<vector<long long>> S(n + 1, vector<long long>(m + 1, 0))` cria uma matriz com $n + 1$ linhas, cada uma um vetor de $m + 1$ zeros.
+
+## Contando subarrays: prefix + hashmap
+
+A soma do trecho de $l$ a $r$ é $P_r - P_{l-1}$. Então "o trecho tem soma zero" significa $P_r = P_{l-1}$: **dois prefixos iguais**. Isso transforma perguntas sobre subarrays em perguntas sobre pares de prefixos, que um `map` responde.
+
+Exemplo: o **maior** subarray com soma zero em $a = 3, -1, -2, 4, -4, 1$. Os prefixos (com $P_0 = 0$) são:
+
+| $i$ | 0 | 1 | 2 | 3 | 4 | 5 | 6 |
+|---|---|---|---|---|---|---|---|
+| $P_i$ | 0 | 3 | 2 | 0 | 4 | 0 | 1 |
+
+Guarde, num `map`, a **primeira** posição em que cada valor de prefixo apareceu. Ao ver $P_i$ de novo, o trecho entre a primeira ocorrência e $i$ soma zero:
+
+| $i$ | $P_i$ | Já visto? | Trecho de soma zero | Tamanho |
+|---|---|---|---|---|
+| 0 | 0 | não: guarda 0 → 0 | | |
+| 3 | 0 | sim, em 0 | posições 1 a 3 (3, −1, −2) | 3 |
+| 5 | 0 | sim, em 0 | posições 1 a 5 (3, −1, −2, 4, −4) | **5** |
+
+(Os outros prefixos, 3, 2, 4 e 1, aparecem uma vez só.) A resposta é **5**.
+
+```cpp
+map<long long, int> primeira;           // valor do prefixo -> primeira posição em que apareceu
+primeira[0] = 0;                        // o prefixo vazio, P[0] = 0
+long long P = 0;
+int melhor = 0;
+for (int i = 1; i <= n; i++) {
+    P += a[i];
+    if (primeira.count(P)) melhor = max(melhor, i - primeira[P]);
+    else primeira[P] = i;               // só guarda a PRIMEIRA ocorrência
+}
+```
+ Funciona com números negativos, ao contrário da janela de dois ponteiros, e custa $O(n \log n)$ com `map`.
+
+<Callout type="tente">
+Para **contar** quantos subarrays têm soma zero (em vez de achar o maior), o que você guardaria no `map` para cada valor de prefixo?
+
+<details>
+<summary>Ver resposta</summary>
+
+**Quantas vezes** cada valor de prefixo já apareceu. Ao ver $P_i$, todo prefixo anterior igual a ele forma um subarray de soma zero terminando em $i$; some essa contagem à resposta e depois incremente. No exemplo, o prefixo 0 aparece nas posições 0, 3 e 5: são $\binom{3}{2} = 3$ pares, ou seja, 3 subarrays de soma zero.
+
+</details>
+</Callout>
+
+## Armadilhas comuns
+
+<Callout type="armadilha" title="Os índices">
+Use $P$ com $n + 1$ posições e $P_0 = 0$, e a fórmula $P_r - P_{l-1}$. Misturar índices 0 e 1 entre o array e o prefixo é o erro mais comum desta técnica.
+</Callout>
+
+- **Overflow.** Somas de $2 \cdot 10^5$ valores até $10^9$ passam de `int`: o array de prefixos é `long long`.
+- **No 2D, esquecer o termo de volta.** Sem o $+ S_{y_1-1,x_1-1}$, o canto é subtraído duas vezes.
+- **No hashmap, esquecer o prefixo vazio.** O $P_0 = 0$ precisa estar no `map` desde o começo; senão, subarrays que começam na posição 1 ficam de fora.
+
+<details class="para-depois">
+<summary>Para depois: difference array e máximo de subarray</summary>
+
+**Difference array (o inverso do prefixo).** Para aplicar muitas atualizações "some $v$ em todo o trecho $[l, r]$" e só depois ler o array, guarde um array $D$ e faça $D_l \mathrel{+}= v$ e $D_{r+1} \mathrel{-}= v$. No fim, o prefixo de $D$ é o array atualizado. Cada atualização custa $O(1)$.
+
+**Maior soma de subarray.** A soma de $(l, r]$ é $P_r - P_l$; para maximizá-la com o fim em $r$, subtraia o **menor** prefixo anterior. Um laço guardando o menor prefixo visto resolve em $O(n)$ (CPH 2.4 mostra a mesma ideia como o algoritmo de Kadane).
+
+</details>
+
+## Referências
+
+- **CPH, capítulo 9 — Range queries, seção 9.1 *Static array queries*** (prefixos em 1D e 2D), e **seção 2.4 *Maximum subarray sum*** (três algoritmos para o mesmo problema, terminando em $O(n)$).
+- [USACO Guide — Introduction to Prefix Sums](https://usaco.guide/silver/prefix-sums)
+- [USACO Guide — More on Prefix Sums](https://usaco.guide/silver/more-prefix-sums) (2D, difference array e prefix + hashmap).
+
+## Mini-quiz
+
+<Quiz
+  client:visible
+  questions={[
+    {
+      q: 'Com a = 5, 2, 7, 1, 3 (posições 1 a 5) e P a soma dos prefixos, quanto vale P[4] − P[1]?',
+      options: ['10', '15', '17', '8'],
+      answer: 0,
+      why: 'P = 0, 5, 7, 14, 15, 18. P[4] − P[1] = 15 − 5 = 10, a soma das posições 2 a 4 (2 + 7 + 1).',
+    },
+    {
+      q: 'No grid da aula, quanto dá a soma do retângulo das linhas 1–2 e colunas 3–4?',
+      options: ['6', '8', '5', '14'],
+      answer: 0,
+      why: 'S[2][4] − S[0][4] − S[2][2] + S[0][2] = 14 − 0 − 8 + 0 = 6 (células 0, 3, 1, 2).',
+    },
+    {
+      q: 'Quantos subarrays de a = 1, −1, 1, −1 têm soma zero?',
+      options: ['2', '3', '4', '6'],
+      answer: 2,
+      why: 'Prefixos: 0, 1, 0, 1, 0. O valor 0 aparece 3 vezes (3 pares) e o 1 aparece 2 vezes (1 par): 4 subarrays.',
+    },
+    {
+      q: 'Qual é o erro em `cout << P[r] - P[l];` com P[0] = 0 e posições a partir de 1?',
+      options: ['Nenhum', 'Tira o elemento a[l] da resposta', 'Inclui o elemento a[r + 1]', 'Estoura a memória'],
+      answer: 1,
+      why: 'P[l] contém a[l], que faz parte do trecho. O correto é P[r] − P[l − 1].',
+    },
+  ]}
+/>

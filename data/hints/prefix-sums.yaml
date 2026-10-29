@@ -1,0 +1,129 @@
+# Dicas do milestone 7 — Prefix sums e range queries estáticas.
+problems:
+  1646: # Static Range Sum Queries
+    hints:
+      - >-
+        Pré-calcule $P_i = x_1 + \dots + x_i$ (com $P_0 = 0$). A soma de $a$ até $b$ é $P_b - P_{a-1}$.
+    pitfalls:
+      - >-
+        As somas chegam a $2 \cdot 10^{14}$: o vetor de prefixos é `long long`. Use `"\n"` para as $2 \cdot 10^5$ linhas.
+
+  1650: # Range Xor Queries
+    hints:
+      - >-
+        O xor também tem prefixos: $P_i = x_1 \oplus \dots \oplus x_i$. O que faz o papel da subtração?
+      - >-
+        O próprio xor: $v \oplus v = 0$, então $P_b \oplus P_{a-1}$ "cancela" a parte antes de $a$.
+    pitfalls:
+      - >-
+        $P_0 = 0$, como na soma. Cuidado com a precedência: em C++, `^` tem prioridade menor que `==` e `<<`; use parênteses.
+
+  1652: # Forest Queries
+    hints:
+      - >-
+        Prefixos em 2D: $S_{i,j}$ é o número de árvores no retângulo de $(1,1)$ até $(i,j)$.
+      - >-
+        Monte com $S_{i,j} = g_{i,j} + S_{i-1,j} + S_{i,j-1} - S_{i-1,j-1}$ e responda cada retângulo com quatro termos (inclusão-exclusão).
+    pitfalls:
+      - >-
+        Indexe $S$ a partir de 1, com linha e coluna 0 zeradas, para não precisar de casos especiais. As coordenadas da entrada são (linha, coluna) = $(y, x)$.
+
+  1647: # Static Range Minimum Queries
+    hints:
+      - >-
+        O mínimo não se desfaz como a soma, mas é **idempotente**: incluir um elemento duas vezes não muda o mínimo.
+      - >-
+        Sparse table: pré-calcule o mínimo de todo bloco de tamanho potência de 2 e responda $[a, b]$ com dois blocos de tamanho $2^k$ que se sobrepõem.
+    pitfalls:
+      - >-
+        $k = \lfloor \log_2(b - a + 1) \rfloor$ (`__lg`). Converta a entrada 1-indexada.
+
+  1643: # Maximum Subarray Sum
+    hints:
+      - >-
+        A soma de um subarray que termina em $r$ é $P_r - P_l$ para algum $l < r$. Para maximizá-la com $r$ fixo, qual $l$ escolher?
+      - >-
+        O de **menor** prefixo $P_l$ entre os anteriores. Percorra $r$ guardando o menor prefixo visto até agora.
+    pitfalls:
+      - >-
+        O subarray não pode ser vazio: se todos os valores forem negativos, a resposta é o maior deles (não 0). Somas em `long long`.
+
+  1661: # Subarray Sums II
+    hints:
+      - >-
+        Com negativos, a janela de dois ponteiros não funciona. Mas "a soma de $(l, r]$ é $x$" é o mesmo que $P_r - P_l = x$.
+      - >-
+        Para cada $r$, conte quantos prefixos anteriores valem exatamente $P_r - x$. Um `map` de contagens dos prefixos vistos faz isso.
+    pitfalls:
+      - >-
+        Coloque o prefixo vazio ($P_0 = 0$) no `map` antes de começar. Prefixos em `long long`; a resposta pode passar de $2^{31}$.
+
+  1662: # Subarray Divisibility
+    hints:
+      - >-
+        A soma de $(l, r]$ é divisível por $n$ exatamente quando $P_r$ e $P_l$ deixam o **mesmo resto** na divisão por $n$.
+      - >-
+        Conte os prefixos por resto. Um grupo de $c$ prefixos com o mesmo resto forma $\binom{c}{2}$ subarrays válidos.
+    pitfalls:
+      - >-
+        Com valores negativos, `P % n` pode ser negativo em C++: normalize com `((P % n) + n) % n`. O resto vai de 0 a $n - 1$, então um vetor de contagens basta.
+
+  1644: # Maximum Subarray Sum II
+    hints:
+      - >-
+        É o Maximum Subarray Sum com uma restrição de tamanho: para o fim $r$, o início $l$ (em termos de prefixo) precisa estar em $[r - b, r - a]$.
+      - >-
+        Para cada $r$, a resposta é $P_r$ menos o **menor** prefixo $P_l$ com $l$ nessa faixa. A faixa anda junto com $r$: é uma janela deslizante sobre os prefixos.
+      - >-
+        Mantenha o mínimo da janela de prefixos com um `multiset` (insere $P_{r-a}$, remove $P_{r-b-1}$) ou com uma deque monotônica.
+    pitfalls:
+      - >-
+        Os índices da janela de prefixos são o detalhe que mais erra: confira com $a = b = 1$ (a resposta é o maior elemento).
+
+  2186: # Special Substrings
+    hints:
+      - >-
+        Só importam as letras que aparecem na string inteira (chame-as de $c_1, \dots, c_m$). Um trecho é especial se, dentro dele, as $m$ letras aparecem o mesmo número de vezes.
+      - >-
+        Com contagens por prefixo, isso vira: as **diferenças** $\text{cnt}_{c_j} - \text{cnt}_{c_1}$ são iguais nos dois prefixos que delimitam o trecho.
+      - >-
+        Para cada prefixo, monte o vetor dessas $m - 1$ diferenças e conte, num `map`, quantos prefixos anteriores têm o mesmo vetor.
+    pitfalls:
+      - >-
+        Inclua o prefixo vazio no `map`. A resposta chega a $\sim 2 \cdot 10^{10}$: `long long`. Um `map<vector<int>, int>` com $2 \cdot 10^5$ chaves de até 26 posições cabe no tempo.
+
+  3361: # Two Array Average
+    hints:
+      - >-
+        Maximizar uma média é difícil diretamente. Mas a pergunta "dá para ter média **pelo menos** $\lambda$?" é monótona em $\lambda$.
+      - >-
+        Média $\ge \lambda$ significa $(A_i + B_j) - \lambda(i + j) \ge 0$, onde $A_i$ e $B_j$ são somas de prefixos. Os termos com $i$ e com $j$ se separam.
+      - >-
+        Para um $\lambda$ fixo, maximize $A_i - \lambda i$ e $B_j - \lambda j$ separadamente e teste se a soma é $\ge 0$. Busca binária em $\lambda$ (em reais, com número fixo de iterações) e, no fim, imprima os $i$ e $j$ que maximizam no $\lambda$ final.
+    pitfalls:
+      - >-
+        Os valores vão até $10^9$: comece com $\text{hi} = 10^9$ e use cerca de 100 iterações. Os prefixos são não vazios ($i, j \ge 1$).
+
+  3411: # All Manhattan Distances (reservado: Checkpoint Cego)
+    hints:
+      - >-
+        A distância de Manhattan é $|x_1 - x_2| + |y_1 - y_2|$: as duas coordenadas não interagem. Resolva cada uma separadamente e some.
+      - >-
+        Agora o problema é: dada uma lista de números, some $|v_i - v_j|$ para todos os pares. Ordenar ajuda a tirar o módulo.
+      - >-
+        Com a lista ordenada, o elemento na posição $i$ é maior que os $i$ anteriores: contribui com $v_i \cdot i - (\text{soma dos anteriores})$. Um prefixo da soma dá isso em $O(1)$.
+    pitfalls:
+      - >-
+        No pior caso (metade dos pontos perto de $-10^9$ e metade perto de $10^9$, nas duas coordenadas), a soma chega a cerca de $4 \cdot 10^{19}$, acima do limite do `long long` ($\approx 9{,}2 \cdot 10^{18}$). Some em `__int128` e imprima convertendo para string.
+
+  1189: # Food Division (reservado: Checkpoint Cego)
+    hints:
+      - >-
+        Numa **linha** (sem a ligação entre o último e o primeiro), quanta comida precisa atravessar a fronteira entre as crianças $i$ e $i + 1$? Pense no prefixo de $a_j - b_j$.
+      - >-
+        Na linha, a resposta seria $\sum |P_i|$, com $P_i$ o prefixo das sobras. No círculo, você pode mandar uma quantidade $c$ (qualquer) pela ligação entre a última e a primeira: o fluxo em cada fronteira vira $P_i - c$.
+      - >-
+        Minimize $\sum |P_i - c|$ sobre $c$: é a mediana dos $P_i$ (Stick Lengths de novo).
+    pitfalls:
+      - >-
+        Os prefixos vão de $-2 \cdot 10^{11}$ a $2 \cdot 10^{11}$ e a soma dos módulos passa de $10^{16}$: `long long`.

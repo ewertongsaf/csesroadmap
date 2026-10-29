@@ -19,8 +19,8 @@ export const modules: ModuleRef[] = [
   { slug: 'sweep-e-contribuicao', title: 'Sweep por eventos e contagem por contribuição', cph: ['30'], status: 'written' },
   { slug: 'pilha-monotonica', title: 'Pilha monotônica', cph: ['8.2'], status: 'written' },
   { slug: 'sliding-window', title: 'Sliding window e deque monotônica', cph: ['8.3'], basedOn: 'CPH 8.3 + USACO Guide (a seção Sliding Window do CSES vai além do livro)', status: 'written' },
-  { slug: 'prefix-sums', title: 'Prefix sums 1D/2D, difference array e prefix + hashmap', cph: ['2.4', '9.1'], status: 'planned' },
-  { slug: 'sparse-table', title: 'Sparse table', cph: ['9.1'], status: 'planned' },
+  { slug: 'prefix-sums', title: 'Prefix sums 1D/2D, difference array e prefix + hashmap', cph: ['2.4', '9.1'], status: 'written' },
+  { slug: 'sparse-table', title: 'Sparse table', cph: ['9.1'], status: 'written' },
 
   // Fase 2 — DP e grafos
   { slug: 'dp-introducao', title: 'DP: estados, transições e ordem de cálculo', cph: ['7.1'], status: 'planned' },
