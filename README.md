@@ -27,6 +27,7 @@ Abre em http://localhost:4321.
 | `npm run roadmap:summary` | lista fases e milestones com contagens |
 | `npm test` | testes de unidade (próximo problema, streak, import) |
 | `npm run check` | checagem de tipos (`astro check`) |
+| `npm run check-links` | faz fetch de todo link externo dos módulos e dicas (atrás de proxy: `NODE_USE_ENV_PROXY=1 npm run check-links`) |
 | `npm run parse-cses -- <arquivo.html>` | regenera `data/cses-problems.json` a partir do HTML de cses.fi/problemset |
 
 ## Deploy na Vercel

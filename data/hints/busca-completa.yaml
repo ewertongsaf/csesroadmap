@@ -1,0 +1,93 @@
+# Dicas do milestone 2 — Busca completa, recursão e backtracking.
+problems:
+  2205: # Gray Code
+    hints:
+      - >-
+        Suponha que você já tem um Gray code de tamanho $n - 1$ (uma lista onde vizinhos diferem em 1 bit). Como aproveitá-lo para montar o de tamanho $n$?
+      - >-
+        Use a lista de $n-1$ duas vezes: uma com um bit 0 na frente e outra com um bit 1 na frente. O que acontece na emenda entre as duas metades se a segunda for percorrida **ao contrário**?
+      - >-
+        Essa construção "refletida" é recursiva e gera os $2^n$ códigos diretamente. (Existe também uma fórmula fechada com xor; tente descobri-la olhando a lista gerada.)
+    pitfalls:
+      - >-
+        São $2^{16} = 65536$ linhas de 16 caracteres: imprima com `"\n"`, não `endl`. Cada linha precisa ter exatamente $n$ caracteres, inclusive os zeros à esquerda.
+
+  2165: # Tower of Hanoi
+    hints:
+      - >-
+        Para mover o maior disco da esquerda para a direita, onde precisam estar **todos os outros** naquele momento?
+      - >-
+        Mover $n$ discos de A para C = mover $n-1$ de A para B, mover o maior de A para C, mover $n-1$ de B para C. É uma recursão com os papéis das pilhas trocando.
+      - >-
+        O número de movimentos satisfaz $T(n) = 2T(n-1) + 1$. Resolva a recorrência para imprimir $k$ antes da lista.
+    pitfalls:
+      - >-
+        As pilhas são numeradas 1, 2 e 3 (esquerda, meio, direita). Para $n = 16$ são 65535 linhas: `"\n"`.
+
+  1622: # Creating Strings
+    hints:
+      - >-
+        Com $n \le 8$, existem no máximo $8! = 40320$ ordens. Gerar todas é barato; o cuidado é com as **repetidas** (letras iguais).
+      - >-
+        Ordene a string e use `next_permutation`: ela já gera cada permutação distinta uma vez, em ordem alfabética.
+    pitfalls:
+      - >-
+        A contagem $k$ vem **antes** das strings: gere tudo num vetor primeiro. Sem ordenar antes, `next_permutation` perde as permutações menores que a inicial.
+
+  1623: # Apple Division
+    hints:
+      - >-
+        $n \le 20$ é o sinal: dá para testar todas as formas de dividir.
+      - >-
+        Cada maçã vai para o grupo 1 ou 2: são $2^n$ divisões. Para cada uma, a diferença é $|\,\text{total} - 2 \cdot \text{soma do grupo 1}\,|$.
+    pitfalls:
+      - >-
+        Os pesos vão até $10^9$ e são 20 deles: a soma passa de `int`.
+
+  1624: # Chessboard and Queens
+    hints:
+      - >-
+        Cada linha tem exatamente uma rainha. Decida linha por linha em qual coluna ela fica.
+      - >-
+        Backtracking: ao colocar uma rainha, marque a coluna e as duas diagonais como ocupadas; ao voltar, desmarque. Ignore casas reservadas.
+      - >-
+        Numa diagonal, $r + c$ é constante; na outra, $r - c$ é constante. Dois vetores de booleanos indexados por essas expressões tornam o teste $O(1)$.
+    pitfalls:
+      - >-
+        $r - c$ pode ser negativo: some um deslocamento (por exemplo, 7) para usar como índice. E desfaça as **três** marcações ao voltar.
+
+  1625: # Grid Path Description
+    hints:
+      - >-
+        O backtracking direto (andar pelo grid, respeitando as letras fixas e as casas visitadas) é a ideia certa, mas lento demais sem poda. Onde ele perde tempo?
+      - >-
+        Uma poda simples: o caminho só pode chegar ao canto de destino no **último** passo. Chegar antes significa caminho inválido.
+      - >-
+        A poda decisiva: se à sua frente há parede ou casa visitada, mas à esquerda e à direita as duas casas estão livres, o grid foi dividido em duas regiões e o caminho não consegue mais visitar as duas. Corte esse ramo.
+    pitfalls:
+      - >-
+        Desmarque a casa como visitada ao voltar. O caminho tem exatamente 48 passos e visita as 49 casas. As letras fixas restringem a direção **daquele passo** específico. A seção 5.4 do CPH discute exatamente essas podas (spoiler).
+
+  1628: # Meet in the Middle
+    hints:
+      - >-
+        $2^{40}$ subconjuntos é demais, mas $2^{20}$ é tranquilo. Todo subconjunto do total é a união de um subconjunto da primeira metade com um da segunda.
+      - >-
+        Liste as somas de todos os subconjuntos de cada metade. Agora o problema é: quantos pares (uma soma de cada lista) somam exatamente $x$?
+      - >-
+        Ordene uma das listas. Para cada soma $s$ da outra, conte quantas vezes $x - s$ aparece (com `equal_range` ou `upper_bound - lower_bound`). Ou ordene as duas e use two pointers.
+    pitfalls:
+      - >-
+        Conte **todas** as ocorrências (somas repetidas são subconjuntos diferentes). A resposta pode chegar a $2^{40}$: `long long`. `unordered_map` costuma dar TLE aqui. E gere as somas sem recursão copiando vetores (é lento).
+
+  1157: # Mex Grid Queries (reservado: Checkpoint Cego)
+    hints:
+      - >-
+        As coordenadas vão até $10^9$, então a resposta deve ter uma fórmula. Gere o grid pequeno por força bruta (você já fez isso num problema anterior) e **olhe** para ele.
+      - >-
+        Imprima o grid $8 \times 8$ com índices começando em 0. Olhe a primeira linha, a diagonal e o bloco $2 \times 2$ do canto. Que operação de dois números dá exatamente essa tabela?
+      - >-
+        Escreva os índices em binário. A operação bit a bit certa entre $y-1$ e $x-1$ reproduz o grid inteiro.
+    pitfalls:
+      - >-
+        O grid do enunciado é indexado a partir de 1: converta para 0 antes de aplicar a fórmula.

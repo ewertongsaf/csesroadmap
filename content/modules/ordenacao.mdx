@@ -1,0 +1,158 @@
+---
+title: Ordenação e comparadores
+description: Ordenar custa O(n log n) e frequentemente transforma um problema O(n²) em uma varredura linear. O trabalho está em escolher o que ordenar e por qual chave.
+---
+import Callout from '../../src/components/mdx/Callout.astro';
+import Quiz from '../../src/components/mdx/Quiz.tsx';
+
+## Motivação: o que muda depois de ordenar
+
+Problema: *dados $n \le 2 \cdot 10^5$ números e um valor $d$, existe um par cuja diferença é no máximo $d$?*
+
+A força bruta compara todos os pares: $O(n^2) \approx 2 \cdot 10^{10}$, TLE.
+
+Agora ordene. Num array ordenado, **o par mais próximo é sempre de vizinhos**: se $a_i \le a_j \le a_k$, então $a_k - a_i \ge a_j - a_i$. Basta olhar os $n - 1$ pares adjacentes:
+
+$$
+\text{existe par com diferença} \le d \iff \min_{1 \le i < n} \left(a_{i+1} - a_i\right) \le d \quad \text{(com } a \text{ ordenado)}
+$$
+
+Aqui $a_1 \le a_2 \le \dots \le a_n$ é o array depois de ordenado. Total: $O(n \log n)$ para ordenar mais $O(n)$ para a varredura.
+
+Esse é o padrão mais comum do capítulo: **ordenar organiza a informação para que a resposta fique "perto"**, entre vizinhos, num prefixo ou numa varredura da esquerda para a direita. Muitos problemas de greedy, two pointers e sweep line (os próximos milestones) começam com um `sort`.
+
+## A ideia
+
+### O custo de ordenar
+
+Qualquer ordenação baseada em **comparações** precisa de $\Omega(n \log n)$ comparações no pior caso. O argumento do CPH (3.1): cada comparação tem 2 resultados, e o algoritmo precisa distinguir entre as $n!$ ordens possíveis da entrada. Logo, com $k$ comparações,
+
+$$
+2^k \ge n! \;\Rightarrow\; k \ge \log_2 n! = \Theta(n \log n)
+$$
+
+O lado esquerdo é o número de resultados distintos que $k$ comparações conseguem produzir; $\log_2 n!$ cresce como $n \log_2 n$ (aproximação de Stirling). O `sort` da STL atinge esse limite: $O(n \log n)$.
+
+A exceção é quando os **valores** são pequenos. Com valores em $[0, k)$, o **counting sort** conta quantas vezes cada valor aparece e reconstrói o array em $O(n + k)$, sem comparar nada.
+
+### O que dá para ordenar
+
+- **`pair` e `tuple`** são comparados lexicograficamente: primeiro pelo `first`, depois pelo `second` no empate. Muitas vezes o comparador que você quer é só "monte o par na ordem certa".
+- **Comparador próprio:** uma função (ou lambda) `comp(a, b)` que devolve `true` se `a` deve vir **estritamente antes** de `b`.
+- **Índices em vez de valores:** quando você precisa saber de onde cada elemento veio, ordene um vetor de índices pela chave.
+
+<Callout type="armadilha" title="O comparador precisa ser estrito">
+`comp(a, a)` tem que ser `false`. Escrever `<=` no lugar de `<` viola a regra (*strict weak ordering*) e o `sort` pode sair do vetor e travar ou dar *segmentation fault*. Não é só "ordem errada": é comportamento indefinido.
+</Callout>
+
+### Compressão de coordenadas
+
+Quando os valores vão até $10^9$ mas só importa a **ordem relativa** (por exemplo, para indexar um array), troque cada valor pela sua posição na lista ordenada de valores distintos:
+
+$$
+\text{comp}(x) = \big|\{\, v \in V : v < x \,\}\big|
+$$
+
+$V$ é o conjunto de valores distintos que aparecem; $\text{comp}(x)$ é quantos deles são menores que $x$, ou seja, um índice em $[0, |V|)$. Em código: `sort`, `unique`, `lower_bound`. Isso aparece o tempo todo a partir do milestone 13 (BIT e segment tree), mas a ferramenta é de ordenação.
+
+## Código: os usos de `sort` que você vai precisar
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+typedef long long ll;
+typedef pair<ll,ll> pll;
+typedef vector<int> vi;
+#define rep(i,a,b) for(int i=(a);i<(b);i++)
+#define all(x) (x).begin(),(x).end()
+#define pb push_back
+#define sz(x) (int)(x).size()
+void fastio(){ ios::sync_with_stdio(false); cin.tie(nullptr); }
+
+int main(){
+    fastio();
+    int n; cin >> n;
+    vector<ll> a(n);
+    for (ll& x : a) cin >> x;
+
+    // 1) Crescente e decrescente.
+    vector<ll> cresc = a, decr = a;
+    sort(all(cresc));
+    sort(all(decr), greater<ll>());
+
+    // 2) Pares: ordena por first; empate, por second.
+    //    Truque: para ordenar por "fim" e depois por "início", monte {fim, início}.
+    vector<pll> intervalos(n);
+    rep(i, 0, n) intervalos[i] = {a[i] % 10, a[i]};   // dados de exemplo
+    sort(all(intervalos));
+
+    // 3) Comparador próprio (lambda): decrescente por valor, empate por índice.
+    //    Sempre '<' / '>' estritos, nunca '<=' / '>='.
+    vi idx(n);
+    iota(all(idx), 0);                                 // 0, 1, ..., n-1
+    sort(all(idx), [&](int i, int j) {
+        if (a[i] != a[j]) return a[i] > a[j];
+        return i < j;
+    });
+    // idx agora lista as posições originais, da maior para a menor.
+
+    // 4) Compressão de coordenadas.
+    vector<ll> vals = a;
+    sort(all(vals));
+    vals.erase(unique(all(vals)), vals.end());          // remove repetidos (precisa estar ordenado)
+    vi comp(n);
+    rep(i, 0, n) comp[i] = lower_bound(all(vals), a[i]) - vals.begin();   // em [0, sz(vals))
+
+    // 5) Varredura nos vizinhos depois de ordenar: menor diferença entre dois elementos.
+    ll menor = LLONG_MAX;
+    rep(i, 0, n - 1) menor = min(menor, cresc[i + 1] - cresc[i]);
+    if (n >= 2) cout << menor << "\n";
+}
+```
+
+| Operação | Tempo | Memória extra |
+|---|---|---|
+| `sort` (qualquer comparador $O(1)$) | $O(n \log n)$ | $O(\log n)$ |
+| `stable_sort` (mantém a ordem dos empates) | $O(n \log n)$ | $O(n)$ |
+| compressão (`sort` + `unique` + `lower_bound`) | $O(n \log n)$ | $O(n)$ |
+
+## Armadilhas comuns
+
+- **`unique` sem ordenar antes.** Ele só remove repetidos **adjacentes**. E ele não apaga nada: devolve um iterador para o novo fim, por isso o `erase`.
+- **`lower_bound` em vetor não ordenado:** resposta sem sentido, sem erro.
+- **Empates.** Se a ordem entre elementos iguais importa (por exemplo, "em caso de empate, o que apareceu primeiro"), desempate explicitamente no comparador ou use `stable_sort`.
+- **Comparador que copia.** `[&](pll a, pll b)` copia os pares a cada comparação; com structs grandes, use `const T&`.
+- **Ordenar pela chave errada.** Muitos greedys dependem de ordenar pelo **fim** e não pelo início (ou o contrário). Antes de escrever o `sort`, diga em uma frase *por que* essa ordem é a certa.
+- **`n - 1` com `n = 0`.** `rep(i, 0, n - 1)` com `n` `int` funciona; com `v.size() - 1`, estoura (veja o checklist).
+
+## Referências
+
+- **CPH, capítulo 3 — Sorting:** 3.1 *Sorting theory* (algoritmos $O(n^2)$, merge sort, limite inferior, counting sort) e 3.2 *Sorting in C++* (pares, comparadores). A seção 3.3 (busca binária) tem módulo próprio.
+- [USACO Guide — Introduction to Sorting](https://usaco.guide/bronze/intro-sorting)
+- [USACO Guide — Custom Comparators and Coordinate Compression](https://usaco.guide/silver/sorting-custom)
+
+## Mini-quiz
+
+<Quiz
+  client:visible
+  questions={[
+    {
+      q: 'Qual comparador ordena em ordem decrescente corretamente?',
+      options: ['`[](int a, int b) { return a >= b; }`', '`[](int a, int b) { return a > b; }`', '`[](int a, int b) { return a - b; }`', '`[](int a, int b) { return !(a < b); }`'],
+      answer: 1,
+      why: 'O comparador precisa ser estrito (comp(a, a) = false). `>=` e `!(a < b)` devolvem true para iguais: comportamento indefinido.',
+    },
+    {
+      q: 'Com `vector<pair<int,int>> v` e `sort(all(v))`, como ficam os pares (2,5), (1,9), (2,1)?',
+      options: ['(1,9), (2,1), (2,5)', '(2,1), (2,5), (1,9)', '(1,9), (2,5), (2,1)', 'A ordem não é garantida'],
+      answer: 0,
+      why: 'Pares são comparados por first e, no empate, por second.',
+    },
+    {
+      q: 'Valores até 10^9, n ≤ 2·10^5, e você quer usá-los como índice de um array. O que fazer?',
+      options: ['Um array de tamanho 10^9', 'Compressão de coordenadas', 'Usar double', 'Dividir tudo por 10^4'],
+      answer: 1,
+      why: 'Só existem até 2·10^5 valores distintos; sort + unique + lower_bound os mapeia para [0, 2·10^5).',
+    },
+  ]}
+/>

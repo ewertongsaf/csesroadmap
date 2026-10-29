@@ -6,13 +6,13 @@ const CPA = 'cp-algorithms.com e USACO Guide (o CPH não cobre este tema)';
 
 export const modules: ModuleRef[] = [
   // Fase 1 — Fundamentos
-  { slug: 'complexidade', title: 'Complexidade e leitura de limites', cph: ['2'], status: 'planned' },
-  { slug: 'aritmetica-e-overflow', title: 'Aritmética, overflow e módulo', cph: ['1.3', '1.5'], status: 'planned' },
-  { slug: 'busca-completa', title: 'Busca completa, recursão e backtracking', cph: ['5.1', '5.2', '5.3', '5.4'], status: 'planned' },
-  { slug: 'meet-in-the-middle', title: 'Meet in the middle', cph: ['5.5'], status: 'planned' },
-  { slug: 'ordenacao', title: 'Ordenação e comparadores', cph: ['3.1', '3.2'], status: 'planned' },
-  { slug: 'busca-binaria', title: 'Busca binária, busca binária na resposta e o formato interativo', cph: ['3.3'], status: 'planned' },
-  { slug: 'greedy', title: 'Greedy e argumentos de troca', cph: ['6'], status: 'planned' },
+  { slug: 'complexidade', title: 'Complexidade e leitura de limites', cph: ['2'], status: 'written' },
+  { slug: 'aritmetica-e-overflow', title: 'Aritmética, overflow e módulo', cph: ['1.3', '1.5'], status: 'written' },
+  { slug: 'busca-completa', title: 'Busca completa, recursão e backtracking', cph: ['5.1', '5.2', '5.3', '5.4'], status: 'written' },
+  { slug: 'meet-in-the-middle', title: 'Meet in the middle', cph: ['5.5'], status: 'written' },
+  { slug: 'ordenacao', title: 'Ordenação e comparadores', cph: ['3.1', '3.2'], status: 'written' },
+  { slug: 'busca-binaria', title: 'Busca binária, busca binária na resposta e o formato interativo', cph: ['3.3'], status: 'written' },
+  { slug: 'greedy', title: 'Greedy e argumentos de troca', cph: ['6'], status: 'written' },
   { slug: 'set-map-multiset', title: 'set, multiset e map', cph: ['4.2', '4.3', '4.4'], status: 'planned' },
   { slug: 'priority-queue', title: 'priority_queue e simulação por eventos', cph: ['4.5'], status: 'planned' },
   { slug: 'two-pointers', title: 'Two pointers', cph: ['8.1'], status: 'planned' },

@@ -1,0 +1,213 @@
+---
+title: Busca binária, busca binária na resposta e o formato interativo
+description: Busca binária não é só achar um elemento num vetor. É achar a fronteira de qualquer pergunta sim/não monótona, inclusive "a resposta é no máximo x?".
+---
+import Callout from '../../src/components/mdx/Callout.astro';
+import Quiz from '../../src/components/mdx/Quiz.tsx';
+import BinarySearchViz from '../../src/components/mdx/viz/BinarySearchViz.tsx';
+
+## Motivação: cortar cabos
+
+Problema: *você tem $n \le 2 \cdot 10^5$ cabos, de comprimentos inteiros até $10^9$, e precisa de $k$ pedaços **do mesmo tamanho** inteiro $L$ (pode sobrar cabo, não pode emendar). Qual o maior $L$ possível?*
+
+Para um $L$ fixo, é fácil saber se dá: cada cabo de tamanho $a_i$ rende $\lfloor a_i / L \rfloor$ pedaços. Então
+
+$$
+\text{dá}(L) \iff \sum_{i=1}^{n} \left\lfloor \frac{a_i}{L} \right\rfloor \ge k
+$$
+
+O lado esquerdo é o total de pedaços de tamanho $L$ que os $n$ cabos rendem; $k$ é quantos você precisa. Testar todo $L$ de $1$ a $10^9$, cada teste em $O(n)$, dá $2 \cdot 10^{14}$ operações.
+
+O que salva é que **$\text{dá}(L)$ é monótona**: se dá com $L$, dá com qualquer tamanho menor (pedaços menores rendem pelo menos tantos quanto). Olhando $L = 1, 2, 3, \dots$, as respostas são
+
+$$
+\underbrace{\text{sim}, \text{sim}, \dots, \text{sim}}_{L \le L^*},\ \underbrace{\text{não}, \text{não}, \dots}_{L > L^*}
+$$
+
+Queremos a **fronteira** $L^*$. Com busca binária, achamos a fronteira em $\log_2 10^9 \approx 30$ testes. São $30 \cdot n = 6 \cdot 10^6$ operações.
+
+## A ideia
+
+### O formato que nunca dá errado: achar a fronteira
+
+Esqueça "procurar um valor". Pense assim: existe um **predicado** $P(x)$ que é falso até certo ponto e verdadeiro daí em diante (ou o contrário):
+
+$$
+P(\text{lo}_0) = \text{falso},\quad P(\text{hi}_0) = \text{verdadeiro},\quad P \text{ monótono em } [\text{lo}_0, \text{hi}_0]
+$$
+
+$\text{lo}_0$ e $\text{hi}_0$ são dois pontos onde você **sabe** a resposta: o "sentinela falso" e o "sentinela verdadeiro". Mantenha o **invariante**: $P(\text{lo})$ é falso e $P(\text{hi})$ é verdadeiro. A cada passo, teste o meio e encolha o intervalo do lado certo. Quando $\text{hi} - \text{lo} = 1$, $\text{hi}$ é o **primeiro verdadeiro** e $\text{lo}$ é o **último falso**.
+
+O número de passos é
+
+$$
+\left\lceil \log_2 (\text{hi}_0 - \text{lo}_0) \right\rceil
+$$
+
+porque cada passo corta o intervalo pela metade. Para $10^9$ isso dá 30, e para $10^{18}$ dá 60.
+
+<BinarySearchViz client:visible />
+
+Com esse formato, não há "`mid + 1` ou `mid`?", "`<` ou `<=`?": o laço é sempre o mesmo. Você só precisa decidir **o que é $P$** e **onde estão os sentinelas**.
+
+### No vetor ordenado: `lower_bound` e `upper_bound`
+
+A busca da visualização é a `lower_bound` da STL: "primeiro índice com $a_i \ge x$". As duas que você vai usar sempre:
+
+| Função | Devolve | Pergunta que responde |
+|---|---|---|
+| `lower_bound(all(v), x)` | primeiro elemento $\ge x$ | onde $x$ entraria mantendo a ordem |
+| `upper_bound(all(v), x)` | primeiro elemento $> x$ | o fim do bloco de $x$ |
+| `upper_bound − lower_bound` | quantidade de $x$ | quantas vezes $x$ aparece |
+| `prev(upper_bound(...))` | maior elemento $\le x$ | "o maior que cabe" |
+
+### Busca binária na resposta
+
+É a ideia do motivador, e é a forma mais útil da técnica. A receita:
+
+1. O problema pede **o menor (ou maior) $x$** com alguma propriedade.
+2. Escreva $\text{ok}(x)$: "dá para fazer com $x$?". Geralmente é um greedy ou uma contagem em $O(n)$.
+3. Verifique a **monotonicidade**: se dá com $x$, dá com $x + 1$ (ou com $x - 1$)?
+4. Ache sentinelas seguros: um valor em que com certeza não dá e um em que com certeza dá.
+5. Busca binária na fronteira.
+
+Sinais de que é esse o caminho: "minimize o máximo", "maximize o mínimo", "menor tempo para…", "maior tamanho tal que…". Em todos eles, a pergunta de decisão ("dá em tempo $T$?") é muito mais fácil que a de otimização.
+
+### Valores reais
+
+Se a resposta é um número real, não há "$\text{hi} - \text{lo} = 1$". Faça um **número fixo de iterações**, por exemplo 100: cada uma divide o intervalo por 2, então 100 iterações reduzem o erro por $2^{100}$. É mais seguro que `while (hi - lo > eps)`, que pode nunca terminar por causa da precisão de `double`.
+
+## O formato interativo
+
+Em problemas **interativos**, o programa não recebe a entrada toda de uma vez: ele **pergunta** ao juiz e lê a resposta, com um limite de perguntas. A busca binária é a estratégia mais comum, porque cada pergunta sim/não corta o espaço pela metade. Então:
+
+$$
+\text{perguntas necessárias} = \lceil \log_2 (\text{tamanho do espaço}) \rceil
+$$
+
+Para um número secreto em $[1, 10^9]$, são 30 perguntas.
+
+<Callout type="armadilha" title="Flush, sempre">
+A saída do C++ fica num buffer e só é enviada quando o buffer enche ou é "descarregado" (*flush*). Num interativo, se a pergunta ficar no buffer, o juiz nunca a recebe, os dois ficam esperando um pelo outro e você toma TLE ou *Idleness limit*. Depois de **cada** pergunta, use `cout << ... << endl;` ou `cout.flush()`.
+
+Cuidado com o template: `fastio()` faz `cin.tie(nullptr)`, que desliga o flush automático que o `cin` faria antes de ler. Com `fastio()`, o flush explícito é obrigatório.
+</Callout>
+
+## Código
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+typedef long long ll;
+#define rep(i,a,b) for(int i=(a);i<(b);i++)
+#define all(x) (x).begin(),(x).end()
+void fastio(){ ios::sync_with_stdio(false); cin.tie(nullptr); }
+
+// Primeiro x em (lo, hi] com P(x) verdadeiro.
+// Exige: P(lo) falso, P(hi) verdadeiro, P monótono (F...F T...T).
+template <class F>
+ll primeiro_verdadeiro(ll lo, ll hi, F P) {
+    while (hi - lo > 1) {
+        ll mid = lo + (hi - lo) / 2;   // evita overflow de (lo + hi)
+        if (P(mid)) hi = mid;
+        else lo = mid;
+    }
+    return hi;
+}
+
+int main(){
+    fastio();
+    int n; ll k;
+    cin >> n >> k;
+    vector<ll> a(n);
+    for (ll& x : a) cin >> x;
+
+    // Cortar cabos: maior L com pedacos(L) >= k.
+    // "Não dá com L" é monótono F...F T...T em L, então achamos o primeiro L que NÃO dá
+    // e a resposta é o anterior.
+    auto nao_da = [&](ll L) {
+        ll pedacos = 0;
+        for (ll x : a) {
+            pedacos += x / L;
+            if (pedacos >= k) return false;   // para cedo: evita somar além do necessário
+        }
+        return true;
+    };
+    ll maxA = *max_element(all(a));
+    // Sentinelas: L = 0 conta como "dá" (P falso); L = maxA + 1 com certeza não dá (P verdadeiro).
+    ll L = primeiro_verdadeiro(0, maxA + 1, nao_da) - 1;
+    cout << L << "\n";                      // 0 se nem L = 1 dá
+
+    // lower_bound / upper_bound num vetor ordenado.
+    sort(all(a));
+    ll x = 10;
+    int qtd = upper_bound(all(a), x) - lower_bound(all(a), x);   // quantos iguais a x
+    cout << qtd << "\n";
+}
+```
+
+- **Cortar cabos:** tempo $O(n \log V)$, com $V = \max a_i$ (cerca de 30 rodadas de um teste $O(n)$); memória $O(n)$.
+- **`lower_bound`/`upper_bound`:** $O(\log n)$ cada, sobre o vetor já ordenado.
+
+A busca no formato interativo é a mesma função `primeiro_verdadeiro`, com um `P` que **pergunta ao juiz** em vez de calcular:
+
+```cpp
+auto P = [&](ll y) {
+    cout << "? " << y << endl;   // endl = quebra de linha + flush
+    string resposta; cin >> resposta;
+    return resposta == "YES";
+};
+```
+
+## Armadilhas comuns
+
+- **Laço infinito com `lo = mid`.** Acontece no formato `while (lo < hi)` quando `mid` arredonda para baixo e `lo = mid`. O formato com invariante (`while (hi - lo > 1)`) não tem esse problema.
+- **`(lo + hi) / 2` estoura** quando os dois passam de $\approx 4{,}6 \cdot 10^{18}$, e com `int` já estoura acima de $\approx 10^9$. Use `lo + (hi - lo) / 2`.
+- **Sentinela errado.** Se $\text{hi}_0$ pode ser falso (a resposta pode estar fora do intervalo), o resultado está errado em silêncio. Confira os dois extremos, ou trate "não existe" à parte.
+- **Overflow dentro do teste.** Somas e produtos em $\text{ok}(x)$ crescem com $x$: $x$ perto de $10^{18}$ vezes $10^5$ estoura. Pare a soma assim que passar do alvo, como no `nao_da` acima.
+- **Predicado não monótono.** Antes de escrever o código, prove a monotonicidade com uma frase ("se dá em tempo $T$, dá em tempo $T + 1$, porque…"). Se não conseguir, a busca binária não se aplica.
+- **`lower_bound` em `set`/`map`:** use o método do container (`s.lower_bound(x)`), não o `std::lower_bound`, que é $O(n)$ nesses iteradores.
+
+## Referências
+
+- **CPH, capítulo 3 — Sorting, seção 3.3 *Binary search*:** os dois jeitos de implementar, achar o menor valor que satisfaz uma condição e achar o máximo de uma função.
+- [USACO Guide — Binary Search](https://usaco.guide/silver/binary-search)
+- [cp-algorithms — Binary Search](https://cp-algorithms.com/num_methods/binary_search.html), com a mesma visão de "fronteira do predicado" e a busca em reais.
+- [Errichto — Binary Search tutorial (C++ and Python)](https://www.youtube.com/watch?v=GU7DpgHINWQ) (vídeo, em inglês).
+
+## Mini-quiz
+
+<Quiz
+  client:visible
+  questions={[
+    {
+      q: 'Você quer o MENOR tempo T em que algo fica pronto, e "fica pronto em T" é monótono. Qual é o formato?',
+      options: [
+        'P(T) = "fica pronto em T"; a resposta é o primeiro T com P verdadeiro',
+        'P(T) = "fica pronto em T"; a resposta é o último T com P falso',
+        'Busca ternária',
+        'Não dá para usar busca binária em tempo',
+      ],
+      answer: 0,
+      why: 'Para T pequeno não dá (F), a partir de certo T dá (T). A fronteira que você quer é o primeiro verdadeiro.',
+    },
+    {
+      q: 'Num interativo com resposta em [1, 10^9], quantas perguntas "y < x?" bastam no pior caso?',
+      options: ['10', '20', '30', '1000'],
+      answer: 2,
+      why: '2^30 ≈ 1,07·10^9 ≥ 10^9: cada pergunta corta o intervalo pela metade.',
+    },
+    {
+      q: 'Seu programa interativo está correto mas toma TLE no primeiro teste. Causa mais provável?',
+      options: ['Busca binária lenta', 'Faltou flush depois das perguntas', 'Overflow', 'O juiz está fora do ar'],
+      answer: 1,
+      why: 'Sem flush a pergunta fica no buffer: o juiz espera a pergunta e o programa espera a resposta.',
+    },
+    {
+      q: 'Num vetor ordenado v, o que `upper_bound(all(v), x) - lower_bound(all(v), x)` calcula?',
+      options: ['O índice de x', 'Quantos elementos são iguais a x', 'Quantos são menores que x', 'Sempre 1'],
+      answer: 1,
+      why: 'lower_bound aponta para o primeiro ≥ x e upper_bound para o primeiro > x; o que fica entre os dois é o bloco de valores iguais a x.',
+    },
+  ]}
+/>

@@ -1,0 +1,18 @@
+---
+// Caixa de destaque nos módulos. type: armadilha | dica | cph | nota
+interface Props {
+  type?: 'armadilha' | 'dica' | 'cph' | 'nota';
+  title?: string;
+}
+const { type = 'nota', title } = Astro.props;
+const style = {
+  armadilha: { border: 'border-danger/50', label: 'text-danger', name: 'Armadilha' },
+  dica: { border: 'border-accent/50', label: 'text-accent', name: 'Dica' },
+  cph: { border: 'border-try/50', label: 'text-try', name: 'No livro' },
+  nota: { border: 'border-line', label: 'text-muted', name: 'Nota' },
+}[type];
+---
+<aside class:list={['my-6 rounded-xl border-l-4 bg-surface px-5 py-4', style.border]}>
+  <p class:list={['text-xs font-semibold uppercase tracking-wider', style.label]}>{title ?? style.name}</p>
+  <div class="prose-cp mt-1.5 text-[15px]"><slot /></div>
+</aside>

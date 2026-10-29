@@ -1,0 +1,201 @@
+---
+title: Busca completa, recursão e backtracking
+description: Quando os limites são pequenos, testar tudo é a solução. O difícil é gerar "tudo" sem repetir, sem esquecer e sem deixar lixo de um ramo para o outro.
+---
+import Callout from '../../src/components/mdx/Callout.astro';
+import Quiz from '../../src/components/mdx/Quiz.tsx';
+import SubsetRecursionViz from '../../src/components/mdx/viz/SubsetRecursionViz.tsx';
+
+## Motivação: quando $n$ é pequeno de propósito
+
+Problema: *dados $n \le 20$ inteiros e um valor $S$, existe um subconjunto com soma exatamente $S$?*
+
+Não há fórmula. Mas o limite entrega o jogo: um conjunto de $n$ elementos tem $2^n$ subconjuntos, e $2^{20} \approx 10^6$. Testar todos, somando cada um em $O(n)$, dá $2 \cdot 10^7$ operações, que passa folgado.
+
+**Busca completa** é exatamente isso: gerar todas as soluções candidatas e verificar cada uma. Não é "solução de quem não sabe": quando o enunciado limita $n$ a 8, 10 ou 20, quase sempre é *a* solução esperada. Lembre da tabela do módulo de complexidade:
+
+| $n$ até | Espaço de busca | Tamanho |
+|---|---|---|
+| 8–10 | todas as permutações | $n! \le 3{,}6 \cdot 10^6$ |
+| 20 | todos os subconjuntos | $2^n \approx 10^6$ |
+| 40 | subconjuntos, metade de cada vez | $2^{n/2} \approx 10^6$ (meet in the middle, próximo módulo) |
+
+O que dá trabalho é **gerar** o espaço corretamente. Este módulo mostra três geradores (subconjuntos, permutações e o backtracking genérico) e como **podar** quando o espaço é grande demais para percorrer inteiro.
+
+## A ideia: decisões em sequência
+
+Toda busca completa pode ser vista como uma sequência de decisões:
+
+- **Subconjuntos:** para cada elemento, *pego* ou *não pego*. São $n$ decisões binárias, então $2^n$ folhas.
+- **Permutações:** para cada posição, *qual elemento ainda não usado vai aqui*. São $n \cdot (n-1) \cdots 1 = n!$ folhas.
+
+A recursão percorre essa árvore de decisões em profundidade. O custo de gerar subconjuntos obedece
+
+$$
+T(n) = 2\,T(n-1) + O(1) \;\Rightarrow\; T(n) = O(2^n)
+$$
+
+Cada nível dobra o número de chamadas ($2\,T(n-1)$), e o trabalho por chamada é constante. Se você processa cada subconjunto em $O(n)$, o total é $O(2^n \cdot n)$.
+
+### O padrão backtracking: escolher, descer, desfazer
+
+Para não copiar o estado inteiro a cada chamada (o que custaria caro), mantemos **um** estado global e o modificamos:
+
+1. **escolher:** aplica a decisão no estado (`atual.pb(x)`, `usado[x] = true`);
+2. **descer:** chama a recursão para a próxima decisão;
+3. **desfazer:** reverte exatamente o que fez no passo 1, na ordem inversa.
+
+O passo 3 é o que mais gera bugs. Siga a visualização abaixo e repare que, quando a recursão volta de um ramo, `atual` precisa estar **idêntico** ao que era antes de entrar nele:
+
+<SubsetRecursionViz client:visible />
+
+### Subconjuntos sem recursão: bitmask
+
+Também dá para gerar subconjuntos com um laço: os números de $0$ a $2^n - 1$, escritos em binário com $n$ bits, são exatamente os $2^n$ subconjuntos. O bit $i$ ligado significa "o elemento $i$ está no subconjunto". A notação é
+
+$$
+\text{mask} \in [0, 2^n), \qquad i \in \text{mask} \iff \big(\text{mask} \gg i\big)\ \&\ 1 = 1
+$$
+
+Aqui $\gg$ é o deslocamento para a direita e $\&$ é o E bit a bit, de modo que a expressão isola o bit $i$. É mais curto que a recursão e ótimo quando você só precisa *visitar* cada subconjunto. A recursão é melhor quando quer podar ramos no meio do caminho.
+
+### Poda: não descer onde não há resposta
+
+Quando o espaço é grande demais, a saída é **cortar ramos que já não podem dar certo**, verificando o estado parcial em vez de esperar a folha. Duas formas:
+
+- **Viabilidade:** a escolha parcial já viola uma restrição (dois elementos conflitantes, um caminho que ficou sem saída). Descartar aqui economiza a subárvore inteira.
+- **Limitante (bound):** mesmo que tudo dê certo daqui para frente, não dá para melhorar a melhor resposta já encontrada.
+
+Uma boa poda pode transformar $10^{12}$ estados em $10^7$. Não há fórmula para o ganho: você descobre observando **onde a busca perde tempo**.
+
+## Código: os três geradores
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+typedef long long ll;
+typedef vector<int> vi;
+#define rep(i,a,b) for(int i=(a);i<(b);i++)
+#define pb push_back
+#define sz(x) (int)(x).size()
+void fastio(){ ios::sync_with_stdio(false); cin.tie(nullptr); }
+
+int n;
+vi a, atual;
+vector<bool> usado;
+
+// 1) Subconjuntos por recursão: O(2^n) chamadas.
+void subconjuntos(int i) {
+    if (i == n) {
+        // processa(atual): aqui você testa a condição do problema
+        return;
+    }
+    subconjuntos(i + 1);          // não pega a[i]
+    atual.pb(a[i]);               // pega a[i]
+    subconjuntos(i + 1);
+    atual.pop_back();             // desfaz
+}
+
+// 2) Permutações por backtracking: O(n! * n).
+void permutacoes() {
+    if (sz(atual) == n) {
+        // processa(atual)
+        return;
+    }
+    rep(i, 0, n) {
+        if (usado[i]) continue;   // poda trivial: cada elemento uma vez
+        usado[i] = true;  atual.pb(a[i]);     // escolhe
+        permutacoes();                         // desce
+        atual.pop_back(); usado[i] = false;    // desfaz, na ordem inversa
+    }
+}
+
+int main(){
+    fastio();
+    cin >> n;
+    a.resize(n);
+    for (int& x : a) cin >> x;
+    usado.assign(n, false);
+
+    subconjuntos(0);
+    permutacoes();
+
+    // 3) Subconjuntos por bitmask: O(2^n * n).
+    rep(mask, 0, 1 << n) {
+        ll soma = 0;
+        rep(i, 0, n) if (mask >> i & 1) soma += a[i];
+        // processa(soma)
+    }
+
+    // Permutações pela STL: começa ORDENADO e gera cada permutação distinta uma vez.
+    vi p = a;
+    sort(p.begin(), p.end());
+    do {
+        // processa(p)
+    } while (next_permutation(p.begin(), p.end()));
+}
+```
+
+| Gerador | Tempo | Memória extra |
+|---|---|---|
+| subconjuntos recursivo | $O(2^n)$ + o processamento | $O(n)$ (pilha e `atual`) |
+| bitmask | $O(2^n \cdot n)$ | $O(1)$ |
+| permutações (backtracking ou `next_permutation`) | $O(n! \cdot n)$ | $O(n)$ |
+
+## Armadilhas comuns
+
+<Callout type="armadilha" title="Estado sujo entre ramos">
+
+Todo `pb` precisa do seu `pop_back`, e todo `usado[i] = true` precisa do seu `usado[i] = false`, **no mesmo nível da recursão** e na ordem inversa. Se você dá `return` no meio (por exemplo, ao achar a resposta), confira se não pulou um desfazer que outro ramo ainda vai precisar.
+
+</Callout>
+
+- **`next_permutation` sem ordenar antes.** Ela gera as permutações *a partir da atual* em ordem lexicográfica; se o vetor não começa ordenado, você perde todas as anteriores.
+- **Elementos repetidos.** O backtracking com `usado[]` gera permutações repetidas quando há valores iguais (`aab` aparece duas vezes). `next_permutation` sobre o vetor ordenado já gera cada permutação **distinta** uma vez. No backtracking, pule `a[i]` se `a[i] == a[i-1]` e `a[i-1]` não foi usado (com o vetor ordenado).
+- **`1 << n` com $n \ge 31$** estoura `int`. Para busca completa isso nunca deveria acontecer ($2^{31}$ estados não passam em 1 s), mas em outros contextos use `1LL << n`.
+- **Passar vetores por valor** na recursão: cada chamada copia tudo. Use estado global ou referência.
+- **Somas dos subconjuntos em `int`.** Com 20 valores até $10^9$, a soma chega a $2 \cdot 10^{10}$.
+- **Poda que corta resposta válida.** Teste a versão podada contra a versão sem poda em casos pequenos antes de submeter.
+
+## Referências
+
+- **CPH, capítulo 5 — Complete search:** 5.1 *Generating subsets*, 5.2 *Generating permutations*, 5.3 *Backtracking* e 5.4 *Pruning the search*. **Spoiler:** a seção 5.4 analisa, passo a passo, as podas de um problema quase igual ao Grid Path Description, deste milestone. Se quiser descobrir as podas sozinho, leia 5.4 só depois de tentar.
+- [USACO Guide — Basic Complete Search](https://usaco.guide/bronze/intro-complete)
+- [USACO Guide — Complete Search with Recursion](https://usaco.guide/bronze/complete-rec)
+- [cp-algorithms — Generating all K-combinations](https://cp-algorithms.com/combinatorics/generating_combinations.html), para quando você quer só os subconjuntos de tamanho exatamente $k$.
+
+## Mini-quiz
+
+<Quiz
+  client:visible
+  questions={[
+    {
+      q: 'Com n ≤ 20, quantos subconjuntos existem no pior caso, e isso passa?',
+      options: ['20! ≈ 2,4·10^18, não passa', '2^20 ≈ 10^6, passa', '20² = 400, passa trivialmente', '2^20 ≈ 10^12, não passa'],
+      answer: 1,
+      why: '2^20 = 1.048.576. Mesmo processando cada um em O(n) são ~2·10^7 operações.',
+    },
+    {
+      q: 'No backtracking de permutações, o que acontece se você esquecer `usado[i] = false` depois da chamada recursiva?',
+      options: [
+        'Nada, o próximo laço sobrescreve',
+        'O elemento i fica bloqueado para todos os ramos seguintes, e várias permutações nunca são geradas',
+        'O programa entra em laço infinito',
+        'As permutações saem fora de ordem, mas todas aparecem',
+      ],
+      answer: 1,
+      why: 'O estado é compartilhado: sem desfazer, i continua "usado" quando a recursão volta e explora os outros ramos.',
+    },
+    {
+      q: 'Você precisa de todas as permutações distintas de "aabb". Qual é o jeito mais simples?',
+      options: [
+        'Backtracking com usado[] e imprimir tudo',
+        'Ordenar e usar next_permutation',
+        'Gerar as 4! permutações e torcer',
+        'Usar bitmask',
+      ],
+      answer: 1,
+      why: 'next_permutation pula permutações iguais à anterior; começando ordenado, gera cada uma das 4!/(2!·2!) = 6 distintas exatamente uma vez.',
+    },
+  ]}
+/>

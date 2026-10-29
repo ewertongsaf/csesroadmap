@@ -1,0 +1,151 @@
+---
+title: Meet in the middle
+description: Quando 2^n é grande demais mas 2^(n/2) cabe, divida a entrada em duas metades, resolva cada uma por força bruta e combine.
+---
+import Callout from '../../src/components/mdx/Callout.astro';
+import Quiz from '../../src/components/mdx/Quiz.tsx';
+import MitmDiagram from '../../src/components/mdx/viz/MitmDiagram.astro';
+
+## Motivação: o salto de 20 para 40
+
+No módulo anterior, $n \le 20$ permitia testar os $2^{20} \approx 10^6$ subconjuntos. Agora o problema é:
+
+*Dados $n \le 40$ itens com pesos $w_i \le 10^9$ e uma capacidade $C$, qual é a maior soma de pesos de um subconjunto que não passa de $C$?*
+
+Os pesos são enormes, então a mochila com DP (tabela indexada pela soma) está fora de questão. E $2^{40} \approx 1{,}1 \cdot 10^{12}$ subconjuntos não passam nem em uma hora.
+
+O detalhe que salva: **$2^{40} = 2^{20} \cdot 2^{20}$**. Todo subconjunto do conjunto inteiro é a união de um subconjunto da primeira metade com um subconjunto da segunda. Se você listar as somas de cada metade separadamente (só $2^{20}$ cada), o problema vira "escolha **uma** soma de cada lista", e isso dá para fazer sem testar todos os pares.
+
+## A ideia
+
+1. **Dividir** os itens em duas metades $A$ e $B$, de tamanhos $\lfloor n/2 \rfloor$ e $\lceil n/2 \rceil$.
+2. **Listar** todas as somas de subconjuntos de cada metade: as listas $S_A$ e $S_B$, cada uma com até $2^{n/2}$ valores.
+3. **Combinar:** a resposta é
+
+$$
+\max \{\, x + y \;:\; x \in S_A,\ y \in S_B,\ x + y \le C \,\}
+$$
+
+$S_A$ e $S_B$ são os conjuntos de somas de cada metade, $x$ e $y$ são as somas escolhidas de cada lado e $C$ é a capacidade. Para cada $x$, o melhor $y$ é **o maior elemento de $S_B$ que é $\le C - x$**. Com $S_B$ ordenada, isso é uma busca binária (`upper_bound` e um passo para trás).
+
+<MitmDiagram />
+
+O custo total:
+
+$$
+O\!\left(2^{n/2}\right)_{\text{gerar}} + O\!\left(2^{n/2} \log 2^{n/2}\right)_{\text{ordenar}} + O\!\left(2^{n/2} \log 2^{n/2}\right)_{\text{combinar}} = O\!\left(2^{n/2} \cdot n\right)
+$$
+
+Usamos $\log 2^{n/2} = n/2$. Com $n = 40$: cerca de $2 \cdot 10^7$ operações, contra $10^{12}$ da força bruta.
+
+<Callout type="dica" title="O padrão geral">
+Meet in the middle serve sempre que a resposta é uma **combinação de uma escolha de cada metade**, e você consegue, para cada escolha da esquerda, achar rápido a melhor (ou contar as compatíveis) da direita. "Rápido" geralmente significa ordenar uma das listas e fazer busca binária ou two pointers. Às vezes um hashmap resolve, mas no CSES os testes costumam derrubar `unordered_map`.
+</Callout>
+
+### Gerando as somas sem recursão
+
+Um jeito curto de listar as somas de uma metade é **dobrar a lista** a cada item: comece com $\{0\}$ e, para cada peso $w$, junte à lista uma cópia de tudo somado com $w$. Depois de $k$ itens, a lista tem $2^k$ somas, uma por subconjunto.
+
+## Código: maior soma ≤ C com $n \le 40$
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+typedef long long ll;
+#define rep(i,a,b) for(int i=(a);i<(b);i++)
+#define all(x) (x).begin(),(x).end()
+#define pb push_back
+#define sz(x) (int)(x).size()
+void fastio(){ ios::sync_with_stdio(false); cin.tie(nullptr); }
+
+// Todas as 2^k somas de subconjuntos de w[l..r), dobrando a lista a cada item.
+vector<ll> somas(const vector<ll>& w, int l, int r) {
+    vector<ll> s = {0};
+    s.reserve(1 << (r - l));
+    rep(i, l, r) {
+        int tam = sz(s);
+        rep(j, 0, tam) s.pb(s[j] + w[i]);   // cada subconjunto antigo, agora com w[i]
+    }
+    return s;
+}
+
+int main(){
+    fastio();
+    int n; ll C;
+    cin >> n >> C;
+    vector<ll> w(n);
+    for (ll& x : w) cin >> x;
+
+    vector<ll> A = somas(w, 0, n / 2);
+    vector<ll> B = somas(w, n / 2, n);
+    sort(all(B));                            // só uma das listas precisa estar ordenada
+
+    ll melhor = 0;                           // o subconjunto vazio sempre vale
+    for (ll x : A) {
+        if (x > C) continue;
+        // maior y em B com y <= C - x: upper_bound devolve o primeiro > C - x
+        auto it = upper_bound(all(B), C - x);
+        if (it == B.begin()) continue;       // nem o menor y cabe (não acontece: 0 está em B)
+        melhor = max(melhor, x + *prev(it));
+    }
+    cout << melhor << "\n";
+}
+```
+
+- **Tempo:** $O(2^{n/2} \cdot n)$, dominado por ordenar $B$ e pelas buscas binárias.
+- **Memória:** $O(2^{n/2})$. São duas listas de $2^{20}$ `long long`, cerca de 16 MB.
+
+Para **contar** os pares com $x + y$ igual a um valor, em vez de achar o melhor, a estrutura é a mesma: troque `upper_bound` por `equal_range` (que conta duplicatas) ou percorra as duas listas ordenadas com two pointers.
+
+## Armadilhas comuns
+
+<Callout type="armadilha" title="Duplicatas nas listas de somas">
+Várias escolhas diferentes podem dar a mesma soma (por exemplo, pesos repetidos). Se o problema pede para **contar** subconjuntos, cada ocorrência conta: use `equal_range` ou `upper_bound - lower_bound`. `binary_search` só diz se existe.
+</Callout>
+
+- **Somas em `int`.** Vinte valores de $10^9$ somam $2 \cdot 10^{10}$. E a contagem de subconjuntos pode chegar a $2^{40}$: também `long long`.
+- **`unordered_map` para combinar.** Funciona na teoria, mas tem constante alta e é atacável por testes adversariais. Ordenar + busca binária (ou two pointers) é mais seguro.
+- **$n$ ímpar.** As metades têm tamanhos $\lfloor n/2 \rfloor$ e $\lceil n/2 \rceil$; a lista maior tem $2^{\lceil n/2 \rceil}$ itens. Ajuste o `reserve` e as estimativas de memória.
+- **Gerar com recursão copiando vetores.** Muito mais lento que dobrar a lista; para $2^{20}$ itens isso pesa.
+
+## Referências
+
+- **CPH, capítulo 5 — Complete search, seção 5.5 *Meet in the middle*.** É curta e usa exatamente o exemplo "existe subconjunto com soma $x$?".
+- [USACO Guide — Meet In The Middle](https://usaco.guide/gold/meet-in-the-middle) (marcado como opcional na USACO, mas bem cobrado no CSES).
+- [Errichto — Meet in the Middle: Tutorial & Problems](https://www.youtube.com/watch?v=18sJ3mK173s) (vídeo, em inglês). A lista de problemas da aula começa por um problema do CSES; assista depois de tentar o desta trilha.
+
+## Mini-quiz
+
+<Quiz
+  client:visible
+  questions={[
+    {
+      q: 'Por que meet in the middle não ajuda com n = 10^5?',
+      options: [
+        'Ajuda: 2^(n/2) é bem menor que 2^n',
+        'Porque 2^(n/2) continua astronômico; a técnica só serve quando 2^(n/2) cabe (n ≈ 40)',
+        'Porque não dá para ordenar 10^5 elementos',
+        'Porque precisa de n par',
+      ],
+      answer: 1,
+      why: 'A técnica tira a raiz do espaço de busca: 2^n vira ~2·2^(n/2). Isso só salva quando 2^(n/2) ≈ 10^6.',
+    },
+    {
+      q: 'Depois de gerar as listas S_A e S_B, quantas delas precisam estar ordenadas para usar busca binária?',
+      options: ['Nenhuma', 'Só a lista em que você faz a busca', 'As duas, sempre', 'Depende de n ser par'],
+      answer: 1,
+      why: 'Você itera sobre S_A em qualquer ordem e busca em S_B. (Para two pointers, aí sim as duas precisam estar ordenadas.)',
+    },
+    {
+      q: 'Para contar quantos subconjuntos somam exatamente x, qual o erro em usar `binary_search(B, x - a)` para cada a em A?',
+      options: [
+        'Nenhum',
+        'binary_search só diz se existe; somas repetidas em B precisam ser contadas todas',
+        'binary_search exige B decrescente',
+        'É lento demais',
+      ],
+      answer: 1,
+      why: 'Use equal_range (ou upper_bound − lower_bound) para contar quantas vezes x − a aparece.',
+    },
+  ]}
+/>

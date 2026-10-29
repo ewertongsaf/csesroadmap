@@ -1,0 +1,164 @@
+---
+title: Greedy e argumentos de troca
+description: Um greedy faz a escolha que parece melhor agora e nunca volta atrás. É a solução mais curta e a mais perigosa. O que separa um greedy certo de um WA é a prova.
+---
+import Callout from '../../src/components/mdx/Callout.astro';
+import Quiz from '../../src/components/mdx/Quiz.tsx';
+import IntervalStabbingViz from '../../src/components/mdx/viz/IntervalStabbingViz.tsx';
+
+## Motivação: o troco que dá errado
+
+Pagar um valor $x$ com o menor número de moedas. Com as moedas do real (1, 5, 10, 25, 50, 100 centavos), o óbvio funciona: **pegue sempre a maior moeda que cabe**. Para 68: $50 + 10 + 5 + 1 + 1 + 1$, ou seja, 6 moedas, e não dá para fazer melhor.
+
+Agora troque as moedas por $\{1, 3, 4\}$ e pague 6:
+
+- o greedy pega $4$, sobra $2$, paga $1 + 1$: **3 moedas**;
+- a resposta ótima é $3 + 3$: **2 moedas**.
+
+O algoritmo é o mesmo; só mudaram as moedas, e ele passou a dar a resposta errada. A lição: **greedy não é "a intuição óbvia"**. É uma afirmação matemática ("a escolha local nunca atrapalha o ótimo") que vale para algumas entradas e não para outras. Para moedas arbitrárias, o certo é DP (milestone 8).
+
+## A ideia
+
+Um algoritmo greedy constrói a resposta em passos e, a cada passo, faz a escolha que parece melhor **naquele momento**, sem nunca desfazer. É rápido e curto: geralmente um `sort` e um laço. O trabalho intelectual é a **prova**, e há duas formas que resolvem quase tudo em programação competitiva.
+
+### 1. Argumento de troca (*exchange argument*)
+
+Pegue uma solução ótima qualquer, $O$, que **difere** da do greedy, $G$. Mostre que dá para **trocar** um pedaço de $O$ para ficar mais parecida com $G$ **sem piorar**. Repetindo, $O$ vira $G$; logo $G$ também é ótima.
+
+**Exemplo:** concatenar $n$ strings numa ordem que forme a menor string lexicográfica possível. A ordem certa *não* é a ordem alfabética: com `"b"` e `"ba"`, a ordem alfabética dá `"bba"`, mas `"bab"` é menor. O greedy correto ordena por
+
+$$
+s_i \prec s_j \iff s_i + s_j < s_j + s_i
+$$
+
+Aqui $+$ é concatenação e $<$ é a comparação lexicográfica de strings: $s_i$ vem antes se "$s_i$ depois $s_j$" é menor que o contrário. A prova é uma troca: se numa solução ótima duas strings **adjacentes** estão na ordem "errada" ($s_j$ antes de $s_i$ com $s_i + s_j < s_j + s_i$), trocar as duas de lugar só altera esse trecho, e ele fica menor. Então a resposta não piora. Repetindo as trocas, como num bubble sort, chegamos à ordem do greedy.
+
+### 2. O greedy "se mantém à frente" (*stays ahead*)
+
+Mostre que, depois de cada passo $k$, a solução parcial do greedy é **pelo menos tão boa** quanto as primeiras $k$ escolhas de qualquer outra solução, numa medida que importa (terminou mais cedo, cobriu mais, sobrou mais espaço…). Se ela está à frente em todo passo, está à frente no fim.
+
+### Exemplo completo: furar intervalos
+
+*Dados $n$ intervalos $[l_i, r_i]$, escolha o **menor número de pontos** tal que todo intervalo contenha pelo menos um ponto.*
+
+O greedy:
+
+1. **ordene pelo fim** $r_i$;
+2. percorra os intervalos nessa ordem; se o atual ainda não contém nenhum ponto escolhido, **coloque um ponto no fim dele**, $r_i$.
+
+<IntervalStabbingViz client:visible />
+
+**Por que pelo fim, e por que no fim?** Considere o intervalo $I$ com o **menor** $r$. Alguma solução precisa furá-lo com um ponto $p \le r$. Mover $p$ para $r$ continua furando $I$ e fura **todos os intervalos que $p$ furava** que ainda não terminaram (eles têm fim $\ge r$, porque $r$ é o menor fim, e começam antes de $p \le r$). Isso é um argumento de troca: existe uma solução ótima que usa o ponto $r$. Depois de fixá-lo, descarte os intervalos furados e repita o mesmo argumento no que sobrou.
+
+<Callout type="dica" title="Como achar o critério de ordenação">
+Quase todo greedy de intervalos ou de tarefas começa com "ordene por ___". Teste as candidatas (início, fim, duração, prazo, razão entre dois valores…) contra uma **força bruta em casos pequenos**. A chave errada costuma falhar com 3 ou 4 elementos.
+</Callout>
+
+## Código
+
+Dois greedys genéricos: furar intervalos (prova por troca no fim) e a ordem de concatenação (comparador derivado da troca de vizinhos).
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+typedef long long ll;
+typedef pair<ll,ll> pll;
+#define rep(i,a,b) for(int i=(a);i<(b);i++)
+#define all(x) (x).begin(),(x).end()
+#define pb push_back
+#define sz(x) (int)(x).size()
+void fastio(){ ios::sync_with_stdio(false); cin.tie(nullptr); }
+
+// Mínimo de pontos que furam todos os intervalos [l, r]. O(n log n).
+vector<ll> furar(vector<pll> iv) {
+    // Ordena pelo FIM: guardamos como {r, l} para o sort padrão de pair fazer isso.
+    for (auto& [l, r] : iv) swap(l, r);
+    sort(all(iv));
+    vector<ll> pontos;
+    for (auto [r, l] : iv) {
+        if (!pontos.empty() && pontos.back() >= l) continue;   // já furado (o último ponto é o maior)
+        pontos.pb(r);                                          // fura no fim
+    }
+    return pontos;
+}
+
+// Ordem de concatenação que gera a menor string. O(n log n · L), L = tamanho das strings.
+string menor_concatenacao(vector<string> s) {
+    sort(all(s), [](const string& a, const string& b) { return a + b < b + a; });
+    string res;
+    for (auto& t : s) res += t;
+    return res;
+}
+
+int main(){
+    fastio();
+    int n; cin >> n;
+    vector<pll> iv(n);
+    for (auto& [l, r] : iv) cin >> l >> r;
+    vector<ll> p = furar(iv);
+    cout << sz(p) << "\n";
+
+    int m; cin >> m;
+    vector<string> s(m);
+    for (auto& t : s) cin >> t;
+    cout << menor_concatenacao(s) << "\n";
+}
+```
+
+- **`furar`:** tempo $O(n \log n)$ (o `sort`); memória $O(n)$.
+- **`menor_concatenacao`:** tempo $O(m \log m \cdot L)$, já que cada comparação concatena strings de tamanho até $L$; memória $O(m \cdot L)$.
+
+Repare na linha `pontos.back() >= l`: só precisamos testar o **último** ponto, porque os pontos são colocados em ordem crescente e o intervalo atual tem o maior fim visto até agora. Se o último ponto não está nele, nenhum anterior está.
+
+## Armadilhas comuns
+
+<Callout type="armadilha" title="Greedy sem prova é chute">
+Se você não consegue explicar em duas frases por que a escolha local é segura, faça um **teste de estresse**: uma força bruta para $n \le 8$, um gerador aleatório e um laço comparando as duas saídas. Leva 5 minutos e evita uma sequência de WAs.
+</Callout>
+
+- **Ordenar pela chave errada:** início em vez de fim, crescente em vez de decrescente. O greedy "quase certo" passa nos exemplos e falha no teste 7.
+- **Empates.** Defina o que acontece quando duas chaves são iguais, e confira se a prova continua valendo.
+- **Somas e diferenças grandes.** Greedys de "tarefas e prazos" acumulam tempos: `long long`.
+- **Confundir "maximizar a quantidade" com "maximizar o valor".** Escolher o máximo de intervalos disjuntos tem greedy; escolher intervalos disjuntos de **peso** máximo, não (é DP com busca binária, milestone 9).
+
+## Referências
+
+- **CPH, capítulo 6 — Greedy algorithms:** 6.1 *Coin problem* (o contraexemplo do troco), 6.2 *Scheduling*, 6.3 *Tasks and deadlines*, 6.4 *Minimizing sums*, 6.5 *Data compression*. **Aviso:** 6.2 e 6.3 resolvem quase literalmente dois problemas deste milestone. Vale tentar os problemas antes de ler essas seções.
+- [USACO Guide — Introduction to Greedy Algorithms](https://usaco.guide/bronze/intro-greedy)
+- [USACO Guide — Greedy Algorithms with Sorting](https://usaco.guide/silver/greedy-sorting)
+
+## Mini-quiz
+
+<Quiz
+  client:visible
+  questions={[
+    {
+      q: 'Moedas {1, 6, 10}, valor 12. O que o greedy "maior moeda primeiro" faz?',
+      options: ['6 + 6: 2 moedas, ótimo', '10 + 1 + 1: 3 moedas, mas o ótimo é 2', '10 + 1 + 1: 3 moedas, que é o ótimo', 'Não consegue pagar'],
+      answer: 1,
+      why: 'O greedy pega 10 e completa com 1 + 1. O ótimo é 6 + 6. Para moedas arbitrárias, use DP.',
+    },
+    {
+      q: 'No greedy de furar intervalos, por que ordenar pelo FIM e não pelo início?',
+      options: [
+        'Tanto faz, os dois funcionam',
+        'Porque o intervalo que termina primeiro é o mais restrito: precisa ser furado até o seu fim, e furar exatamente no fim só ajuda os outros',
+        'Porque o sort é mais rápido assim',
+        'Porque intervalos que começam cedo são mais longos',
+      ],
+      answer: 1,
+      why: 'Ordenando pelo início, um intervalo longo que começa cedo "puxa" o ponto para longe dos intervalos curtos dentro dele.',
+    },
+    {
+      q: 'O que é um argumento de troca?',
+      options: [
+        'Trocar o algoritmo greedy por uma DP',
+        'Mostrar que qualquer solução ótima pode ser modificada, passo a passo e sem piorar, até virar a solução do greedy',
+        'Testar todas as permutações',
+        'Trocar a ordem dos laços',
+      ],
+      answer: 1,
+      why: 'Se cada troca não piora e no fim você chega no greedy, a solução do greedy é tão boa quanto a ótima.',
+    },
+  ]}
+/>

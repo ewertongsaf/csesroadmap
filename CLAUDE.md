@@ -33,6 +33,7 @@ Ao escrever um módulo, mude `status` para `'written'` em `data/modules.ts`.
 ## Stack e comandos
 
 - Astro 7 (estático) + MDX + ilhas React 19 + Tailwind 4 + Shiki + KaTeX (processador `unified` com remark-math/rehype-katex). Node ≥ 22.23.4.
-- `npm run validate` (roda no prebuild), `npm test`, `npm run check`, `npm run build`.
+- `npm run validate` (roda no prebuild), `npm test`, `npm run check`, `npm run build`, `npm run check-links` (com `NODE_USE_ENV_PROXY=1` em sessões com proxy). O código C++ dos módulos deve compilar com `-Wall -Wextra -Wshadow` e ser testado contra força bruta antes de publicar.
+- Links verificados até agora: usaco.guide, cp-algorithms.com, YouTube (via oEmbed). codeforces.com estava bloqueado na sessão de 2026-10-29, então nenhum link do Codeforces EDU entrou ainda.
 - Progresso: `src/lib/progress/` (nanostores + `ProgressAdapter`; localStorage hoje, sync na fase 2). As ilhas leem com `useProgress()`, que devolve o estado vazio até o mount para evitar hydration mismatch. Não use `useStore($progress)` direto em componente hidratado.
 - Git: o trabalho vai para a branch `dev`; a `main` é a produção da Vercel.

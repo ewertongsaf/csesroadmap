@@ -1,0 +1,195 @@
+# Dicas do milestone 3 — Ordenação, greedy e busca binária.
+problems:
+  1621: # Distinct Numbers
+    hints:
+      - >-
+        Depois de ordenar, onde ficam os valores repetidos?
+      - >-
+        Num array ordenado, iguais ficam juntos: conte quantas vezes o valor muda de uma posição para a próxima (ou use `sort` + `unique`).
+    pitfalls:
+      - >-
+        `set` também resolve, com constante maior. `unordered_set` pode tomar TLE por testes que forçam colisões.
+
+  1084: # Apartments
+    hints:
+      - >-
+        Ordene as pessoas pelo tamanho desejado e os apartamentos pelo tamanho. Pense em quem é mais "difícil" de atender.
+      - >-
+        Percorra as duas listas ordenadas ao mesmo tempo. Se o apartamento atual é pequeno demais para a pessoa atual, ele não serve para ninguém que vem depois.
+      - >-
+        Com dois ponteiros: se o apartamento serve (diferença no máximo $k$), case os dois e avance ambos; senão, avance o ponteiro do lado que ficou "para trás".
+    pitfalls:
+      - >-
+        Cada apartamento atende uma pessoa só. Releia a condição de "perto o suficiente": é $|a_i - b_j| \le k$, com igualdade inclusa.
+
+  1090: # Ferris Wheel
+    hints:
+      - >-
+        Cada gôndola leva no máximo duas crianças. Quem é o par mais "difícil" de formar?
+      - >-
+        Ordene. A criança mais pesada vai numa gôndola de qualquer jeito; a melhor companhia para ela, se couber alguém, é a mais leve.
+      - >-
+        Dois ponteiros, um em cada ponta: se a mais leve e a mais pesada cabem juntas, saem as duas; senão, a mais pesada vai sozinha.
+    pitfalls:
+      - >-
+        Quando os ponteiros se encontram, sobra uma criança e ela precisa de uma gôndola. Confira o caso $n = 1$.
+
+  1074: # Stick Lengths
+    hints:
+      - >-
+        Você quer escolher um valor $x$ que minimize $\sum |p_i - x|$. Se $x$ andar uma unidade para a direita, o custo muda quanto?
+      - >-
+        Andar para a direita diminui o custo dos que estão à direita de $x$ e aumenta o dos que estão à esquerda. O ótimo é onde os dois lados se equilibram: a **mediana**.
+    pitfalls:
+      - >-
+        O custo total chega a ~$2 \cdot 10^5 \cdot 10^9$: `long long`.
+
+  1629: # Movie Festival
+    hints:
+      - >-
+        Se você vai ver o primeiro filme, qual deveria escolher para "gastar" o mínimo de futuro?
+      - >-
+        O filme que **termina** primeiro é a escolha segura: qualquer solução que começa com outro filme pode trocá-lo por este sem perder nada (argumento de troca).
+      - >-
+        Ordene pelo fim e pegue, em ordem, todo filme que começa depois (ou no instante) em que o último escolhido terminou.
+    pitfalls:
+      - >-
+        Ordenar pelo início é o erro clássico. Um filme pode começar exatamente quando o anterior termina.
+
+  1630: # Tasks and Deadlines
+    hints:
+      - >-
+        Escreva a recompensa total como uma soma: $\sum d_i - \sum f_i$. Qual das duas parcelas depende da ordem?
+      - >-
+        Os prazos $d_i$ somam o mesmo em qualquer ordem. Você só precisa minimizar a soma dos tempos de término.
+      - >-
+        Uma tarefa longa feita cedo atrasa todas as que vêm depois. Troque duas tarefas vizinhas e compare: qual ordem é melhor?
+    pitfalls:
+      - >-
+        A soma dos tempos de término chega a ~$10^{16}$: `long long`. A recompensa pode ser negativa.
+
+  1631: # Reading Books
+    hints:
+      - >-
+        Qual o mínimo óbvio? Os dois precisam ler tudo, então nenhum termina antes da soma de todos os tempos.
+      - >-
+        Quando esse mínimo não é atingido? Pense num livro enorme: enquanto um lê o livro grande, o outro precisa ter o que fazer.
+      - >-
+        A resposta é o máximo entre duas quantidades simples: a soma total e o dobro do maior livro.
+    pitfalls:
+      - >-
+        Soma em `long long`. Pense em por que o caso "livro grande" é exatamente quando o maior é maior que a soma dos outros.
+
+  2183: # Missing Coin Sum
+    hints:
+      - >-
+        Ordene as moedas. Suponha que, com as primeiras moedas, você consegue formar **todas** as somas de 1 até $s$. O que acontece quando chega uma moeda de valor $c$?
+      - >-
+        Se $c \le s + 1$, agora dá para formar tudo de 1 até $s + c$. Se $c > s + 1$, a soma $s + 1$ nunca vai ser formada, porque todas as próximas moedas são ainda maiores.
+    pitfalls:
+      - >-
+        Ordene antes. $s$ chega a $2 \cdot 10^{14}$: `long long`. Se nenhuma moeda "falha", a resposta é a soma total mais 1.
+
+  2216: # Collecting Numbers
+    hints:
+      - >-
+        Quando é que um número $i+1$ **não** é coletado na mesma rodada que $i$?
+      - >-
+        Exatamente quando $i+1$ está à esquerda de $i$ no array. Guarde a posição de cada número.
+      - >-
+        O número de rodadas é 1 mais a quantidade de $i$ com $\text{pos}[i+1] < \text{pos}[i]$.
+    pitfalls:
+      - >-
+        Use um vetor `pos` indexado pelo valor (os valores são exatamente $1 \dots n$), não uma busca a cada vez.
+
+  2217: # Collecting Numbers II
+    hints:
+      - >-
+        Partindo do problema anterior: a resposta é 1 mais a quantidade de "quebras" $\text{pos}[i+1] < \text{pos}[i]$. Uma troca muda quais pares $(i, i+1)$?
+      - >-
+        Trocar os números $x$ e $y$ só afeta os pares $(x-1, x)$, $(x, x+1)$, $(y-1, y)$ e $(y, y+1)$. Os outros continuam iguais.
+      - >-
+        Para cada troca: tire da resposta a contribuição desses pares, faça a troca (atualizando array e posições) e some a nova contribuição.
+    pitfalls:
+      - >-
+        Se $x$ e $y$ são consecutivos, os pares se repetem e você conta duas vezes. Junte os pares num `set` antes de somar/subtrair. Atenção: a entrada dá **posições** $a$, $b$, não valores.
+
+  3151: # Bubble Sort Rounds I
+    hints:
+      - >-
+        Numa rodada, um elemento pode andar várias casas para a **direita**. E para a esquerda, quantas no máximo?
+      - >-
+        Um elemento só anda para a esquerda quando um maior passa por cima dele, e isso acontece no máximo uma vez por rodada. Então ele anda no máximo 1 casa para a esquerda por rodada.
+      - >-
+        O número de rodadas é a maior distância que algum elemento precisa andar para a esquerda até a sua posição final. Ordene guardando os índices originais.
+    pitfalls:
+      - >-
+        Valores repetidos: o bubble sort não troca iguais, então a posição final de cada um é a de uma ordenação **estável** (desempate pelo índice original).
+
+  1743: # String Reorder
+    hints:
+      - >-
+        Quando é impossível? Pense na letra mais frequente: entre duas ocorrências dela precisa haver outra letra.
+      - >-
+        Para a menor resposta lexicográfica, decida posição por posição: tente a menor letra possível (diferente da anterior) e só aceite se o **resto** ainda tiver solução.
+      - >-
+        "O resto ainda tem solução" depende só da letra mais frequente que sobrou, do tamanho do resto e de qual letra você acabou de usar. Descubra a condição exata, cobrindo o caso em que a letra mais frequente é obrigada a vir logo em seguida.
+    pitfalls:
+      - >-
+        Testar as 26 letras com uma verificação $O(26)$ cada, em $10^6$ posições, já pesa (~$7 \cdot 10^8$). Repare que ou a menor letra permitida serve, ou a escolha é **forçada** (só uma letra salva o resto): quase nunca é preciso testar mais de duas. Saída sem solução: `-1`.
+
+  1620: # Factory Machines
+    hints:
+      - >-
+        Pergunta de decisão: "dá para fazer $t$ produtos em $T$ segundos?". Como responder em $O(n)$?
+      - >-
+        Em $T$ segundos, a máquina $i$ faz $\lfloor T / k_i \rfloor$ produtos. A resposta é monótona em $T$: busca binária no menor $T$ que dá.
+    pitfalls:
+      - >-
+        Limite superior seguro: a máquina mais rápida sozinha leva $\min(k_i) \cdot t \le 10^{18}$. A soma $\sum \lfloor T/k_i \rfloor$ estoura `long long` com $T$ grande: pare de somar assim que passar de $t$.
+
+  1085: # Array Division
+    hints:
+      - >-
+        "Minimizar o máximo" é o sinal clássico. Fixe um limite $S$: dá para dividir em no máximo $k$ partes com soma no máximo $S$ cada?
+      - >-
+        Para um $S$ fixo, um greedy decide: vá enchendo a parte atual enquanto couber e abra uma nova quando não couber. Conte as partes.
+      - >-
+        Busca binária no menor $S$ em que o greedy usa no máximo $k$ partes. Usar menos que $k$ partes não é problema, porque dá para quebrar partes.
+    pitfalls:
+      - >-
+        $S$ nunca pode ser menor que o maior elemento (ele não cabe em parte nenhuma). As somas vão até $2 \cdot 10^{14}$: `long long`.
+
+  2422: # Multiplication Table
+    hints:
+      - >-
+        A mediana é o menor valor $v$ tal que **pelo menos metade** da tabela é $\le v$. Para um $v$ fixo, como contar quantos números da tabela são $\le v$?
+      - >-
+        Na linha $i$ estão $i, 2i, \dots, ni$. Quantos deles são $\le v$? É uma divisão, limitada por $n$.
+      - >-
+        Busca binária em $v$ com a contagem $\sum_{i=1}^{n} \min(n, \lfloor v/i \rfloor)$, procurando o primeiro $v$ com contagem $\ge (n^2+1)/2$.
+    pitfalls:
+      - >-
+        $n^2$ chega a $10^{12}$: `long long` na contagem e nos limites.
+
+  3112: # Hidden Integer
+    hints:
+      - >-
+        Cada pergunta "$y < x$?" responde sim/não. Com 30 perguntas e $x$ até $10^9$, cada pergunta precisa descartar metade das possibilidades.
+      - >-
+        Busca binária na fronteira: o predicado "$y \ge x$" é falso para $y$ pequeno e verdadeiro a partir de $x$. O primeiro $y$ em que ele é verdadeiro é a resposta.
+    pitfalls:
+      - >-
+        Flush depois de **cada** pergunta (`endl` ou `cout.flush()`), principalmente se você usa o `fastio()` do template. Confira se a contagem de perguntas cabe em 30 nos extremos ($x = 1$ e $x = 10^9$).
+
+  1087: # Shortest Subsequence (reservado: Checkpoint Cego)
+    hints:
+      - >-
+        Pense ao contrário: uma sequência de tamanho 1 é subsequência quando a letra aparece. E de tamanho 2? O que a string precisa ter para conter **todas** as de tamanho 2?
+      - >-
+        Leia a string da esquerda para a direita e corte em blocos: um bloco termina assim que as 4 letras apareceram nele. Quantos blocos completos existem?
+      - >-
+        A letra que **fecha** cada bloco é uma escolha ruim para o adversário. Monte a resposta com essas letras e termine com uma letra que não aparece no último pedaço incompleto.
+    pitfalls:
+      - >-
+        O pedaço final depois do último bloco completo pode estar vazio: aí qualquer letra serve para terminar. $n$ até $10^6$: construa a resposta com `+=`.

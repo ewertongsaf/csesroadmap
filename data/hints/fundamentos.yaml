@@ -1,0 +1,193 @@
+# Dicas do milestone 1 — Fundamentos. Da observação à ideia; nunca código da solução.
+problems:
+  1068: # Weird Algorithm
+    hints:
+      - >-
+        É simulação pura: faça exatamente o que o enunciado descreve até chegar em 1.
+      - >-
+        Antes de codar, pergunte: qual o **maior valor** que aparece no meio da sequência? Não é o $n$ da entrada.
+    pitfalls:
+      - >-
+        Os valores intermediários passam de $2^{31}$ mesmo com $n \le 10^6$ (o $3n+1$ cresce). Use `long long` para o valor atual.
+
+  1083: # Missing Number
+    hints:
+      - >-
+        Você sabe exatamente quais números *deveriam* estar lá. Que informação sobre o conjunto inteiro dá para calcular sem ler a entrada?
+      - >-
+        Soma esperada menos soma lida. (Também funciona com xor, que nunca estoura.)
+    pitfalls:
+      - >-
+        $n(n+1)/2$ com $n = 2 \cdot 10^5$ passa de $2 \cdot 10^{10}$: calcule em `long long`.
+
+  1069: # Repetitions
+    hints:
+      - >-
+        Percorra a string uma vez lembrando o tamanho da sequência atual de letras iguais.
+      - >-
+        Quando a letra muda, a sequência atual recomeça em 1; a resposta é o maior valor que ela atingiu.
+    pitfalls:
+      - >-
+        Atualize o máximo também depois do último caractere (ou a cada passo), senão a sequência que termina no fim da string fica de fora.
+
+  1094: # Increasing Array
+    hints:
+      - >-
+        Se um elemento é menor que o anterior, quanto ele *precisa* subir, no mínimo? Subir mais nunca ajuda.
+      - >-
+        Varra da esquerda para a direita mantendo o valor (já corrigido) do elemento anterior; cada elemento sobe até igualar esse valor, se precisar.
+    pitfalls:
+      - >-
+        O total de movimentos chega a ~$2 \cdot 10^5 \cdot 10^9$: `long long`.
+
+  1070: # Permutations
+    hints:
+      - >-
+        Resolva na mão para $n = 1, 2, 3, 4, 5$. Para quais não existe solução?
+      - >-
+        Dois números da mesma paridade nunca são vizinhos de diferença 1. Tente colocar um grupo inteiro de paridade e depois o outro.
+      - >-
+        Todos os pares e depois todos os ímpares funciona quando a "emenda" entre os grupos não tem diferença 1. Confira a ordem dentro de cada grupo para que isso aconteça, e trate os casos pequenos à parte.
+    pitfalls:
+      - >-
+        $n = 1$ tem solução (`1`); $n = 2$ e $n = 3$ não. A saída exata é `NO SOLUTION`.
+
+  1071: # Number Spiral
+    hints:
+      - >-
+        Desenhe a espiral até $5 \times 5$. Os números formam "camadas" em forma de L: a camada $k$ é a borda do quadrado $k \times k$.
+      - >-
+        A célula $(y, x)$ está na camada $k = \max(y, x)$, que contém exatamente os números de $(k-1)^2 + 1$ até $k^2$.
+      - >-
+        O sentido em que a camada é percorrida depende da paridade de $k$. Descubra em que ponta da camada fica o $k^2$ para $k$ par e para $k$ ímpar, e ande a partir dali.
+    pitfalls:
+      - >-
+        $y, x$ vão até $10^9$, então $k^2$ chega a $10^{18}$: `long long` em tudo.
+
+  1072: # Two Knights
+    hints:
+      - >-
+        Conte o complementar: total de pares de casas menos os pares em que os cavalos se atacam.
+      - >-
+        O total de pares num tabuleiro $k \times k$ é $\binom{k^2}{2}$. Para os pares que se atacam: dois cavalos que se atacam sempre ocupam cantos opostos de um retângulo $2 \times 3$ ou $3 \times 2$.
+      - >-
+        Quantos retângulos $2 \times 3$ cabem num tabuleiro $k \times k$? E quantos pares que se atacam existem dentro de cada um?
+    pitfalls:
+      - >-
+        $\binom{k^2}{2}$ com $k = 10^4$ é ~$5 \cdot 10^{15}$: `long long`, e multiplique em `long long` antes de dividir por 2.
+
+  1092: # Two Sets
+    hints:
+      - >-
+        Qual a soma de cada conjunto, se existir solução? Quando isso é impossível logo de cara?
+      - >-
+        Se a soma total é par, o alvo de cada conjunto é metade dela. Tente montar um conjunto com soma exatamente igual ao alvo usando os números grandes primeiro.
+      - >-
+        Greedy: percorra de $n$ até 1 e coloque o número no primeiro conjunto sempre que ele ainda couber no que falta para o alvo. Pense por que isso nunca "trava".
+    pitfalls:
+      - >-
+        A soma total $n(n+1)/2$ em `long long`. E o formato de saída: tamanho de cada conjunto antes dos elementos.
+
+  1617: # Bit Strings
+    hints:
+      - >-
+        Cada posição tem 2 escolhas independentes. Quantas strings de tamanho $n$ existem?
+      - >-
+        A resposta é uma potência de 2 enorme; calcule multiplicando por 2 a cada passo e reduzindo módulo $10^9+7$ a cada multiplicação.
+    pitfalls:
+      - >-
+        Não use `pow` (é `double`) nem `1 << n`. O módulo é $10^9 + 7$.
+
+  1618: # Trailing Zeros
+    hints:
+      - >-
+        Cada zero no fim vem de um fator $10 = 2 \cdot 5$. Em $n!$, qual dos dois fatores é mais raro?
+      - >-
+        Conte quantos fatores 5 aparecem em $1 \cdot 2 \cdots n$. Mas cuidado: 25 contribui com dois cincos, 125 com três…
+      - >-
+        Some $\lfloor n/5 \rfloor + \lfloor n/25 \rfloor + \lfloor n/125 \rfloor + \dots$ até o termo zerar.
+    pitfalls:
+      - >-
+        Calcular $n!$ de verdade é impossível ($n$ até $10^9$). E ao gerar as potências de 5, cuidado para elas não estourarem `int`.
+
+  1754: # Coin Piles
+    hints:
+      - >-
+        Cada movimento tira 3 moedas no total. O que isso implica sobre $a + b$?
+      - >-
+        Além da soma, existe uma restrição de "equilíbrio": uma pilha não pode ser grande demais em relação à outra. Qual é o máximo que uma pilha pode ter, em função da outra?
+      - >-
+        As duas condições juntas são necessárias e suficientes: $(a+b)$ divisível por 3 e $\max(a,b) \le 2 \min(a,b)$. Prove a suficiência pensando em quantos movimentos de cada tipo você faz.
+    pitfalls:
+      - >-
+        $2 \cdot \min(a, b)$ com valores até $10^9$ passa de `int`. Saída: `YES`/`NO` para cada teste.
+
+  1755: # Palindrome Reorder
+    hints:
+      - >-
+        Num palíndromo, cada letra aparece em pares espelhados, exceto possivelmente uma no meio.
+      - >-
+        Conte as letras. Se mais de uma letra aparece um número ímpar de vezes, é impossível.
+      - >-
+        Monte a primeira metade com metade das ocorrências de cada letra, coloque a letra ímpar (se houver) no meio e espelhe.
+    pitfalls:
+      - >-
+        Construa a resposta com `+=` ou um buffer, não com `s = s + c` (que é $O(n^2)$ para $n = 10^6$). Saída sem solução: `NO SOLUTION`.
+
+  3419: # Mex Grid Construction
+    hints:
+      - >-
+        Os limites são pequenos ($n \le 100$): dá para simplesmente preencher o grid na ordem de leitura, calculando cada célula a partir do que já foi preenchido.
+      - >-
+        Para cada célula, marque num vetor de booleanos os valores que aparecem à esquerda e acima, e ache o menor não marcado. O custo é $O(n)$ por célula, $O(n^3)$ no total, ~$10^6$.
+    pitfalls:
+      - >-
+        O vetor de "vistos" precisa ser limpo a cada célula. E o mex pode chegar a quase $2n$ (até $n-1$ valores à esquerda mais $n-1$ acima).
+
+  3311: # Grid Coloring I
+    hints:
+      - >-
+        Para uma célula, quantas letras ficam proibidas se você já decidiu as células de cima e da esquerda?
+      - >-
+        No máximo 3 proibidas (a original, a de cima, a da esquerda) entre 4 letras. Sempre sobra uma.
+      - >-
+        Preencha em ordem de leitura escolhendo qualquer letra permitida. A célula de baixo e a da direita ainda não foram decididas, então serão elas que vão desviar desta.
+    pitfalls:
+      - >-
+        Pela observação acima, o caso `IMPOSSIBLE` nunca acontece. Se seu código imprime isso, há bug. E a restrição de vizinhança vale para a letra **nova**, não para a original.
+
+  3399: # Raab Game I
+    hints:
+      - >-
+        Os dois jogadores têm exatamente as mesmas cartas. O que a soma das diferenças $x_i - y_i$, ao longo de todas as rodadas, sempre vale?
+      - >-
+        Como essa soma é zero, se alguém ganha alguma rodada, o outro também precisa ganhar alguma. Com $a + b \le n$, as $n - a - b$ rodadas restantes são empates.
+      - >-
+        Empate é fácil (mesma carta dos dois lados). Para as $a + b$ cartas restantes, os dois jogam o mesmo bloco de cartas, um deles em ordem **deslocada ciclicamente**. Descubra qual deslocamento dá exatamente $a$ vitórias para um lado.
+    pitfalls:
+      - >-
+        Os casos $a = 0, b > 0$ e $a > 0, b = 0$ são impossíveis, e $a + b > n$ também. Teste $n = 1$ e $a = b = 0$.
+
+  2431: # Digit Queries
+    hints:
+      - >-
+        Não dá para construir a string ($k$ até $10^{18}$). Agrupe os números pelo número de dígitos: quantos dígitos ocupam todos os números de 1 dígito? E os de 2?
+      - >-
+        Os números de $d$ dígitos são $9 \cdot 10^{d-1}$ e ocupam $9 \cdot 10^{d-1} \cdot d$ posições. Pule blocos inteiros até achar o bloco em que a posição $k$ cai.
+      - >-
+        Dentro do bloco de $d$ dígitos, a divisão (posição restante) $/\, d$ diz **qual** número é, e o resto diz **qual dígito** dele.
+    pitfalls:
+      - >-
+        Off-by-one: $k$ começa em 1. Calcule as potências de 10 com um laço de inteiros (não `pow`) e cuidado para não calcular blocos além do necessário: o bloco de 18 dígitos passa de $10^{19}$ e estoura `long long`.
+
+  3215: # Bouncing Ball Steps (reservado: Checkpoint Cego)
+    hints:
+      - >-
+        O movimento na vertical e o movimento na horizontal são **independentes**: cada eixo é uma bola quicando num segmento.
+      - >-
+        Num segmento de tamanho $n$, a posição se repete a cada $2(n-1)$ passos. Reduza $k$ e calcule a posição de cada eixo diretamente.
+      - >-
+        Cada eixo bate na borda a cada $n - 1$ (ou $m - 1$) passos. Mas se os dois eixos batem **no mesmo passo** (um canto), isso conta como uma mudança só: quantas vezes isso acontece em $k$ passos?
+    pitfalls:
+      - >-
+        Os cantos são contados uma vez: subtraia os passos múltiplos de $\operatorname{mmc}(n-1, m-1)$. E calcule o mmc como $(n-1)/\gcd \cdot (m-1)$ para não estourar.

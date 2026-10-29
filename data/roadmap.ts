@@ -36,7 +36,7 @@ export const roadmap: Phase[] = [
           p(3399, 3, ['construction', 'casework']),
           p(2431, 3, ['math-basics', 'patterns']),
         ],
-        checkpoint: { reserved: [p(3215, 3, ['math-basics', 'patterns', 'simulation'])], review: [1071, 1092] },
+        checkpoint: { reserved: [p(3215, 3, ['math-basics', 'patterns', 'lcm'])], review: [1071, 1092] },
       },
       {
         slug: 'busca-completa',
