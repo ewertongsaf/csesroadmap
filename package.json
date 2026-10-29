@@ -1,0 +1,11 @@
+{
+  "name": "cses-roadmap",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22.18" },
+  "scripts": {
+    "parse-cses": "node scripts/parse-cses.mjs",
+    "validate": "node scripts/validate-roadmap.ts",
+    "roadmap:summary": "node scripts/validate-roadmap.ts --summary"
+  }
+}

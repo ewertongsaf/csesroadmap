@@ -1,0 +1,2807 @@
+{
+  "source": "https://cses.fi/problemset/",
+  "fetchedAt": "2026-10-29",
+  "note": "Gerado por scripts/parse-cses.mjs. Não editar à mão. Enunciados não são copiados (CC BY-NC-SA).",
+  "problems": [
+    {
+      "id": 1068,
+      "title": "Weird Algorithm",
+      "section": "Introductory Problems",
+      "solvedBy": 182751,
+      "attemptedBy": 190808
+    },
+    {
+      "id": 1083,
+      "title": "Missing Number",
+      "section": "Introductory Problems",
+      "solvedBy": 157632,
+      "attemptedBy": 164690
+    },
+    {
+      "id": 1069,
+      "title": "Repetitions",
+      "section": "Introductory Problems",
+      "solvedBy": 136865,
+      "attemptedBy": 141946
+    },
+    {
+      "id": 1094,
+      "title": "Increasing Array",
+      "section": "Introductory Problems",
+      "solvedBy": 129189,
+      "attemptedBy": 133423
+    },
+    {
+      "id": 1070,
+      "title": "Permutations",
+      "section": "Introductory Problems",
+      "solvedBy": 112828,
+      "attemptedBy": 116060
+    },
+    {
+      "id": 1071,
+      "title": "Number Spiral",
+      "section": "Introductory Problems",
+      "solvedBy": 80294,
+      "attemptedBy": 86993
+    },
+    {
+      "id": 1072,
+      "title": "Two Knights",
+      "section": "Introductory Problems",
+      "solvedBy": 61968,
+      "attemptedBy": 63760
+    },
+    {
+      "id": 1092,
+      "title": "Two Sets",
+      "section": "Introductory Problems",
+      "solvedBy": 67329,
+      "attemptedBy": 71995
+    },
+    {
+      "id": 1617,
+      "title": "Bit Strings",
+      "section": "Introductory Problems",
+      "solvedBy": 76458,
+      "attemptedBy": 80433
+    },
+    {
+      "id": 1618,
+      "title": "Trailing Zeros",
+      "section": "Introductory Problems",
+      "solvedBy": 70787,
+      "attemptedBy": 75038
+    },
+    {
+      "id": 1754,
+      "title": "Coin Piles",
+      "section": "Introductory Problems",
+      "solvedBy": 63074,
+      "attemptedBy": 68540
+    },
+    {
+      "id": 1755,
+      "title": "Palindrome Reorder",
+      "section": "Introductory Problems",
+      "solvedBy": 58675,
+      "attemptedBy": 61681
+    },
+    {
+      "id": 2205,
+      "title": "Gray Code",
+      "section": "Introductory Problems",
+      "solvedBy": 40163,
+      "attemptedBy": 44732
+    },
+    {
+      "id": 2165,
+      "title": "Tower of Hanoi",
+      "section": "Introductory Problems",
+      "solvedBy": 37549,
+      "attemptedBy": 38960
+    },
+    {
+      "id": 1622,
+      "title": "Creating Strings",
+      "section": "Introductory Problems",
+      "solvedBy": 49390,
+      "attemptedBy": 50574
+    },
+    {
+      "id": 1623,
+      "title": "Apple Division",
+      "section": "Introductory Problems",
+      "solvedBy": 50320,
+      "attemptedBy": 56305
+    },
+    {
+      "id": 1624,
+      "title": "Chessboard and Queens",
+      "section": "Introductory Problems",
+      "solvedBy": 30621,
+      "attemptedBy": 31129
+    },
+    {
+      "id": 3399,
+      "title": "Raab Game I",
+      "section": "Introductory Problems",
+      "solvedBy": 8483,
+      "attemptedBy": 9451
+    },
+    {
+      "id": 3419,
+      "title": "Mex Grid Construction",
+      "section": "Introductory Problems",
+      "solvedBy": 8181,
+      "attemptedBy": 8572
+    },
+    {
+      "id": 3217,
+      "title": "Knight Moves Grid",
+      "section": "Introductory Problems",
+      "solvedBy": 8277,
+      "attemptedBy": 8461
+    },
+    {
+      "id": 3311,
+      "title": "Grid Coloring I",
+      "section": "Introductory Problems",
+      "solvedBy": 6984,
+      "attemptedBy": 7222
+    },
+    {
+      "id": 2431,
+      "title": "Digit Queries",
+      "section": "Introductory Problems",
+      "solvedBy": 21467,
+      "attemptedBy": 24520
+    },
+    {
+      "id": 1743,
+      "title": "String Reorder",
+      "section": "Introductory Problems",
+      "solvedBy": 6171,
+      "attemptedBy": 7037
+    },
+    {
+      "id": 1625,
+      "title": "Grid Path Description",
+      "section": "Introductory Problems",
+      "solvedBy": 12055,
+      "attemptedBy": 15364
+    },
+    {
+      "id": 1621,
+      "title": "Distinct Numbers",
+      "section": "Sorting and Searching",
+      "solvedBy": 90955,
+      "attemptedBy": 97807
+    },
+    {
+      "id": 1084,
+      "title": "Apartments",
+      "section": "Sorting and Searching",
+      "solvedBy": 68289,
+      "attemptedBy": 74988
+    },
+    {
+      "id": 1090,
+      "title": "Ferris Wheel",
+      "section": "Sorting and Searching",
+      "solvedBy": 65879,
+      "attemptedBy": 70497
+    },
+    {
+      "id": 1091,
+      "title": "Concert Tickets",
+      "section": "Sorting and Searching",
+      "solvedBy": 52875,
+      "attemptedBy": 60821
+    },
+    {
+      "id": 1619,
+      "title": "Restaurant Customers",
+      "section": "Sorting and Searching",
+      "solvedBy": 53663,
+      "attemptedBy": 57556
+    },
+    {
+      "id": 1629,
+      "title": "Movie Festival",
+      "section": "Sorting and Searching",
+      "solvedBy": 52259,
+      "attemptedBy": 55043
+    },
+    {
+      "id": 1640,
+      "title": "Sum of Two Values",
+      "section": "Sorting and Searching",
+      "solvedBy": 60477,
+      "attemptedBy": 67100
+    },
+    {
+      "id": 1643,
+      "title": "Maximum Subarray Sum",
+      "section": "Sorting and Searching",
+      "solvedBy": 57438,
+      "attemptedBy": 59761
+    },
+    {
+      "id": 1074,
+      "title": "Stick Lengths",
+      "section": "Sorting and Searching",
+      "solvedBy": 51388,
+      "attemptedBy": 53559
+    },
+    {
+      "id": 2183,
+      "title": "Missing Coin Sum",
+      "section": "Sorting and Searching",
+      "solvedBy": 39476,
+      "attemptedBy": 40797
+    },
+    {
+      "id": 2216,
+      "title": "Collecting Numbers",
+      "section": "Sorting and Searching",
+      "solvedBy": 40381,
+      "attemptedBy": 42952
+    },
+    {
+      "id": 2217,
+      "title": "Collecting Numbers II",
+      "section": "Sorting and Searching",
+      "solvedBy": 17895,
+      "attemptedBy": 22161
+    },
+    {
+      "id": 1141,
+      "title": "Playlist",
+      "section": "Sorting and Searching",
+      "solvedBy": 40375,
+      "attemptedBy": 45592
+    },
+    {
+      "id": 1073,
+      "title": "Towers",
+      "section": "Sorting and Searching",
+      "solvedBy": 40303,
+      "attemptedBy": 42954
+    },
+    {
+      "id": 1163,
+      "title": "Traffic Lights",
+      "section": "Sorting and Searching",
+      "solvedBy": 31329,
+      "attemptedBy": 34757
+    },
+    {
+      "id": 3420,
+      "title": "Distinct Values Subarrays",
+      "section": "Sorting and Searching",
+      "solvedBy": 11419,
+      "attemptedBy": 12696
+    },
+    {
+      "id": 3421,
+      "title": "Distinct Values Subsequences",
+      "section": "Sorting and Searching",
+      "solvedBy": 8795,
+      "attemptedBy": 9536
+    },
+    {
+      "id": 2162,
+      "title": "Josephus Problem I",
+      "section": "Sorting and Searching",
+      "solvedBy": 24549,
+      "attemptedBy": 26766
+    },
+    {
+      "id": 2163,
+      "title": "Josephus Problem II",
+      "section": "Sorting and Searching",
+      "solvedBy": 13316,
+      "attemptedBy": 18261
+    },
+    {
+      "id": 2168,
+      "title": "Nested Ranges Check",
+      "section": "Sorting and Searching",
+      "solvedBy": 14670,
+      "attemptedBy": 16527
+    },
+    {
+      "id": 2169,
+      "title": "Nested Ranges Count",
+      "section": "Sorting and Searching",
+      "solvedBy": 9814,
+      "attemptedBy": 11433
+    },
+    {
+      "id": 1164,
+      "title": "Room Allocation",
+      "section": "Sorting and Searching",
+      "solvedBy": 23888,
+      "attemptedBy": 27102
+    },
+    {
+      "id": 1620,
+      "title": "Factory Machines",
+      "section": "Sorting and Searching",
+      "solvedBy": 34816,
+      "attemptedBy": 37497
+    },
+    {
+      "id": 1630,
+      "title": "Tasks and Deadlines",
+      "section": "Sorting and Searching",
+      "solvedBy": 27637,
+      "attemptedBy": 28156
+    },
+    {
+      "id": 1631,
+      "title": "Reading Books",
+      "section": "Sorting and Searching",
+      "solvedBy": 22474,
+      "attemptedBy": 23931
+    },
+    {
+      "id": 1641,
+      "title": "Sum of Three Values",
+      "section": "Sorting and Searching",
+      "solvedBy": 32222,
+      "attemptedBy": 35355
+    },
+    {
+      "id": 1642,
+      "title": "Sum of Four Values",
+      "section": "Sorting and Searching",
+      "solvedBy": 20064,
+      "attemptedBy": 22098
+    },
+    {
+      "id": 1645,
+      "title": "Nearest Smaller Values",
+      "section": "Sorting and Searching",
+      "solvedBy": 27046,
+      "attemptedBy": 27896
+    },
+    {
+      "id": 1660,
+      "title": "Subarray Sums I",
+      "section": "Sorting and Searching",
+      "solvedBy": 35877,
+      "attemptedBy": 37988
+    },
+    {
+      "id": 1661,
+      "title": "Subarray Sums II",
+      "section": "Sorting and Searching",
+      "solvedBy": 32812,
+      "attemptedBy": 38329
+    },
+    {
+      "id": 1662,
+      "title": "Subarray Divisibility",
+      "section": "Sorting and Searching",
+      "solvedBy": 29608,
+      "attemptedBy": 31998
+    },
+    {
+      "id": 2428,
+      "title": "Distinct Values Subarrays II",
+      "section": "Sorting and Searching",
+      "solvedBy": 18093,
+      "attemptedBy": 19622
+    },
+    {
+      "id": 1085,
+      "title": "Array Division",
+      "section": "Sorting and Searching",
+      "solvedBy": 28057,
+      "attemptedBy": 29390
+    },
+    {
+      "id": 1632,
+      "title": "Movie Festival II",
+      "section": "Sorting and Searching",
+      "solvedBy": 15293,
+      "attemptedBy": 18149
+    },
+    {
+      "id": 1644,
+      "title": "Maximum Subarray Sum II",
+      "section": "Sorting and Searching",
+      "solvedBy": 14267,
+      "attemptedBy": 16767
+    },
+    {
+      "id": 1633,
+      "title": "Dice Combinations",
+      "section": "Dynamic Programming",
+      "solvedBy": 95360,
+      "attemptedBy": 100577
+    },
+    {
+      "id": 1634,
+      "title": "Minimizing Coins",
+      "section": "Dynamic Programming",
+      "solvedBy": 82381,
+      "attemptedBy": 88107
+    },
+    {
+      "id": 1635,
+      "title": "Coin Combinations I",
+      "section": "Dynamic Programming",
+      "solvedBy": 75269,
+      "attemptedBy": 81021
+    },
+    {
+      "id": 1636,
+      "title": "Coin Combinations II",
+      "section": "Dynamic Programming",
+      "solvedBy": 63947,
+      "attemptedBy": 71744
+    },
+    {
+      "id": 1637,
+      "title": "Removing Digits",
+      "section": "Dynamic Programming",
+      "solvedBy": 71085,
+      "attemptedBy": 72465
+    },
+    {
+      "id": 1638,
+      "title": "Grid Paths I",
+      "section": "Dynamic Programming",
+      "solvedBy": 66672,
+      "attemptedBy": 68425
+    },
+    {
+      "id": 1158,
+      "title": "Book Shop",
+      "section": "Dynamic Programming",
+      "solvedBy": 60260,
+      "attemptedBy": 65813
+    },
+    {
+      "id": 1746,
+      "title": "Array Description",
+      "section": "Dynamic Programming",
+      "solvedBy": 44660,
+      "attemptedBy": 49134
+    },
+    {
+      "id": 2413,
+      "title": "Counting Towers",
+      "section": "Dynamic Programming",
+      "solvedBy": 27969,
+      "attemptedBy": 29489
+    },
+    {
+      "id": 1639,
+      "title": "Edit Distance",
+      "section": "Dynamic Programming",
+      "solvedBy": 44355,
+      "attemptedBy": 46634
+    },
+    {
+      "id": 3403,
+      "title": "Longest Common Subsequence",
+      "section": "Dynamic Programming",
+      "solvedBy": 16318,
+      "attemptedBy": 16841
+    },
+    {
+      "id": 1744,
+      "title": "Rectangle Cutting",
+      "section": "Dynamic Programming",
+      "solvedBy": 36609,
+      "attemptedBy": 39743
+    },
+    {
+      "id": 3359,
+      "title": "Minimal Grid Path",
+      "section": "Dynamic Programming",
+      "solvedBy": 7745,
+      "attemptedBy": 12582
+    },
+    {
+      "id": 1745,
+      "title": "Money Sums",
+      "section": "Dynamic Programming",
+      "solvedBy": 43202,
+      "attemptedBy": 44720
+    },
+    {
+      "id": 1097,
+      "title": "Removal Game",
+      "section": "Dynamic Programming",
+      "solvedBy": 27023,
+      "attemptedBy": 34581
+    },
+    {
+      "id": 1093,
+      "title": "Two Sets II",
+      "section": "Dynamic Programming",
+      "solvedBy": 34150,
+      "attemptedBy": 36452
+    },
+    {
+      "id": 3314,
+      "title": "Mountain Range",
+      "section": "Dynamic Programming",
+      "solvedBy": 5397,
+      "attemptedBy": 9029
+    },
+    {
+      "id": 1145,
+      "title": "Increasing Subsequence",
+      "section": "Dynamic Programming",
+      "solvedBy": 34648,
+      "attemptedBy": 38746
+    },
+    {
+      "id": 1140,
+      "title": "Projects",
+      "section": "Dynamic Programming",
+      "solvedBy": 24516,
+      "attemptedBy": 27170
+    },
+    {
+      "id": 1653,
+      "title": "Elevator Rides",
+      "section": "Dynamic Programming",
+      "solvedBy": 16193,
+      "attemptedBy": 19934
+    },
+    {
+      "id": 2181,
+      "title": "Counting Tilings",
+      "section": "Dynamic Programming",
+      "solvedBy": 9493,
+      "attemptedBy": 10241
+    },
+    {
+      "id": 2220,
+      "title": "Counting Numbers",
+      "section": "Dynamic Programming",
+      "solvedBy": 14226,
+      "attemptedBy": 15687
+    },
+    {
+      "id": 1748,
+      "title": "Increasing Subsequence II",
+      "section": "Dynamic Programming",
+      "solvedBy": 6591,
+      "attemptedBy": 7708
+    },
+    {
+      "id": 1192,
+      "title": "Counting Rooms",
+      "section": "Graph Algorithms",
+      "solvedBy": 66511,
+      "attemptedBy": 69571
+    },
+    {
+      "id": 1193,
+      "title": "Labyrinth",
+      "section": "Graph Algorithms",
+      "solvedBy": 47354,
+      "attemptedBy": 55414
+    },
+    {
+      "id": 1666,
+      "title": "Building Roads",
+      "section": "Graph Algorithms",
+      "solvedBy": 58252,
+      "attemptedBy": 60161
+    },
+    {
+      "id": 1667,
+      "title": "Message Route",
+      "section": "Graph Algorithms",
+      "solvedBy": 50577,
+      "attemptedBy": 52366
+    },
+    {
+      "id": 1668,
+      "title": "Building Teams",
+      "section": "Graph Algorithms",
+      "solvedBy": 47732,
+      "attemptedBy": 50001
+    },
+    {
+      "id": 1669,
+      "title": "Round Trip",
+      "section": "Graph Algorithms",
+      "solvedBy": 37851,
+      "attemptedBy": 40863
+    },
+    {
+      "id": 1194,
+      "title": "Monsters",
+      "section": "Graph Algorithms",
+      "solvedBy": 27045,
+      "attemptedBy": 31098
+    },
+    {
+      "id": 1671,
+      "title": "Shortest Routes I",
+      "section": "Graph Algorithms",
+      "solvedBy": 41861,
+      "attemptedBy": 45562
+    },
+    {
+      "id": 1672,
+      "title": "Shortest Routes II",
+      "section": "Graph Algorithms",
+      "solvedBy": 33729,
+      "attemptedBy": 37389
+    },
+    {
+      "id": 1673,
+      "title": "High Score",
+      "section": "Graph Algorithms",
+      "solvedBy": 21826,
+      "attemptedBy": 29194
+    },
+    {
+      "id": 1195,
+      "title": "Flight Discount",
+      "section": "Graph Algorithms",
+      "solvedBy": 27889,
+      "attemptedBy": 31937
+    },
+    {
+      "id": 1197,
+      "title": "Cycle Finding",
+      "section": "Graph Algorithms",
+      "solvedBy": 19744,
+      "attemptedBy": 23473
+    },
+    {
+      "id": 1196,
+      "title": "Flight Routes",
+      "section": "Graph Algorithms",
+      "solvedBy": 19207,
+      "attemptedBy": 21130
+    },
+    {
+      "id": 1678,
+      "title": "Round Trip II",
+      "section": "Graph Algorithms",
+      "solvedBy": 21296,
+      "attemptedBy": 23605
+    },
+    {
+      "id": 1679,
+      "title": "Course Schedule",
+      "section": "Graph Algorithms",
+      "solvedBy": 28153,
+      "attemptedBy": 29515
+    },
+    {
+      "id": 1680,
+      "title": "Longest Flight Route",
+      "section": "Graph Algorithms",
+      "solvedBy": 20677,
+      "attemptedBy": 24704
+    },
+    {
+      "id": 1681,
+      "title": "Game Routes",
+      "section": "Graph Algorithms",
+      "solvedBy": 22461,
+      "attemptedBy": 23788
+    },
+    {
+      "id": 1202,
+      "title": "Investigation",
+      "section": "Graph Algorithms",
+      "solvedBy": 17153,
+      "attemptedBy": 18261
+    },
+    {
+      "id": 1750,
+      "title": "Planets Queries I",
+      "section": "Graph Algorithms",
+      "solvedBy": 14889,
+      "attemptedBy": 17087
+    },
+    {
+      "id": 1160,
+      "title": "Planets Queries II",
+      "section": "Graph Algorithms",
+      "solvedBy": 5424,
+      "attemptedBy": 6708
+    },
+    {
+      "id": 1751,
+      "title": "Planets Cycles",
+      "section": "Graph Algorithms",
+      "solvedBy": 8982,
+      "attemptedBy": 9896
+    },
+    {
+      "id": 1675,
+      "title": "Road Reparation",
+      "section": "Graph Algorithms",
+      "solvedBy": 21985,
+      "attemptedBy": 22813
+    },
+    {
+      "id": 1676,
+      "title": "Road Construction",
+      "section": "Graph Algorithms",
+      "solvedBy": 23924,
+      "attemptedBy": 24625
+    },
+    {
+      "id": 1682,
+      "title": "Flight Routes Check",
+      "section": "Graph Algorithms",
+      "solvedBy": 19018,
+      "attemptedBy": 20398
+    },
+    {
+      "id": 1683,
+      "title": "Planets and Kingdoms",
+      "section": "Graph Algorithms",
+      "solvedBy": 15609,
+      "attemptedBy": 16224
+    },
+    {
+      "id": 1684,
+      "title": "Giant Pizza",
+      "section": "Graph Algorithms",
+      "solvedBy": 6558,
+      "attemptedBy": 7147
+    },
+    {
+      "id": 1686,
+      "title": "Coin Collector",
+      "section": "Graph Algorithms",
+      "solvedBy": 10414,
+      "attemptedBy": 11365
+    },
+    {
+      "id": 1691,
+      "title": "Mail Delivery",
+      "section": "Graph Algorithms",
+      "solvedBy": 8215,
+      "attemptedBy": 8900
+    },
+    {
+      "id": 1692,
+      "title": "De Bruijn Sequence",
+      "section": "Graph Algorithms",
+      "solvedBy": 4325,
+      "attemptedBy": 4517
+    },
+    {
+      "id": 1693,
+      "title": "Teleporters Path",
+      "section": "Graph Algorithms",
+      "solvedBy": 6357,
+      "attemptedBy": 7120
+    },
+    {
+      "id": 1690,
+      "title": "Hamiltonian Flights",
+      "section": "Graph Algorithms",
+      "solvedBy": 9783,
+      "attemptedBy": 11022
+    },
+    {
+      "id": 1689,
+      "title": "Knight's Tour",
+      "section": "Graph Algorithms",
+      "solvedBy": 3644,
+      "attemptedBy": 4339
+    },
+    {
+      "id": 1694,
+      "title": "Download Speed",
+      "section": "Graph Algorithms",
+      "solvedBy": 6310,
+      "attemptedBy": 8159
+    },
+    {
+      "id": 1695,
+      "title": "Police Chase",
+      "section": "Graph Algorithms",
+      "solvedBy": 5040,
+      "attemptedBy": 5577
+    },
+    {
+      "id": 1696,
+      "title": "School Dance",
+      "section": "Graph Algorithms",
+      "solvedBy": 5558,
+      "attemptedBy": 5846
+    },
+    {
+      "id": 1711,
+      "title": "Distinct Routes",
+      "section": "Graph Algorithms",
+      "solvedBy": 3912,
+      "attemptedBy": 4978
+    },
+    {
+      "id": 1646,
+      "title": "Static Range Sum Queries",
+      "section": "Range Queries",
+      "solvedBy": 46700,
+      "attemptedBy": 48731
+    },
+    {
+      "id": 1647,
+      "title": "Static Range Minimum Queries",
+      "section": "Range Queries",
+      "solvedBy": 31998,
+      "attemptedBy": 34225
+    },
+    {
+      "id": 1648,
+      "title": "Dynamic Range Sum Queries",
+      "section": "Range Queries",
+      "solvedBy": 33380,
+      "attemptedBy": 34776
+    },
+    {
+      "id": 1649,
+      "title": "Dynamic Range Minimum Queries",
+      "section": "Range Queries",
+      "solvedBy": 30112,
+      "attemptedBy": 30794
+    },
+    {
+      "id": 1650,
+      "title": "Range Xor Queries",
+      "section": "Range Queries",
+      "solvedBy": 30654,
+      "attemptedBy": 31053
+    },
+    {
+      "id": 1651,
+      "title": "Range Update Queries",
+      "section": "Range Queries",
+      "solvedBy": 24909,
+      "attemptedBy": 26555
+    },
+    {
+      "id": 1652,
+      "title": "Forest Queries",
+      "section": "Range Queries",
+      "solvedBy": 25549,
+      "attemptedBy": 26407
+    },
+    {
+      "id": 1143,
+      "title": "Hotel Queries",
+      "section": "Range Queries",
+      "solvedBy": 18231,
+      "attemptedBy": 19208
+    },
+    {
+      "id": 1749,
+      "title": "List Removals",
+      "section": "Range Queries",
+      "solvedBy": 15164,
+      "attemptedBy": 15862
+    },
+    {
+      "id": 1144,
+      "title": "Salary Queries",
+      "section": "Range Queries",
+      "solvedBy": 11804,
+      "attemptedBy": 14490
+    },
+    {
+      "id": 2166,
+      "title": "Prefix Sum Queries",
+      "section": "Range Queries",
+      "solvedBy": 9867,
+      "attemptedBy": 10572
+    },
+    {
+      "id": 2206,
+      "title": "Pizzeria Queries",
+      "section": "Range Queries",
+      "solvedBy": 7885,
+      "attemptedBy": 8146
+    },
+    {
+      "id": 3304,
+      "title": "Visible Buildings Queries",
+      "section": "Range Queries",
+      "solvedBy": 2540,
+      "attemptedBy": 2747
+    },
+    {
+      "id": 3163,
+      "title": "Range Interval Queries",
+      "section": "Range Queries",
+      "solvedBy": 1935,
+      "attemptedBy": 2559
+    },
+    {
+      "id": 1190,
+      "title": "Subarray Sum Queries",
+      "section": "Range Queries",
+      "solvedBy": 9064,
+      "attemptedBy": 9753
+    },
+    {
+      "id": 3226,
+      "title": "Subarray Sum Queries II",
+      "section": "Range Queries",
+      "solvedBy": 2939,
+      "attemptedBy": 3018
+    },
+    {
+      "id": 1734,
+      "title": "Distinct Values Queries",
+      "section": "Range Queries",
+      "solvedBy": 8563,
+      "attemptedBy": 10331
+    },
+    {
+      "id": 3356,
+      "title": "Distinct Values Queries II",
+      "section": "Range Queries",
+      "solvedBy": 1597,
+      "attemptedBy": 1801
+    },
+    {
+      "id": 2416,
+      "title": "Increasing Array Queries",
+      "section": "Range Queries",
+      "solvedBy": 3271,
+      "attemptedBy": 3704
+    },
+    {
+      "id": 1664,
+      "title": "Movie Festival Queries",
+      "section": "Range Queries",
+      "solvedBy": 1861,
+      "attemptedBy": 2036
+    },
+    {
+      "id": 1739,
+      "title": "Forest Queries II",
+      "section": "Range Queries",
+      "solvedBy": 5277,
+      "attemptedBy": 5642
+    },
+    {
+      "id": 1735,
+      "title": "Range Updates and Sums",
+      "section": "Range Queries",
+      "solvedBy": 7543,
+      "attemptedBy": 8784
+    },
+    {
+      "id": 1736,
+      "title": "Polynomial Queries",
+      "section": "Range Queries",
+      "solvedBy": 5510,
+      "attemptedBy": 6382
+    },
+    {
+      "id": 1737,
+      "title": "Range Queries and Copies",
+      "section": "Range Queries",
+      "solvedBy": 3899,
+      "attemptedBy": 4142
+    },
+    {
+      "id": 2184,
+      "title": "Missing Coin Sum Queries",
+      "section": "Range Queries",
+      "solvedBy": 957,
+      "attemptedBy": 1295
+    },
+    {
+      "id": 1674,
+      "title": "Subordinates",
+      "section": "Tree Algorithms",
+      "solvedBy": 38278,
+      "attemptedBy": 40796
+    },
+    {
+      "id": 1130,
+      "title": "Tree Matching",
+      "section": "Tree Algorithms",
+      "solvedBy": 22317,
+      "attemptedBy": 25601
+    },
+    {
+      "id": 1131,
+      "title": "Tree Diameter",
+      "section": "Tree Algorithms",
+      "solvedBy": 31392,
+      "attemptedBy": 33081
+    },
+    {
+      "id": 1132,
+      "title": "Tree Distances I",
+      "section": "Tree Algorithms",
+      "solvedBy": 24459,
+      "attemptedBy": 26089
+    },
+    {
+      "id": 1133,
+      "title": "Tree Distances II",
+      "section": "Tree Algorithms",
+      "solvedBy": 19976,
+      "attemptedBy": 20835
+    },
+    {
+      "id": 1687,
+      "title": "Company Queries I",
+      "section": "Tree Algorithms",
+      "solvedBy": 22406,
+      "attemptedBy": 23484
+    },
+    {
+      "id": 1688,
+      "title": "Company Queries II",
+      "section": "Tree Algorithms",
+      "solvedBy": 20960,
+      "attemptedBy": 21967
+    },
+    {
+      "id": 1135,
+      "title": "Distance Queries",
+      "section": "Tree Algorithms",
+      "solvedBy": 18883,
+      "attemptedBy": 20141
+    },
+    {
+      "id": 1136,
+      "title": "Counting Paths",
+      "section": "Tree Algorithms",
+      "solvedBy": 12017,
+      "attemptedBy": 12654
+    },
+    {
+      "id": 1137,
+      "title": "Subtree Queries",
+      "section": "Tree Algorithms",
+      "solvedBy": 14037,
+      "attemptedBy": 14889
+    },
+    {
+      "id": 1138,
+      "title": "Path Queries",
+      "section": "Tree Algorithms",
+      "solvedBy": 11361,
+      "attemptedBy": 11960
+    },
+    {
+      "id": 2134,
+      "title": "Path Queries II",
+      "section": "Tree Algorithms",
+      "solvedBy": 4788,
+      "attemptedBy": 6937
+    },
+    {
+      "id": 1139,
+      "title": "Distinct Colors",
+      "section": "Tree Algorithms",
+      "solvedBy": 10867,
+      "attemptedBy": 11866
+    },
+    {
+      "id": 2079,
+      "title": "Finding a Centroid",
+      "section": "Tree Algorithms",
+      "solvedBy": 8830,
+      "attemptedBy": 9164
+    },
+    {
+      "id": 2080,
+      "title": "Fixed-Length Paths I",
+      "section": "Tree Algorithms",
+      "solvedBy": 4463,
+      "attemptedBy": 5564
+    },
+    {
+      "id": 2081,
+      "title": "Fixed-Length Paths II",
+      "section": "Tree Algorithms",
+      "solvedBy": 2212,
+      "attemptedBy": 3763
+    },
+    {
+      "id": 2164,
+      "title": "Josephus Queries",
+      "section": "Mathematics",
+      "solvedBy": 6139,
+      "attemptedBy": 7615
+    },
+    {
+      "id": 1095,
+      "title": "Exponentiation",
+      "section": "Mathematics",
+      "solvedBy": 29617,
+      "attemptedBy": 31493
+    },
+    {
+      "id": 1712,
+      "title": "Exponentiation II",
+      "section": "Mathematics",
+      "solvedBy": 20619,
+      "attemptedBy": 24378
+    },
+    {
+      "id": 1713,
+      "title": "Counting Divisors",
+      "section": "Mathematics",
+      "solvedBy": 27225,
+      "attemptedBy": 30598
+    },
+    {
+      "id": 1081,
+      "title": "Common Divisors",
+      "section": "Mathematics",
+      "solvedBy": 17461,
+      "attemptedBy": 20069
+    },
+    {
+      "id": 1082,
+      "title": "Sum of Divisors",
+      "section": "Mathematics",
+      "solvedBy": 10010,
+      "attemptedBy": 14515
+    },
+    {
+      "id": 2182,
+      "title": "Divisor Analysis",
+      "section": "Mathematics",
+      "solvedBy": 6848,
+      "attemptedBy": 9004
+    },
+    {
+      "id": 2185,
+      "title": "Prime Multiples",
+      "section": "Mathematics",
+      "solvedBy": 7986,
+      "attemptedBy": 9207
+    },
+    {
+      "id": 2417,
+      "title": "Counting Coprime Pairs",
+      "section": "Mathematics",
+      "solvedBy": 5293,
+      "attemptedBy": 6064
+    },
+    {
+      "id": 3396,
+      "title": "Next Prime",
+      "section": "Mathematics",
+      "solvedBy": 2966,
+      "attemptedBy": 3364
+    },
+    {
+      "id": 1079,
+      "title": "Binomial Coefficients",
+      "section": "Mathematics",
+      "solvedBy": 12804,
+      "attemptedBy": 14095
+    },
+    {
+      "id": 1715,
+      "title": "Creating Strings II",
+      "section": "Mathematics",
+      "solvedBy": 10559,
+      "attemptedBy": 11104
+    },
+    {
+      "id": 1716,
+      "title": "Distributing Apples",
+      "section": "Mathematics",
+      "solvedBy": 10085,
+      "attemptedBy": 10802
+    },
+    {
+      "id": 1717,
+      "title": "Christmas Party",
+      "section": "Mathematics",
+      "solvedBy": 8421,
+      "attemptedBy": 8958
+    },
+    {
+      "id": 3397,
+      "title": "Permutation Order",
+      "section": "Mathematics",
+      "solvedBy": 1443,
+      "attemptedBy": 1478
+    },
+    {
+      "id": 3398,
+      "title": "Permutation Rounds",
+      "section": "Mathematics",
+      "solvedBy": 2124,
+      "attemptedBy": 2323
+    },
+    {
+      "id": 2064,
+      "title": "Bracket Sequences I",
+      "section": "Mathematics",
+      "solvedBy": 5614,
+      "attemptedBy": 6073
+    },
+    {
+      "id": 2187,
+      "title": "Bracket Sequences II",
+      "section": "Mathematics",
+      "solvedBy": 3021,
+      "attemptedBy": 3418
+    },
+    {
+      "id": 2209,
+      "title": "Counting Necklaces",
+      "section": "Mathematics",
+      "solvedBy": 2745,
+      "attemptedBy": 2957
+    },
+    {
+      "id": 2210,
+      "title": "Counting Grids",
+      "section": "Mathematics",
+      "solvedBy": 2319,
+      "attemptedBy": 2454
+    },
+    {
+      "id": 1722,
+      "title": "Fibonacci Numbers",
+      "section": "Mathematics",
+      "solvedBy": 8407,
+      "attemptedBy": 10425
+    },
+    {
+      "id": 1096,
+      "title": "Throwing Dice",
+      "section": "Mathematics",
+      "solvedBy": 4406,
+      "attemptedBy": 4758
+    },
+    {
+      "id": 1723,
+      "title": "Graph Paths I",
+      "section": "Mathematics",
+      "solvedBy": 4285,
+      "attemptedBy": 4558
+    },
+    {
+      "id": 1724,
+      "title": "Graph Paths II",
+      "section": "Mathematics",
+      "solvedBy": 3594,
+      "attemptedBy": 3755
+    },
+    {
+      "id": 3154,
+      "title": "System of Linear Equations",
+      "section": "Mathematics",
+      "solvedBy": 716,
+      "attemptedBy": 770
+    },
+    {
+      "id": 3355,
+      "title": "Sum of Four Squares",
+      "section": "Mathematics",
+      "solvedBy": 1032,
+      "attemptedBy": 1222
+    },
+    {
+      "id": 3406,
+      "title": "Triangle Number Sums",
+      "section": "Mathematics",
+      "solvedBy": 913,
+      "attemptedBy": 1080
+    },
+    {
+      "id": 1725,
+      "title": "Dice Probability",
+      "section": "Mathematics",
+      "solvedBy": 3762,
+      "attemptedBy": 4029
+    },
+    {
+      "id": 1726,
+      "title": "Moving Robots",
+      "section": "Mathematics",
+      "solvedBy": 1963,
+      "attemptedBy": 2063
+    },
+    {
+      "id": 1727,
+      "title": "Candy Lottery",
+      "section": "Mathematics",
+      "solvedBy": 2111,
+      "attemptedBy": 3777
+    },
+    {
+      "id": 1728,
+      "title": "Inversion Probability",
+      "section": "Mathematics",
+      "solvedBy": 649,
+      "attemptedBy": 2771
+    },
+    {
+      "id": 1729,
+      "title": "Stick Game",
+      "section": "Mathematics",
+      "solvedBy": 4308,
+      "attemptedBy": 4405
+    },
+    {
+      "id": 1730,
+      "title": "Nim Game I",
+      "section": "Mathematics",
+      "solvedBy": 5737,
+      "attemptedBy": 5943
+    },
+    {
+      "id": 1098,
+      "title": "Nim Game II",
+      "section": "Mathematics",
+      "solvedBy": 4552,
+      "attemptedBy": 4724
+    },
+    {
+      "id": 1099,
+      "title": "Stair Game",
+      "section": "Mathematics",
+      "solvedBy": 3104,
+      "attemptedBy": 3356
+    },
+    {
+      "id": 2207,
+      "title": "Grundy's Game",
+      "section": "Mathematics",
+      "solvedBy": 2177,
+      "attemptedBy": 2834
+    },
+    {
+      "id": 2208,
+      "title": "Another Game",
+      "section": "Mathematics",
+      "solvedBy": 2459,
+      "attemptedBy": 2635
+    },
+    {
+      "id": 1731,
+      "title": "Word Combinations",
+      "section": "String Algorithms",
+      "solvedBy": 7489,
+      "attemptedBy": 10512
+    },
+    {
+      "id": 1753,
+      "title": "String Matching",
+      "section": "String Algorithms",
+      "solvedBy": 14126,
+      "attemptedBy": 18601
+    },
+    {
+      "id": 1732,
+      "title": "Finding Borders",
+      "section": "String Algorithms",
+      "solvedBy": 10429,
+      "attemptedBy": 11319
+    },
+    {
+      "id": 1733,
+      "title": "Finding Periods",
+      "section": "String Algorithms",
+      "solvedBy": 7493,
+      "attemptedBy": 8398
+    },
+    {
+      "id": 1110,
+      "title": "Minimal Rotation",
+      "section": "String Algorithms",
+      "solvedBy": 3757,
+      "attemptedBy": 5417
+    },
+    {
+      "id": 1111,
+      "title": "Longest Palindrome",
+      "section": "String Algorithms",
+      "solvedBy": 5497,
+      "attemptedBy": 7075
+    },
+    {
+      "id": 3138,
+      "title": "All Palindromes",
+      "section": "String Algorithms",
+      "solvedBy": 1094,
+      "attemptedBy": 1215
+    },
+    {
+      "id": 1112,
+      "title": "Required Substring",
+      "section": "String Algorithms",
+      "solvedBy": 2102,
+      "attemptedBy": 3099
+    },
+    {
+      "id": 2420,
+      "title": "Palindrome Queries",
+      "section": "String Algorithms",
+      "solvedBy": 2571,
+      "attemptedBy": 2954
+    },
+    {
+      "id": 2102,
+      "title": "Finding Patterns",
+      "section": "String Algorithms",
+      "solvedBy": 2489,
+      "attemptedBy": 3396
+    },
+    {
+      "id": 2103,
+      "title": "Counting Patterns",
+      "section": "String Algorithms",
+      "solvedBy": 2345,
+      "attemptedBy": 2833
+    },
+    {
+      "id": 2104,
+      "title": "Pattern Positions",
+      "section": "String Algorithms",
+      "solvedBy": 1991,
+      "attemptedBy": 2374
+    },
+    {
+      "id": 2105,
+      "title": "Distinct Substrings",
+      "section": "String Algorithms",
+      "solvedBy": 2210,
+      "attemptedBy": 2605
+    },
+    {
+      "id": 1149,
+      "title": "Distinct Subsequences",
+      "section": "String Algorithms",
+      "solvedBy": 1429,
+      "attemptedBy": 1506
+    },
+    {
+      "id": 2106,
+      "title": "Repeating Substring",
+      "section": "String Algorithms",
+      "solvedBy": 2363,
+      "attemptedBy": 2695
+    },
+    {
+      "id": 2107,
+      "title": "String Functions",
+      "section": "String Algorithms",
+      "solvedBy": 2077,
+      "attemptedBy": 2169
+    },
+    {
+      "id": 3225,
+      "title": "Inverse Suffix Array",
+      "section": "String Algorithms",
+      "solvedBy": 418,
+      "attemptedBy": 472
+    },
+    {
+      "id": 1113,
+      "title": "String Transform",
+      "section": "String Algorithms",
+      "solvedBy": 719,
+      "attemptedBy": 846
+    },
+    {
+      "id": 2108,
+      "title": "Substring Order I",
+      "section": "String Algorithms",
+      "solvedBy": 1511,
+      "attemptedBy": 1660
+    },
+    {
+      "id": 2109,
+      "title": "Substring Order II",
+      "section": "String Algorithms",
+      "solvedBy": 1024,
+      "attemptedBy": 1298
+    },
+    {
+      "id": 2110,
+      "title": "Substring Distribution",
+      "section": "String Algorithms",
+      "solvedBy": 1400,
+      "attemptedBy": 1509
+    },
+    {
+      "id": 2189,
+      "title": "Point Location Test",
+      "section": "Geometry",
+      "solvedBy": 8911,
+      "attemptedBy": 9855
+    },
+    {
+      "id": 2190,
+      "title": "Line Segment Intersection",
+      "section": "Geometry",
+      "solvedBy": 5307,
+      "attemptedBy": 6559
+    },
+    {
+      "id": 2191,
+      "title": "Polygon Area",
+      "section": "Geometry",
+      "solvedBy": 6068,
+      "attemptedBy": 6384
+    },
+    {
+      "id": 2192,
+      "title": "Point in Polygon",
+      "section": "Geometry",
+      "solvedBy": 3423,
+      "attemptedBy": 4273
+    },
+    {
+      "id": 2193,
+      "title": "Polygon Lattice Points",
+      "section": "Geometry",
+      "solvedBy": 2768,
+      "attemptedBy": 2952
+    },
+    {
+      "id": 2194,
+      "title": "Minimum Euclidean Distance",
+      "section": "Geometry",
+      "solvedBy": 2458,
+      "attemptedBy": 3405
+    },
+    {
+      "id": 2195,
+      "title": "Convex Hull",
+      "section": "Geometry",
+      "solvedBy": 4067,
+      "attemptedBy": 4793
+    },
+    {
+      "id": 3410,
+      "title": "Maximum Manhattan Distances",
+      "section": "Geometry",
+      "solvedBy": 957,
+      "attemptedBy": 997
+    },
+    {
+      "id": 3411,
+      "title": "All Manhattan Distances",
+      "section": "Geometry",
+      "solvedBy": 1004,
+      "attemptedBy": 1104
+    },
+    {
+      "id": 1740,
+      "title": "Intersection Points",
+      "section": "Geometry",
+      "solvedBy": 2457,
+      "attemptedBy": 2644
+    },
+    {
+      "id": 3427,
+      "title": "Line Segments Trace I",
+      "section": "Geometry",
+      "solvedBy": 521,
+      "attemptedBy": 539
+    },
+    {
+      "id": 3428,
+      "title": "Line Segments Trace II",
+      "section": "Geometry",
+      "solvedBy": 432,
+      "attemptedBy": 451
+    },
+    {
+      "id": 3429,
+      "title": "Lines and Queries I",
+      "section": "Geometry",
+      "solvedBy": 563,
+      "attemptedBy": 588
+    },
+    {
+      "id": 3430,
+      "title": "Lines and Queries II",
+      "section": "Geometry",
+      "solvedBy": 504,
+      "attemptedBy": 525
+    },
+    {
+      "id": 1741,
+      "title": "Area of Rectangles",
+      "section": "Geometry",
+      "solvedBy": 1454,
+      "attemptedBy": 1613
+    },
+    {
+      "id": 1742,
+      "title": "Robot Path",
+      "section": "Geometry",
+      "solvedBy": 403,
+      "attemptedBy": 723
+    },
+    {
+      "id": 1628,
+      "title": "Meet in the Middle",
+      "section": "Advanced Techniques",
+      "solvedBy": 8656,
+      "attemptedBy": 11535
+    },
+    {
+      "id": 2136,
+      "title": "Hamming Distance",
+      "section": "Advanced Techniques",
+      "solvedBy": 3793,
+      "attemptedBy": 4137
+    },
+    {
+      "id": 3360,
+      "title": "Corner Subgrid Check",
+      "section": "Advanced Techniques",
+      "solvedBy": 382,
+      "attemptedBy": 770
+    },
+    {
+      "id": 2137,
+      "title": "Corner Subgrid Count",
+      "section": "Advanced Techniques",
+      "solvedBy": 2553,
+      "attemptedBy": 2907
+    },
+    {
+      "id": 2138,
+      "title": "Reachable Nodes",
+      "section": "Advanced Techniques",
+      "solvedBy": 2693,
+      "attemptedBy": 2882
+    },
+    {
+      "id": 2143,
+      "title": "Reachability Queries",
+      "section": "Advanced Techniques",
+      "solvedBy": 1810,
+      "attemptedBy": 2116
+    },
+    {
+      "id": 2072,
+      "title": "Cut and Paste",
+      "section": "Advanced Techniques",
+      "solvedBy": 1861,
+      "attemptedBy": 2048
+    },
+    {
+      "id": 2073,
+      "title": "Substring Reversals",
+      "section": "Advanced Techniques",
+      "solvedBy": 1643,
+      "attemptedBy": 1770
+    },
+    {
+      "id": 2074,
+      "title": "Reversals and Sums",
+      "section": "Advanced Techniques",
+      "solvedBy": 1671,
+      "attemptedBy": 1781
+    },
+    {
+      "id": 2076,
+      "title": "Necessary Roads",
+      "section": "Advanced Techniques",
+      "solvedBy": 2470,
+      "attemptedBy": 2530
+    },
+    {
+      "id": 2077,
+      "title": "Necessary Cities",
+      "section": "Advanced Techniques",
+      "solvedBy": 2278,
+      "attemptedBy": 2375
+    },
+    {
+      "id": 2078,
+      "title": "Eulerian Subgraphs",
+      "section": "Advanced Techniques",
+      "solvedBy": 960,
+      "attemptedBy": 1009
+    },
+    {
+      "id": 2084,
+      "title": "Monster Game I",
+      "section": "Advanced Techniques",
+      "solvedBy": 1453,
+      "attemptedBy": 1602
+    },
+    {
+      "id": 2085,
+      "title": "Monster Game II",
+      "section": "Advanced Techniques",
+      "solvedBy": 1280,
+      "attemptedBy": 1363
+    },
+    {
+      "id": 2086,
+      "title": "Subarray Squares",
+      "section": "Advanced Techniques",
+      "solvedBy": 1817,
+      "attemptedBy": 2096
+    },
+    {
+      "id": 2087,
+      "title": "Houses and Schools",
+      "section": "Advanced Techniques",
+      "solvedBy": 982,
+      "attemptedBy": 1155
+    },
+    {
+      "id": 2088,
+      "title": "Knuth Division",
+      "section": "Advanced Techniques",
+      "solvedBy": 1169,
+      "attemptedBy": 1308
+    },
+    {
+      "id": 2111,
+      "title": "Apples and Bananas",
+      "section": "Advanced Techniques",
+      "solvedBy": 1381,
+      "attemptedBy": 1487
+    },
+    {
+      "id": 2112,
+      "title": "One Bit Positions",
+      "section": "Advanced Techniques",
+      "solvedBy": 1034,
+      "attemptedBy": 1122
+    },
+    {
+      "id": 2113,
+      "title": "Signal Processing",
+      "section": "Advanced Techniques",
+      "solvedBy": 1034,
+      "attemptedBy": 1103
+    },
+    {
+      "id": 2101,
+      "title": "New Roads Queries",
+      "section": "Advanced Techniques",
+      "solvedBy": 2728,
+      "attemptedBy": 3253
+    },
+    {
+      "id": 2133,
+      "title": "Dynamic Connectivity",
+      "section": "Advanced Techniques",
+      "solvedBy": 1252,
+      "attemptedBy": 1393
+    },
+    {
+      "id": 2121,
+      "title": "Parcel Delivery",
+      "section": "Advanced Techniques",
+      "solvedBy": 1001,
+      "attemptedBy": 1087
+    },
+    {
+      "id": 2129,
+      "title": "Task Assignment",
+      "section": "Advanced Techniques",
+      "solvedBy": 1158,
+      "attemptedBy": 1246
+    },
+    {
+      "id": 2130,
+      "title": "Distinct Routes II",
+      "section": "Advanced Techniques",
+      "solvedBy": 758,
+      "attemptedBy": 850
+    },
+    {
+      "id": 3220,
+      "title": "Sliding Window Sum",
+      "section": "Sliding Window Problems",
+      "solvedBy": 8791,
+      "attemptedBy": 9071
+    },
+    {
+      "id": 3221,
+      "title": "Sliding Window Minimum",
+      "section": "Sliding Window Problems",
+      "solvedBy": 6621,
+      "attemptedBy": 7529
+    },
+    {
+      "id": 3426,
+      "title": "Sliding Window Xor",
+      "section": "Sliding Window Problems",
+      "solvedBy": 6492,
+      "attemptedBy": 6576
+    },
+    {
+      "id": 3405,
+      "title": "Sliding Window Or",
+      "section": "Sliding Window Problems",
+      "solvedBy": 2954,
+      "attemptedBy": 4830
+    },
+    {
+      "id": 3222,
+      "title": "Sliding Window Distinct Values",
+      "section": "Sliding Window Problems",
+      "solvedBy": 4681,
+      "attemptedBy": 5392
+    },
+    {
+      "id": 3224,
+      "title": "Sliding Window Mode",
+      "section": "Sliding Window Problems",
+      "solvedBy": 3613,
+      "attemptedBy": 3817
+    },
+    {
+      "id": 3219,
+      "title": "Sliding Window Mex",
+      "section": "Sliding Window Problems",
+      "solvedBy": 3402,
+      "attemptedBy": 3573
+    },
+    {
+      "id": 1076,
+      "title": "Sliding Window Median",
+      "section": "Sliding Window Problems",
+      "solvedBy": 15609,
+      "attemptedBy": 17714
+    },
+    {
+      "id": 1077,
+      "title": "Sliding Window Cost",
+      "section": "Sliding Window Problems",
+      "solvedBy": 10201,
+      "attemptedBy": 11696
+    },
+    {
+      "id": 3223,
+      "title": "Sliding Window Inversions",
+      "section": "Sliding Window Problems",
+      "solvedBy": 1876,
+      "attemptedBy": 1980
+    },
+    {
+      "id": 3227,
+      "title": "Sliding Window Advertisement",
+      "section": "Sliding Window Problems",
+      "solvedBy": 364,
+      "attemptedBy": 560
+    },
+    {
+      "id": 3112,
+      "title": "Hidden Integer",
+      "section": "Interactive Problems",
+      "solvedBy": 3103,
+      "attemptedBy": 3244
+    },
+    {
+      "id": 3139,
+      "title": "Hidden Permutation",
+      "section": "Interactive Problems",
+      "solvedBy": 1404,
+      "attemptedBy": 1614
+    },
+    {
+      "id": 3305,
+      "title": "K-th Highest Score",
+      "section": "Interactive Problems",
+      "solvedBy": 645,
+      "attemptedBy": 778
+    },
+    {
+      "id": 3228,
+      "title": "Permuted Binary Strings",
+      "section": "Interactive Problems",
+      "solvedBy": 750,
+      "attemptedBy": 769
+    },
+    {
+      "id": 3273,
+      "title": "Colored Chairs",
+      "section": "Interactive Problems",
+      "solvedBy": 702,
+      "attemptedBy": 745
+    },
+    {
+      "id": 3140,
+      "title": "Inversion Sorting",
+      "section": "Interactive Problems",
+      "solvedBy": 420,
+      "attemptedBy": 469
+    },
+    {
+      "id": 1146,
+      "title": "Counting Bits",
+      "section": "Bitwise Operations",
+      "solvedBy": 6614,
+      "attemptedBy": 8458
+    },
+    {
+      "id": 1655,
+      "title": "Maximum Xor Subarray",
+      "section": "Bitwise Operations",
+      "solvedBy": 3887,
+      "attemptedBy": 4437
+    },
+    {
+      "id": 3191,
+      "title": "Maximum Xor Subset",
+      "section": "Bitwise Operations",
+      "solvedBy": 1521,
+      "attemptedBy": 1673
+    },
+    {
+      "id": 3211,
+      "title": "Number of Subset Xors",
+      "section": "Bitwise Operations",
+      "solvedBy": 1320,
+      "attemptedBy": 1350
+    },
+    {
+      "id": 3192,
+      "title": "K Subset Xors",
+      "section": "Bitwise Operations",
+      "solvedBy": 693,
+      "attemptedBy": 805
+    },
+    {
+      "id": 3233,
+      "title": "All Subarray Xors",
+      "section": "Bitwise Operations",
+      "solvedBy": 420,
+      "attemptedBy": 648
+    },
+    {
+      "id": 2419,
+      "title": "Xor Pyramid Peak",
+      "section": "Bitwise Operations",
+      "solvedBy": 2577,
+      "attemptedBy": 3071
+    },
+    {
+      "id": 3194,
+      "title": "Xor Pyramid Diagonal",
+      "section": "Bitwise Operations",
+      "solvedBy": 483,
+      "attemptedBy": 539
+    },
+    {
+      "id": 3195,
+      "title": "Xor Pyramid Row",
+      "section": "Bitwise Operations",
+      "solvedBy": 410,
+      "attemptedBy": 478
+    },
+    {
+      "id": 1654,
+      "title": "SOS Bit Problem",
+      "section": "Bitwise Operations",
+      "solvedBy": 2705,
+      "attemptedBy": 2860
+    },
+    {
+      "id": 3141,
+      "title": "And Subset Count",
+      "section": "Bitwise Operations",
+      "solvedBy": 671,
+      "attemptedBy": 697
+    },
+    {
+      "id": 2214,
+      "title": "Inverse Inversions",
+      "section": "Construction Problems",
+      "solvedBy": 2182,
+      "attemptedBy": 2328
+    },
+    {
+      "id": 2215,
+      "title": "Monotone Subsequences",
+      "section": "Construction Problems",
+      "solvedBy": 1322,
+      "attemptedBy": 1559
+    },
+    {
+      "id": 3422,
+      "title": "Third Permutation",
+      "section": "Construction Problems",
+      "solvedBy": 598,
+      "attemptedBy": 732
+    },
+    {
+      "id": 3423,
+      "title": "Permutation Prime Sums",
+      "section": "Construction Problems",
+      "solvedBy": 603,
+      "attemptedBy": 645
+    },
+    {
+      "id": 1697,
+      "title": "Chess Tournament",
+      "section": "Construction Problems",
+      "solvedBy": 1438,
+      "attemptedBy": 1649
+    },
+    {
+      "id": 3424,
+      "title": "Distinct Sums Grid",
+      "section": "Construction Problems",
+      "solvedBy": 227,
+      "attemptedBy": 331
+    },
+    {
+      "id": 2423,
+      "title": "Filling Trominos",
+      "section": "Construction Problems",
+      "solvedBy": 326,
+      "attemptedBy": 551
+    },
+    {
+      "id": 2418,
+      "title": "Grid Path Construction",
+      "section": "Construction Problems",
+      "solvedBy": 184,
+      "attemptedBy": 514
+    },
+    {
+      "id": 3303,
+      "title": "Nearest Shops",
+      "section": "Advanced Graph Problems",
+      "solvedBy": 1072,
+      "attemptedBy": 1359
+    },
+    {
+      "id": 1134,
+      "title": "Prüfer Code",
+      "section": "Advanced Graph Problems",
+      "solvedBy": 1803,
+      "attemptedBy": 1926
+    },
+    {
+      "id": 1702,
+      "title": "Tree Traversals",
+      "section": "Advanced Graph Problems",
+      "solvedBy": 1484,
+      "attemptedBy": 1620
+    },
+    {
+      "id": 1757,
+      "title": "Course Schedule II",
+      "section": "Advanced Graph Problems",
+      "solvedBy": 2516,
+      "attemptedBy": 3497
+    },
+    {
+      "id": 1756,
+      "title": "Acyclic Graph Edges",
+      "section": "Advanced Graph Problems",
+      "solvedBy": 2550,
+      "attemptedBy": 2698
+    },
+    {
+      "id": 2177,
+      "title": "Strongly Connected Edges",
+      "section": "Advanced Graph Problems",
+      "solvedBy": 1892,
+      "attemptedBy": 2180
+    },
+    {
+      "id": 2179,
+      "title": "Even Outdegree Edges",
+      "section": "Advanced Graph Problems",
+      "solvedBy": 1642,
+      "attemptedBy": 1907
+    },
+    {
+      "id": 1707,
+      "title": "Graph Girth",
+      "section": "Advanced Graph Problems",
+      "solvedBy": 4138,
+      "attemptedBy": 4650
+    },
+    {
+      "id": 3357,
+      "title": "Fixed Length Walk Queries",
+      "section": "Advanced Graph Problems",
+      "solvedBy": 533,
+      "attemptedBy": 585
+    },
+    {
+      "id": 3111,
+      "title": "Transfer Speeds Sum",
+      "section": "Advanced Graph Problems",
+      "solvedBy": 594,
+      "attemptedBy": 612
+    },
+    {
+      "id": 3407,
+      "title": "MST Edge Check",
+      "section": "Advanced Graph Problems",
+      "solvedBy": 974,
+      "attemptedBy": 1047
+    },
+    {
+      "id": 3408,
+      "title": "MST Edge Set Check",
+      "section": "Advanced Graph Problems",
+      "solvedBy": 409,
+      "attemptedBy": 458
+    },
+    {
+      "id": 3409,
+      "title": "MST Edge Cost",
+      "section": "Advanced Graph Problems",
+      "solvedBy": 569,
+      "attemptedBy": 592
+    },
+    {
+      "id": 1677,
+      "title": "Network Breakdown",
+      "section": "Advanced Graph Problems",
+      "solvedBy": 1416,
+      "attemptedBy": 1532
+    },
+    {
+      "id": 3114,
+      "title": "Tree Coin Collecting I",
+      "section": "Advanced Graph Problems",
+      "solvedBy": 506,
+      "attemptedBy": 546
+    },
+    {
+      "id": 3149,
+      "title": "Tree Coin Collecting II",
+      "section": "Advanced Graph Problems",
+      "solvedBy": 295,
+      "attemptedBy": 334
+    },
+    {
+      "id": 1700,
+      "title": "Tree Isomorphism I",
+      "section": "Advanced Graph Problems",
+      "solvedBy": 1281,
+      "attemptedBy": 1503
+    },
+    {
+      "id": 1701,
+      "title": "Tree Isomorphism II",
+      "section": "Advanced Graph Problems",
+      "solvedBy": 1059,
+      "attemptedBy": 1206
+    },
+    {
+      "id": 1699,
+      "title": "Flight Route Requests",
+      "section": "Advanced Graph Problems",
+      "solvedBy": 611,
+      "attemptedBy": 754
+    },
+    {
+      "id": 1703,
+      "title": "Critical Cities",
+      "section": "Advanced Graph Problems",
+      "solvedBy": 531,
+      "attemptedBy": 788
+    },
+    {
+      "id": 1203,
+      "title": "Visiting Cities",
+      "section": "Advanced Graph Problems",
+      "solvedBy": 805,
+      "attemptedBy": 1038
+    },
+    {
+      "id": 3308,
+      "title": "Graph Coloring",
+      "section": "Advanced Graph Problems",
+      "solvedBy": 329,
+      "attemptedBy": 385
+    },
+    {
+      "id": 3158,
+      "title": "Bus Companies",
+      "section": "Advanced Graph Problems",
+      "solvedBy": 379,
+      "attemptedBy": 389
+    },
+    {
+      "id": 3358,
+      "title": "Split into Two Paths",
+      "section": "Advanced Graph Problems",
+      "solvedBy": 151,
+      "attemptedBy": 253
+    },
+    {
+      "id": 1704,
+      "title": "Network Renovation",
+      "section": "Advanced Graph Problems",
+      "solvedBy": 1078,
+      "attemptedBy": 1406
+    },
+    {
+      "id": 1705,
+      "title": "Forbidden Cities",
+      "section": "Advanced Graph Problems",
+      "solvedBy": 1033,
+      "attemptedBy": 1317
+    },
+    {
+      "id": 1752,
+      "title": "Creating Offices",
+      "section": "Advanced Graph Problems",
+      "solvedBy": 500,
+      "attemptedBy": 648
+    },
+    {
+      "id": 1685,
+      "title": "New Flight Routes",
+      "section": "Advanced Graph Problems",
+      "solvedBy": 433,
+      "attemptedBy": 1082
+    },
+    {
+      "id": 3413,
+      "title": "Filled Subgrid Count I",
+      "section": "Counting Problems",
+      "solvedBy": 863,
+      "attemptedBy": 960
+    },
+    {
+      "id": 3414,
+      "title": "Filled Subgrid Count II",
+      "section": "Counting Problems",
+      "solvedBy": 473,
+      "attemptedBy": 575
+    },
+    {
+      "id": 3415,
+      "title": "All Letter Subgrid Count I",
+      "section": "Counting Problems",
+      "solvedBy": 271,
+      "attemptedBy": 383
+    },
+    {
+      "id": 3416,
+      "title": "All Letter Subgrid Count II",
+      "section": "Counting Problems",
+      "solvedBy": 174,
+      "attemptedBy": 253
+    },
+    {
+      "id": 3417,
+      "title": "Border Subgrid Count I",
+      "section": "Counting Problems",
+      "solvedBy": 141,
+      "attemptedBy": 236
+    },
+    {
+      "id": 3418,
+      "title": "Border Subgrid Count II",
+      "section": "Counting Problems",
+      "solvedBy": 158,
+      "attemptedBy": 181
+    },
+    {
+      "id": 3400,
+      "title": "Raab Game II",
+      "section": "Counting Problems",
+      "solvedBy": 163,
+      "attemptedBy": 183
+    },
+    {
+      "id": 1080,
+      "title": "Empty String",
+      "section": "Counting Problems",
+      "solvedBy": 2000,
+      "attemptedBy": 2419
+    },
+    {
+      "id": 2229,
+      "title": "Permutation Inversions",
+      "section": "Counting Problems",
+      "solvedBy": 1167,
+      "attemptedBy": 1284
+    },
+    {
+      "id": 2176,
+      "title": "Counting Bishops",
+      "section": "Counting Problems",
+      "solvedBy": 471,
+      "attemptedBy": 523
+    },
+    {
+      "id": 2228,
+      "title": "Counting Sequences",
+      "section": "Counting Problems",
+      "solvedBy": 798,
+      "attemptedBy": 853
+    },
+    {
+      "id": 1078,
+      "title": "Grid Paths II",
+      "section": "Counting Problems",
+      "solvedBy": 879,
+      "attemptedBy": 1104
+    },
+    {
+      "id": 1075,
+      "title": "Counting Permutations",
+      "section": "Counting Problems",
+      "solvedBy": 1021,
+      "attemptedBy": 1146
+    },
+    {
+      "id": 2429,
+      "title": "Grid Completion",
+      "section": "Counting Problems",
+      "solvedBy": 283,
+      "attemptedBy": 350
+    },
+    {
+      "id": 2421,
+      "title": "Counting Reorders",
+      "section": "Counting Problems",
+      "solvedBy": 317,
+      "attemptedBy": 432
+    },
+    {
+      "id": 3232,
+      "title": "Tournament Graph Distribution",
+      "section": "Counting Problems",
+      "solvedBy": 163,
+      "attemptedBy": 173
+    },
+    {
+      "id": 3157,
+      "title": "Collecting Numbers Distribution",
+      "section": "Counting Problems",
+      "solvedBy": 166,
+      "attemptedBy": 174
+    },
+    {
+      "id": 2415,
+      "title": "Functional Graph Distribution",
+      "section": "Counting Problems",
+      "solvedBy": 293,
+      "attemptedBy": 355
+    },
+    {
+      "id": 1087,
+      "title": "Shortest Subsequence",
+      "section": "Additional Problems I",
+      "solvedBy": 3369,
+      "attemptedBy": 4370
+    },
+    {
+      "id": 3150,
+      "title": "Distinct Values Sum",
+      "section": "Additional Problems I",
+      "solvedBy": 932,
+      "attemptedBy": 957
+    },
+    {
+      "id": 3190,
+      "title": "Distinct Values Splits",
+      "section": "Additional Problems I",
+      "solvedBy": 662,
+      "attemptedBy": 707
+    },
+    {
+      "id": 1670,
+      "title": "Swap Game",
+      "section": "Additional Problems I",
+      "solvedBy": 2321,
+      "attemptedBy": 2952
+    },
+    {
+      "id": 3175,
+      "title": "Beautiful Permutation II",
+      "section": "Additional Problems I",
+      "solvedBy": 847,
+      "attemptedBy": 1294
+    },
+    {
+      "id": 2422,
+      "title": "Multiplication Table",
+      "section": "Additional Problems I",
+      "solvedBy": 8071,
+      "attemptedBy": 8952
+    },
+    {
+      "id": 3151,
+      "title": "Bubble Sort Rounds I",
+      "section": "Additional Problems I",
+      "solvedBy": 602,
+      "attemptedBy": 678
+    },
+    {
+      "id": 3152,
+      "title": "Bubble Sort Rounds II",
+      "section": "Additional Problems I",
+      "solvedBy": 421,
+      "attemptedBy": 465
+    },
+    {
+      "id": 3306,
+      "title": "Nearest Campsites I",
+      "section": "Additional Problems I",
+      "solvedBy": 263,
+      "attemptedBy": 306
+    },
+    {
+      "id": 3307,
+      "title": "Nearest Campsites II",
+      "section": "Additional Problems I",
+      "solvedBy": 256,
+      "attemptedBy": 275
+    },
+    {
+      "id": 1142,
+      "title": "Advertisement",
+      "section": "Additional Problems I",
+      "solvedBy": 5069,
+      "attemptedBy": 5354
+    },
+    {
+      "id": 2186,
+      "title": "Special Substrings",
+      "section": "Additional Problems I",
+      "solvedBy": 1124,
+      "attemptedBy": 1230
+    },
+    {
+      "id": 3169,
+      "title": "Counting LCM Arrays",
+      "section": "Additional Problems I",
+      "solvedBy": 410,
+      "attemptedBy": 442
+    },
+    {
+      "id": 3193,
+      "title": "Square Subsets",
+      "section": "Additional Problems I",
+      "solvedBy": 313,
+      "attemptedBy": 346
+    },
+    {
+      "id": 3294,
+      "title": "Subarray Sum Constraints",
+      "section": "Additional Problems I",
+      "solvedBy": 654,
+      "attemptedBy": 693
+    },
+    {
+      "id": 3213,
+      "title": "Water Containers Moves",
+      "section": "Additional Problems I",
+      "solvedBy": 255,
+      "attemptedBy": 269
+    },
+    {
+      "id": 3214,
+      "title": "Water Containers Queries",
+      "section": "Additional Problems I",
+      "solvedBy": 290,
+      "attemptedBy": 304
+    },
+    {
+      "id": 2425,
+      "title": "Stack Weights",
+      "section": "Additional Problems I",
+      "solvedBy": 676,
+      "attemptedBy": 803
+    },
+    {
+      "id": 3301,
+      "title": "Maximum Average Subarrays",
+      "section": "Additional Problems I",
+      "solvedBy": 248,
+      "attemptedBy": 272
+    },
+    {
+      "id": 3302,
+      "title": "Subsets with Fixed Average",
+      "section": "Additional Problems I",
+      "solvedBy": 295,
+      "attemptedBy": 320
+    },
+    {
+      "id": 3361,
+      "title": "Two Array Average",
+      "section": "Additional Problems I",
+      "solvedBy": 302,
+      "attemptedBy": 334
+    },
+    {
+      "id": 1747,
+      "title": "Pyramid Array",
+      "section": "Additional Problems I",
+      "solvedBy": 915,
+      "attemptedBy": 1098
+    },
+    {
+      "id": 3404,
+      "title": "Permutation Subsequence",
+      "section": "Additional Problems I",
+      "solvedBy": 345,
+      "attemptedBy": 358
+    },
+    {
+      "id": 1188,
+      "title": "Bit Inversions",
+      "section": "Additional Problems I",
+      "solvedBy": 2653,
+      "attemptedBy": 2974
+    },
+    {
+      "id": 1086,
+      "title": "Writing Numbers",
+      "section": "Additional Problems I",
+      "solvedBy": 838,
+      "attemptedBy": 904
+    },
+    {
+      "id": 2427,
+      "title": "Letter Pair Move Game",
+      "section": "Additional Problems I",
+      "solvedBy": 250,
+      "attemptedBy": 340
+    },
+    {
+      "id": 1147,
+      "title": "Maximum Building I",
+      "section": "Additional Problems I",
+      "solvedBy": 2364,
+      "attemptedBy": 2467
+    },
+    {
+      "id": 1162,
+      "title": "Sorting Methods",
+      "section": "Additional Problems I",
+      "solvedBy": 887,
+      "attemptedBy": 944
+    },
+    {
+      "id": 1191,
+      "title": "Cyclic Array",
+      "section": "Additional Problems I",
+      "solvedBy": 1445,
+      "attemptedBy": 1623
+    },
+    {
+      "id": 2414,
+      "title": "List of Sums",
+      "section": "Additional Problems I",
+      "solvedBy": 569,
+      "attemptedBy": 731
+    },
+    {
+      "id": 3215,
+      "title": "Bouncing Ball Steps",
+      "section": "Additional Problems II",
+      "solvedBy": 352,
+      "attemptedBy": 386
+    },
+    {
+      "id": 3216,
+      "title": "Bouncing Ball Cycle",
+      "section": "Additional Problems II",
+      "solvedBy": 152,
+      "attemptedBy": 202
+    },
+    {
+      "id": 3218,
+      "title": "Knight Moves Queries",
+      "section": "Additional Problems II",
+      "solvedBy": 185,
+      "attemptedBy": 219
+    },
+    {
+      "id": 3108,
+      "title": "K Subset Sums I",
+      "section": "Additional Problems II",
+      "solvedBy": 287,
+      "attemptedBy": 351
+    },
+    {
+      "id": 3109,
+      "title": "K Subset Sums II",
+      "section": "Additional Problems II",
+      "solvedBy": 175,
+      "attemptedBy": 214
+    },
+    {
+      "id": 2132,
+      "title": "Increasing Array II",
+      "section": "Additional Problems II",
+      "solvedBy": 946,
+      "attemptedBy": 1078
+    },
+    {
+      "id": 1189,
+      "title": "Food Division",
+      "section": "Additional Problems II",
+      "solvedBy": 603,
+      "attemptedBy": 714
+    },
+    {
+      "id": 1698,
+      "title": "Swap Round Sorting",
+      "section": "Additional Problems II",
+      "solvedBy": 470,
+      "attemptedBy": 580
+    },
+    {
+      "id": 2430,
+      "title": "Binary Subsequences",
+      "section": "Additional Problems II",
+      "solvedBy": 336,
+      "attemptedBy": 477
+    },
+    {
+      "id": 1706,
+      "title": "School Excursion",
+      "section": "Additional Problems II",
+      "solvedBy": 1573,
+      "attemptedBy": 1662
+    },
+    {
+      "id": 1709,
+      "title": "Coin Grid",
+      "section": "Additional Problems II",
+      "solvedBy": 1082,
+      "attemptedBy": 1246
+    },
+    {
+      "id": 3312,
+      "title": "Grid Coloring II",
+      "section": "Additional Problems II",
+      "solvedBy": 192,
+      "attemptedBy": 245
+    },
+    {
+      "id": 2426,
+      "title": "Programmers and Artists",
+      "section": "Additional Problems II",
+      "solvedBy": 588,
+      "attemptedBy": 807
+    },
+    {
+      "id": 2174,
+      "title": "Removing Digits II",
+      "section": "Additional Problems II",
+      "solvedBy": 259,
+      "attemptedBy": 536
+    },
+    {
+      "id": 2180,
+      "title": "Coin Arrangement",
+      "section": "Additional Problems II",
+      "solvedBy": 395,
+      "attemptedBy": 518
+    },
+    {
+      "id": 3159,
+      "title": "Replace with Difference",
+      "section": "Additional Problems II",
+      "solvedBy": 196,
+      "attemptedBy": 228
+    },
+    {
+      "id": 2432,
+      "title": "Grid Puzzle I",
+      "section": "Additional Problems II",
+      "solvedBy": 637,
+      "attemptedBy": 695
+    },
+    {
+      "id": 2131,
+      "title": "Grid Puzzle II",
+      "section": "Additional Problems II",
+      "solvedBy": 622,
+      "attemptedBy": 678
+    },
+    {
+      "id": 2115,
+      "title": "Bit Substrings",
+      "section": "Additional Problems II",
+      "solvedBy": 469,
+      "attemptedBy": 561
+    },
+    {
+      "id": 2075,
+      "title": "Reversal Sorting",
+      "section": "Additional Problems II",
+      "solvedBy": 411,
+      "attemptedBy": 492
+    },
+    {
+      "id": 1159,
+      "title": "Book Shop II",
+      "section": "Additional Problems II",
+      "solvedBy": 1496,
+      "attemptedBy": 1702
+    },
+    {
+      "id": 3161,
+      "title": "GCD Subsets",
+      "section": "Additional Problems II",
+      "solvedBy": 559,
+      "attemptedBy": 576
+    },
+    {
+      "id": 3402,
+      "title": "Minimum Cost Pairs",
+      "section": "Additional Problems II",
+      "solvedBy": 200,
+      "attemptedBy": 246
+    },
+    {
+      "id": 3425,
+      "title": "Same Sum Subsets",
+      "section": "Additional Problems II",
+      "solvedBy": 176,
+      "attemptedBy": 328
+    },
+    {
+      "id": 1157,
+      "title": "Mex Grid Queries",
+      "section": "Additional Problems II",
+      "solvedBy": 958,
+      "attemptedBy": 1115
+    },
+    {
+      "id": 1148,
+      "title": "Maximum Building II",
+      "section": "Additional Problems II",
+      "solvedBy": 512,
+      "attemptedBy": 624
+    },
+    {
+      "id": 1161,
+      "title": "Stick Divisions",
+      "section": "Additional Problems II",
+      "solvedBy": 4269,
+      "attemptedBy": 4967
+    },
+    {
+      "id": 3401,
+      "title": "Stick Difference",
+      "section": "Additional Problems II",
+      "solvedBy": 122,
+      "attemptedBy": 361
+    },
+    {
+      "id": 1665,
+      "title": "Coding Company",
+      "section": "Additional Problems II",
+      "solvedBy": 1712,
+      "attemptedBy": 2224
+    },
+    {
+      "id": 2402,
+      "title": "Two Stacks Sorting",
+      "section": "Additional Problems II",
+      "solvedBy": 232,
+      "attemptedBy": 679
+    }
+  ]
+}
