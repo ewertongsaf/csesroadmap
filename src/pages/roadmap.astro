@@ -11,7 +11,7 @@ const details: Record<string, MilestoneDetail> = Object.fromEntries(
       goal: m.goal,
       modules: m.modules.map((slug) => {
         const mod = moduleBySlug.get(slug)!;
-        return { title: mod.title, href: mod.status === 'written' ? modulePath(slug) : null };
+        return { title: mod.title, href: modulePath(slug) };
       }),
     },
   ]),

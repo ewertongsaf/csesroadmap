@@ -4,6 +4,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { roadmap } from '../data/roadmap.ts';
 import { modules } from '../data/modules.ts';
+import { moduleRefs } from '../data/module-refs.ts';
 import { concepts } from '../data/concepts.ts';
 import type { CsesProblem } from '../data/schema.ts';
 import { parseHintFile } from '../data/hint-schema.ts';
@@ -23,7 +24,9 @@ for (const m of modules) {
   if (m.status === 'written' && !existsSync(root(`content/modules/${m.slug}.mdx`)))
     err(`módulo ${m.slug} marcado como written mas content/modules/${m.slug}.mdx não existe`);
   if (m.cph.length === 0 && !m.basedOn) err(`módulo ${m.slug} sem CPH e sem basedOn`);
+  if (m.status === 'planned' && !moduleRefs[m.slug]?.length) err(`módulo ${m.slug} sem aula e sem referências em data/module-refs.ts`);
 }
+for (const slug of Object.keys(moduleRefs)) if (!modules.some((m) => m.slug === slug)) err(`data/module-refs.ts cita módulo inexistente: ${slug}`);
 
 const placed = new Map<number, string>(); // id -> slug do milestone
 const order: number[] = [];

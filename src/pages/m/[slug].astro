@@ -30,11 +30,10 @@ const blindCount = m.checkpoint.reserved.length + m.checkpoint.review.length;
     <ul class="mt-3 space-y-2">
       {mods.map((mod) => (
         <li class="flex flex-wrap items-baseline justify-between gap-x-4 rounded-xl border border-line bg-surface px-4 py-3">
-          {mod.status === 'written' ? (
-            <a href={modulePath(mod.slug)} class="font-medium hover:text-accent">{mod.title}</a>
-          ) : (
-            <span class="font-medium text-muted">{mod.title} <span class="ml-1 text-xs text-faint">(em breve)</span></span>
-          )}
+          <a href={modulePath(mod.slug)} class="font-medium hover:text-accent">
+            {mod.title}
+            {mod.status !== 'written' && <span class="ml-1 text-xs font-normal text-faint">(só referências)</span>}
+          </a>
           <span class="text-xs text-faint">{mod.cph.length ? `CPH ${mod.cph.join(', ')}` : 'fora do CPH'}</span>
         </li>
       ))}

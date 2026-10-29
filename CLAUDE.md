@@ -40,7 +40,9 @@ O leitor está vendo a técnica **pela primeira vez**: sabe C++ básico (laços,
 
 Cuidado com MDX: `{` e `<` em texto corrido são interpretados como JSX. Use `$\{1, 2\}$` ou crase.
 
-Os 7 módulos dos milestones 1–3 seguem esses princípios; `busca-completa` e `busca-binaria` são as referências de estilo mais completas. Ao escrever um módulo, mude `status` para `'written'` em `data/modules.ts`.
+Os 15 módulos dos milestones 1–7 seguem esses princípios; `busca-completa` e `busca-binaria` são as referências de estilo mais completas. Ao escrever um módulo, mude `status` para `'written'` em `data/modules.ts`.
+
+**Módulos só com referências.** Por decisão do usuário (créditos limitados), os módulos ainda `'planned'` (milestones 8–33) têm página em `/modulos/<slug>` só com o capítulo do CPH e links verificados de `data/module-refs.ts`. O validador exige referências para todo módulo planejado e `check-links` verifica esse arquivo. Quando uma aula for escrita, o MDX passa a ser renderizado no lugar; a entrada em `module-refs.ts` pode ficar ou sair.
 
 ## Dicas (data/hints/<milestone>.yaml)
 

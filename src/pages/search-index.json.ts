@@ -14,9 +14,14 @@ export const GET: APIRoute = () => {
       { kind: 'milestone', title: m.name, sub: `Milestone ${m.num}`, href: milestonePath(m.slug) },
       { kind: 'milestone', title: `Checkpoint Cego ${m.num}`, sub: m.name, href: checkpointPath(m.slug) },
     ]),
-    ...[...moduleBySlug.values()]
-      .filter((mod) => mod.status === 'written')
-      .map((mod): SearchItem => ({ kind: 'module', title: mod.title, sub: 'Módulo', href: modulePath(mod.slug) })),
+    ...[...moduleBySlug.values()].map(
+      (mod): SearchItem => ({
+        kind: 'module',
+        title: mod.title,
+        sub: mod.status === 'written' ? 'Módulo' : 'Módulo (só referências)',
+        href: modulePath(mod.slug),
+      }),
+    ),
     ...problems.map((p): SearchItem => ({
       kind: 'problem',
       id: p.id,

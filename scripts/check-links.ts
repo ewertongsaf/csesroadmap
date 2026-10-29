@@ -1,8 +1,9 @@
-// Verifica todo link externo de content/modules/*.mdx e data/hints/*.yaml.
+// Verifica todo link externo de content/modules/*.mdx, data/hints/*.yaml e data/module-refs.ts.
 // Regra do projeto: link que não passa aqui não entra no site.
 // Vídeos do YouTube são checados via oEmbed (a página em si sempre responde 200).
 import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { moduleRefs } from '../data/module-refs.ts';
 
 const root = (rel: string) => fileURLToPath(new URL(`../${rel}`, import.meta.url));
 const sources = [
@@ -17,6 +18,10 @@ for (const file of sources) {
     urls.set(url, [...(urls.get(url) ?? []), file]);
   }
 }
+
+for (const [slug, refs] of Object.entries(moduleRefs))
+  for (const { url } of refs)
+    if (/^https?:/.test(url)) urls.set(url, [...(urls.get(url) ?? []), `data/module-refs.ts (${slug})`]);
 
 async function check(url: string): Promise<string | null> {
   const yt = /youtube\.com\/watch\?v=([\w-]+)|youtu\.be\/([\w-]+)/.exec(url);
