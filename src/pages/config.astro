@@ -1,0 +1,11 @@
+---
+import Base from '../layouts/Base.astro';
+import ConfigPanel from '../components/islands/ConfigPanel.tsx';
+import { trailData } from '../lib/data.ts';
+---
+<Base title="Progresso">
+  <h1 class="text-3xl font-semibold tracking-tight">Progresso</h1>
+  <div class="mt-8">
+    <ConfigPanel client:load trail={trailData} />
+  </div>
+</Base>

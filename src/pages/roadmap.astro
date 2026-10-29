@@ -1,0 +1,31 @@
+---
+import Base from '../layouts/Base.astro';
+import RoadmapTrail, { type MilestoneDetail } from '../components/islands/RoadmapTrail.tsx';
+import { milestones, moduleBySlug, trailData } from '../lib/data.ts';
+import { modulePath } from '../lib/trail.ts';
+
+const details: Record<string, MilestoneDetail> = Object.fromEntries(
+  milestones.map((m) => [
+    m.slug,
+    {
+      goal: m.goal,
+      modules: m.modules.map((slug) => {
+        const mod = moduleBySlug.get(slug)!;
+        return { title: mod.title, href: mod.status === 'written' ? modulePath(slug) : null };
+      }),
+    },
+  ]),
+);
+---
+<Base title="Roadmap" wide>
+  <div class="mx-auto max-w-3xl">
+    <h1 class="text-3xl font-semibold tracking-tight">Roadmap</h1>
+    <p class="mt-2 text-muted">
+      Uma trilha linear. Cada milestone libera seus módulos e termina num Checkpoint Cego, com problemas sem tema e sem tags,
+      para treinar a parte que o CSES não treina: identificar a técnica.
+    </p>
+    <div class="mt-10">
+      <RoadmapTrail client:load trail={trailData} details={details} />
+    </div>
+  </div>
+</Base>

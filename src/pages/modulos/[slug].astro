@@ -1,0 +1,40 @@
+---
+import { getCollection, render, type CollectionEntry } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+import { milestones, moduleBySlug } from '../../lib/data.ts';
+import { milestonePath } from '../../lib/trail.ts';
+
+export async function getStaticPaths() {
+  const entries = await getCollection('modules');
+  return entries.map((entry) => {
+    const ref = moduleBySlug.get(entry.id);
+    if (!ref) throw new Error(`content/modules/${entry.id}.mdx não está registrado em data/modules.ts`);
+    return { params: { slug: entry.id }, props: { entry } };
+  });
+}
+
+const { entry } = Astro.props as { entry: CollectionEntry<'modules'> };
+const ref = moduleBySlug.get(entry.id)!;
+const usedBy = milestones.filter((m) => m.modules.includes(entry.id));
+const { Content } = await render(entry);
+---
+<Base title={entry.data.title} description={entry.data.description}>
+  <p class="text-sm text-muted">
+    Módulo ·{' '}
+    {usedBy.map((m, i) => (
+      <>
+        {i > 0 && ', '}
+        <a href={milestonePath(m.slug)} class="hover:text-fg">milestone {m.num}</a>
+      </>
+    ))}
+  </p>
+  <h1 class="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">{entry.data.title}</h1>
+  <p class="mt-3 text-lg text-muted">{entry.data.description}</p>
+  <p class="mt-3 text-xs text-faint">
+    {ref.cph.length > 0 && <>CPH (2018): seções {ref.cph.join(', ')}. </>}
+    {ref.basedOn && <>Base: {ref.basedOn}.</>}
+  </p>
+  <article class="prose-cp mt-10">
+    <Content />
+  </article>
+</Base>

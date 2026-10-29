@@ -1,0 +1,62 @@
+---
+import Base from '../../layouts/Base.astro';
+import MilestoneProblems from '../../components/islands/MilestoneProblems.tsx';
+import { milestones, moduleBySlug, problemById, trailData, type MilestoneInfo } from '../../lib/data.ts';
+import { checkpointPath, milestonePath, modulePath } from '../../lib/trail.ts';
+
+export function getStaticPaths() {
+  return milestones.map((m) => ({ params: { slug: m.slug }, props: { m } }));
+}
+
+const { m } = Astro.props as { m: MilestoneInfo };
+const trailMs = trailData.milestones[m.index];
+const rows = m.problems.map((e) => ({ id: e.id, title: problemById.get(e.id)!.title, difficulty: e.difficulty }));
+const mods = m.modules.map((slug) => moduleBySlug.get(slug)!);
+const prev = milestones[m.index - 1];
+const next = milestones[m.index + 1];
+const blindCount = m.checkpoint.reserved.length + m.checkpoint.review.length;
+---
+<Base title={`${m.num}. ${m.name}`}>
+  <p class="text-sm text-muted">
+    <a href="/roadmap" class="hover:text-fg">Roadmap</a> · {m.phaseName}
+  </p>
+  <h1 class="mt-2 text-3xl font-semibold tracking-tight">
+    <span class="tabular-nums text-faint">{m.num}.</span> {m.name}
+  </h1>
+  <p class="mt-3 text-lg text-muted">Ao final você sabe {m.goal}</p>
+
+  <section class="mt-10">
+    <h2 class="text-lg font-semibold">Módulos</h2>
+    <ul class="mt-3 space-y-2">
+      {mods.map((mod) => (
+        <li class="flex flex-wrap items-baseline justify-between gap-x-4 rounded-xl border border-line bg-surface px-4 py-3">
+          {mod.status === 'written' ? (
+            <a href={modulePath(mod.slug)} class="font-medium hover:text-accent">{mod.title}</a>
+          ) : (
+            <span class="font-medium text-muted">{mod.title} <span class="ml-1 text-xs text-faint">(em breve)</span></span>
+          )}
+          <span class="text-xs text-faint">{mod.cph.length ? `CPH ${mod.cph.join(', ')}` : 'fora do CPH'}</span>
+        </li>
+      ))}
+    </ul>
+  </section>
+
+  <div class="mt-10">
+    <MilestoneProblems client:load milestone={trailMs} rows={rows} />
+  </div>
+
+  <a href={checkpointPath(m.slug)} class="mt-10 block rounded-xl border border-accent/40 bg-surface p-5 hover:bg-surface-2">
+    <p class="text-xs font-semibold uppercase tracking-[0.14em] text-accent">Checkpoint Cego</p>
+    <p class="mt-1.5 font-medium">{blindCount} problemas sem tema e sem tags</p>
+    <p class="mt-1 text-sm text-muted">
+      {m.checkpoint.reserved.length > 0
+        ? `${m.checkpoint.reserved.length} inédito(s), que só aparecem aqui, e ${m.checkpoint.review.length} de revisão.`
+        : `Todos de revisão.`} Escreva qual técnica usaria antes de revelar.
+    </p>
+  </a>
+
+  <nav class="mt-12 flex justify-between gap-4 text-sm">
+    {prev ? <a href={milestonePath(prev.slug)} class="text-muted hover:text-fg">← {prev.num}. {prev.name}</a> : <span />}
+    {next && <a href={milestonePath(next.slug)} class="text-right text-muted hover:text-fg">{next.num}. {next.name} →</a>}
+  </nav>
+</Base>

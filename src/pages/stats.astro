@@ -1,0 +1,11 @@
+---
+import Base from '../layouts/Base.astro';
+import StatsView from '../components/islands/StatsView.tsx';
+import { sections, trailData } from '../lib/data.ts';
+---
+<Base title="Estatísticas" wide>
+  <h1 class="text-3xl font-semibold tracking-tight">Estatísticas</h1>
+  <div class="mt-8">
+    <StatsView client:load trail={trailData} sections={sections} />
+  </div>
+</Base>

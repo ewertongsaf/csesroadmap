@@ -1,0 +1,101 @@
+---
+import Base from '../../layouts/Base.astro';
+import HintLadder from '../../components/islands/HintLadder.tsx';
+import { NotesAndCode, StatusPicker } from '../../components/islands/ProblemWorkspace.tsx';
+import { DifficultyDots } from '../../components/ui.tsx';
+import { conceptLabel, moduleBySlug, problems, type ProblemInfo } from '../../lib/data.ts';
+import { hintsById } from '../../lib/hints.ts';
+import { renderInline, renderMarkdown } from '../../lib/md.ts';
+import { checkpointPath, csesUrl, milestonePath, modulePath, problemPath } from '../../lib/trail.ts';
+
+export function getStaticPaths() {
+  return problems.map((p) => ({ params: { id: String(p.id) }, props: { p } }));
+}
+
+const { p } = Astro.props as { p: ProblemInfo };
+const m = p.milestone;
+const h = hintsById.get(p.id);
+const hintsHtml = (h?.hints ?? []).map(renderMarkdown);
+const pitfallsHtml = (h?.pitfalls ?? []).map(renderInline);
+const prev = problems[p.pos - 1];
+const next = problems[p.pos + 1];
+const mods = m.modules.map((s) => moduleBySlug.get(s)!);
+---
+<Base title={p.title}>
+  <p class="text-sm text-muted">
+    {p.reserved ? (
+      <a href={checkpointPath(m.slug)} class="hover:text-fg">Checkpoint Cego · milestone {m.num}</a>
+    ) : (
+      <a href={milestonePath(m.slug)} class="hover:text-fg">Milestone {m.num} · {m.name}</a>
+    )}
+    <span class="mx-1.5 text-faint">·</span>
+    <span class="tabular-nums">problema {p.pos + 1} de {problems.length}</span>
+  </p>
+  <h1 class="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">{p.title}</h1>
+  <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted">
+    <span class="font-mono text-faint">#{p.id}</span>
+    <DifficultyDots value={p.difficulty} />
+    <a
+      href={csesUrl(p.id)}
+      target="_blank"
+      rel="noreferrer"
+      class="ml-auto rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-fg hover:opacity-90"
+    >Abrir no CSES ↗</a>
+  </div>
+
+  <div class="mt-8">
+    <StatusPicker client:load id={p.id} />
+  </div>
+
+  <details class="reveal group mt-8 rounded-xl border border-line bg-surface">
+    <summary class="flex items-center justify-between px-5 py-3.5 text-sm font-medium">
+      Revelar tema
+      <span class="text-xs text-faint group-open:hidden">conceitos, seção e módulos (spoiler leve)</span>
+    </summary>
+    <div class="space-y-3 border-t border-line px-5 py-4 text-sm">
+      <div class="flex flex-wrap gap-1.5">
+        {p.concepts.map((c) => <span class="rounded-md bg-surface-2 px-2 py-0.5">{conceptLabel(c)}</span>)}
+      </div>
+      <p class="text-muted">Seção no CSES: {p.section}</p>
+      <p class="text-muted">
+        Módulos: {mods.map((mod, i) => (
+          <>
+            {i > 0 && ', '}
+            {mod.status === 'written' ? <a class="text-accent hover:underline" href={modulePath(mod.slug)}>{mod.title}</a> : mod.title}
+          </>
+        ))}
+      </p>
+      {p.uncertain && (
+        <p class="text-xs text-faint">Classificação de técnica ainda incerta; será revisada quando as dicas deste problema forem escritas.</p>
+      )}
+    </div>
+  </details>
+
+  <section class="mt-10">
+    <h2 class="mb-3 text-lg font-semibold">Dicas</h2>
+    <HintLadder client:load id={p.id} hints={hintsHtml} />
+  </section>
+
+  <details class="reveal group mt-6 rounded-xl border border-line bg-surface">
+    <summary class="flex items-center justify-between px-5 py-3.5 text-sm font-medium">
+      Armadilhas deste problema
+      <span class="text-xs text-faint group-open:hidden">abra quando travar em WA/TLE</span>
+    </summary>
+    <div class="border-t border-line px-5 py-4 text-sm">
+      {pitfallsHtml.length > 0 ? (
+        <ul class="prose-cp">{pitfallsHtml.map((html) => <li set:html={html} />)}</ul>
+      ) : (
+        <p class="text-muted">Ainda não escritas para este problema. Enquanto isso, passe pelo <a class="underline" href="/checklist">checklist</a>.</p>
+      )}
+    </div>
+  </details>
+
+  <div class="mt-12">
+    <NotesAndCode client:visible id={p.id} />
+  </div>
+
+  <nav class="mt-12 flex justify-between gap-4 border-t border-line pt-6 text-sm">
+    {prev ? <a href={problemPath(prev.id)} class="text-muted hover:text-fg">← {prev.title}</a> : <span />}
+    {next && <a href={problemPath(next.id)} class="text-right text-muted hover:text-fg">{next.title} →</a>}
+  </nav>
+</Base>

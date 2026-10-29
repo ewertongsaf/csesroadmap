@@ -1,11 +1,12 @@
 // Garante a integridade de data/: roda no prebuild e em `npm run validate`.
 // Usa o type stripping nativo do Node (>= 22.18), sem dependências.
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { roadmap } from '../data/roadmap.ts';
 import { modules } from '../data/modules.ts';
 import { concepts } from '../data/concepts.ts';
 import type { CsesProblem } from '../data/schema.ts';
+import { parseHintFile } from '../data/hint-schema.ts';
 
 const root = (rel: string) => fileURLToPath(new URL(`../${rel}`, import.meta.url));
 const cses: CsesProblem[] = JSON.parse(readFileSync(root('data/cses-problems.json'), 'utf8')).problems;
@@ -59,6 +60,21 @@ for (const phase of roadmap) {
 }
 
 for (const p of cses) if (!placed.has(p.id)) err(`id ${p.id} (${p.title}) não está na trilha`);
+
+// Dicas: data/hints/<milestone>.yaml só pode ter problemas daquele milestone.
+let hinted = 0;
+for (const f of readdirSync(root('data/hints')).filter((f) => f.endsWith('.yaml'))) {
+  const slug = f.replace(/\.yaml$/, '');
+  if (!milestoneSlugs.has(slug)) err(`data/hints/${f}: não existe milestone "${slug}"`);
+  try {
+    for (const id of parseHintFile(readFileSync(root(`data/hints/${f}`), 'utf8'), f).keys()) {
+      if (placed.get(id) !== slug) err(`data/hints/${f}: ${id} pertence a "${placed.get(id) ?? 'nenhum milestone'}"`);
+      hinted++;
+    }
+  } catch (e) {
+    err((e as Error).message);
+  }
+}
 for (const m of modules) if (!usedModules.has(m.slug)) warn.push(`módulo ${m.slug} não é usado por nenhum milestone`);
 
 const milestones = roadmap.flatMap((ph) => ph.milestones);
@@ -79,4 +95,4 @@ if (errors.length) {
   console.error(`\n${errors.length} erro(s).`);
   process.exit(1);
 }
-console.log(`ok: ${placed.size}/${cses.length} problemas em ${milestones.length} milestones e ${roadmap.length} fases; ${moduleSlugs.size} módulos.`);
+console.log(`ok: ${placed.size}/${cses.length} problemas em ${milestones.length} milestones e ${roadmap.length} fases; ${moduleSlugs.size} módulos (${modules.filter((m) => m.status === 'written').length} escritos); ${hinted} problemas com dicas.`);

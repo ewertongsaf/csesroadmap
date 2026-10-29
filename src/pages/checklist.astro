@@ -1,0 +1,26 @@
+---
+import { Code } from 'astro:components';
+import Base from '../layouts/Base.astro';
+import { checklist } from '../../data/checklist.ts';
+import { renderInline } from '../lib/md.ts';
+---
+<Base title="Checklist antes de submeter">
+  <h1 class="text-3xl font-semibold tracking-tight">Checklist antes de submeter</h1>
+  <p class="mt-2 text-muted">Leia antes de cada submit, principalmente depois de um WA que "não faz sentido".</p>
+  <ol class="mt-8 space-y-4">
+    {checklist.map((item, i) => (
+      <li class="rounded-xl border border-line bg-surface p-5">
+        <h2 class="flex gap-3 font-semibold">
+          <span class="tabular-nums text-faint">{i + 1}.</span>
+          <span class="prose-cp" set:html={renderInline(item.title)} />
+        </h2>
+        <p class="prose-cp mt-2 pl-7 text-sm text-muted" set:html={renderInline(item.why)} />
+        {item.code && (
+          <div class="mt-3 pl-7">
+            <Code code={item.code} lang="cpp" themes={{ light: 'github-light', dark: 'github-dark' }} defaultColor={false} />
+          </div>
+        )}
+      </li>
+    ))}
+  </ol>
+</Base>

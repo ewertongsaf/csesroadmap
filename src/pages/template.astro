@@ -1,0 +1,23 @@
+---
+import { Code } from 'astro:components';
+import Base from '../layouts/Base.astro';
+import CopyButton from '../components/islands/CopyButton.tsx';
+import template from '../../data/template.cpp?raw';
+---
+<Base title="Template C++">
+  <div class="flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <h1 class="text-3xl font-semibold tracking-tight">Template C++</h1>
+      <p class="mt-2 text-muted">O ponto de partida de toda solução. Os módulos usam estes mesmos atalhos.</p>
+    </div>
+    <CopyButton client:load text={template} label="Copiar template" />
+  </div>
+  <div class="mt-6">
+    <Code code={template} lang="cpp" themes={{ light: 'github-light', dark: 'github-dark' }} defaultColor={false} />
+  </div>
+  <ul class="prose-cp mt-6 text-sm text-muted">
+    <li><code>sz(x)</code> devolve <code>int</code>: use em toda subtração/comparação com tamanho (veja o <a href="/checklist">checklist</a>).</li>
+    <li><code>fastio()</code> desliga a sincronização com <code>stdio</code>: não misture <code>cin</code>/<code>cout</code> com <code>scanf</code>/<code>printf</code>.</li>
+    <li>Em problemas interativos, troque <code>"\n"</code> por <code>endl</code> (ou chame <code>cout.flush()</code>) depois de cada pergunta.</li>
+  </ul>
+</Base>

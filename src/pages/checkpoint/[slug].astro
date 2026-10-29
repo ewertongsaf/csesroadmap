@@ -1,0 +1,46 @@
+---
+import Base from '../../layouts/Base.astro';
+import CheckpointBoard, { type CheckpointItem } from '../../components/islands/CheckpointBoard.tsx';
+import { conceptLabel, milestones, problemById, type MilestoneInfo } from '../../lib/data.ts';
+import { milestonePath } from '../../lib/trail.ts';
+
+export function getStaticPaths() {
+  return milestones.map((m) => ({ params: { slug: m.slug }, props: { m } }));
+}
+
+const { m } = Astro.props as { m: MilestoneInfo };
+
+const item = (id: number, reserved: boolean): CheckpointItem => {
+  const p = problemById.get(id)!;
+  return {
+    id,
+    title: p.title,
+    concepts: p.concepts.map(conceptLabel),
+    origin: reserved ? 'Inédito: só aparece aqui' : `Revisão · milestone ${p.milestone.num}`,
+  };
+};
+
+// Embaralhamento determinístico (mesma ordem a cada build), para os inéditos não virem sempre primeiro.
+let seed = [...m.slug].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
+const rand = () => (seed = (seed * 1103515245 + 12345) >>> 0) / 2 ** 32;
+const items = [...m.checkpoint.reserved.map((e) => item(e.id, true)), ...m.checkpoint.review.map((id) => item(id, false))]
+  .map((it) => ({ it, k: rand() }))
+  .sort((a, b) => a.k - b.k)
+  .map(({ it }) => it);
+---
+<Base title={`Checkpoint Cego ${m.num}`}>
+  <p class="text-sm text-muted"><a href={milestonePath(m.slug)} class="hover:text-fg">← Milestone {m.num}</a></p>
+  <h1 class="mt-2 text-3xl font-semibold tracking-tight">Checkpoint Cego {m.num}</h1>
+  <div class="mt-4 space-y-2 text-muted">
+    <p>
+      Problemas sem seção e sem tags. Antes de abrir o CSES, escreva qual técnica você usaria. Depois resolva e só então revele,
+      para conferir se identificou certo.
+    </p>
+    <p class="text-sm">
+      Podem cair técnicas de <strong>qualquer</strong> milestone até aqui. Os inéditos contam como problemas normais da trilha.
+    </p>
+  </div>
+  <div class="mt-8">
+    <CheckpointBoard client:load items={items} />
+  </div>
+</Base>
