@@ -11,7 +11,7 @@ export const modules: ModuleRef[] = [
   { slug: 'busca-completa', title: 'Busca completa, recursão e backtracking', cph: ['5.1', '5.2', '5.3', '5.4'], status: 'planned' },
   { slug: 'meet-in-the-middle', title: 'Meet in the middle', cph: ['5.5'], status: 'planned' },
   { slug: 'ordenacao', title: 'Ordenação e comparadores', cph: ['3.1', '3.2'], status: 'planned' },
-  { slug: 'busca-binaria', title: 'Busca binária e busca binária na resposta', cph: ['3.3'], status: 'planned' },
+  { slug: 'busca-binaria', title: 'Busca binária, busca binária na resposta e o formato interativo', cph: ['3.3'], status: 'planned' },
   { slug: 'greedy', title: 'Greedy e argumentos de troca', cph: ['6'], status: 'planned' },
   { slug: 'set-map-multiset', title: 'set, multiset e map', cph: ['4.2', '4.3', '4.4'], status: 'planned' },
   { slug: 'priority-queue', title: 'priority_queue e simulação por eventos', cph: ['4.5'], status: 'planned' },

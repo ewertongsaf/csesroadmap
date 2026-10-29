@@ -39,6 +39,7 @@ Você já viu busca binária na USACO, então juntei ordenação, greedy e busca
 - **3151 Bubble Sort Rounds I** (Additional I) se resolve com ordenação estável e a distância que cada elemento precisa andar para a esquerda.
 - **2422 Multiplication Table** (Additional I) é um exemplo clássico de busca binária na resposta com contagem em O(n).
 - **Reservado: 1087 Shortest Subsequence** (Additional I): greedy de blocos com as 4 letras.
+- **3112 Hidden Integer** (Interactive) é só busca binária com no máximo 30 perguntas. Ficou aqui para você conhecer cedo o formato interativo (flush depois de cada pergunta, orçamento de perguntas) com um problema fácil. O módulo de busca binária ganha uma seção curta sobre isso; os outros interativos continuam no milestone 31.
 
 ### 4. Estruturas da STL: set, multiset, map e priority_queue (CPH 4)
 **Troquei a ordem do seu esqueleto: a STL vem antes de two pointers.** Metade dos problemas de two pointers/sliding window do CSES usa `map`/`multiset` dentro da janela (Playlist, Distinct Values, Sliding Window Median/Mode). Ensinar a janela antes da estrutura obrigaria a ensinar as duas coisas de uma vez. ordered_set fica para o milestone 13, junto com BIT, porque resolve os mesmos problemas (k-ésimo, contagem de menores).
@@ -242,7 +243,7 @@ Dividi em "lineares" (hashing, KMP, Z, trie, Manacher) e "estruturas de sufixo" 
 Você não listou esse tema, mas a seção Advanced Techniques tem Monster Game I/II, Subarray Squares, Houses and Schools e Knuth Division, que são exatamente isso. Os quatro problemas de retas da Geometry entram aqui pelo motivo do milestone 28. **Reservado: 3427 Line Segments Trace I.**
 
 ### 31. Problemas interativos
-Ficou no fim, como você pediu. Vale saber que **3112 Hidden Integer** é só busca binária: se quiser se acostumar cedo com o formato (flush!), dá para movê-lo para o milestone 3 sem quebrar nada.
+Ficou no fim, como você pediu, exceto **3112 Hidden Integer**, que foi para o milestone 3. Quando você chegar aqui, já conhece o formato.
 
 ### 32. Counting avançado
 É o que sobrou da seção Counting depois de distribuir os problemas com fórmula fechada (milestone 20), os de DP (milestones 9 e 18) e os de pilha (milestone 6). Tem muitos `uncertain`.
@@ -278,16 +279,10 @@ Antes de escrever as dicas destes, vou confirmar a técnica (editoriais/USACO Gu
 4. Bitwise e Construction estão **separados**.
 5. Criei **DP III** (CHT/Li Chao/D&C/Knuth), que não estava no esqueleto.
 6. Grafos funcionais (Planets*) estão em **Árvores II**, junto com binary lifting.
+7. **3112 Hidden Integer** foi para o milestone 3; os outros interativos ficam no 31.
 
-## Pontos para você decidir
+## Decisões tomadas na revisão
 
-- **Fusões possíveis se quiser menos milestones:**
-  - 5 + 6 (two pointers + sliding window);
-  - 8 + 9 (DP I);
-  - 24 + 25 (strings);
-  - 22 + 23 (bitwise + construction, como no seu esqueleto);
-  - 17 → dissolver em 16 e 29.
-
-  Com todas elas, ficam 28.
-- **Hidden Integer cedo** (no milestone 3) ou junto com os interativos?
-- **Como os seus milestones "já domino" da USACO entram:** pelo seu histórico (Bronze completo, Silver até grafos/BFS e busca binária), os candidatos são 1, 3, 4, 5, 7 e 10. O 2 e o 6 talvez valham fazer mesmo assim, pelos problemas novos de pilha/sliding window. O 8 e o 9 (DP) são a fronteira natural de onde você parou.
+- **33 milestones:** aprovado, sem fusões.
+- **"Já domino":** começa vazio. Você marca os milestones pelo site.
+- **Hidden Integer:** vai para o milestone 3.

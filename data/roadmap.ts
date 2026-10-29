@@ -75,6 +75,7 @@ export const roadmap: Phase[] = [
           p(1620, 3, ['binary-search-answer', 'overflow']),
           p(1085, 3, ['binary-search-answer', 'greedy']),
           p(2422, 3, ['binary-search-answer', 'math-basics']),
+          p(3112, 1, ['interactive', 'binary-search']),
         ],
         checkpoint: { reserved: [p(1087, 3, ['greedy'])], review: [1629, 1085] },
       },
@@ -697,7 +698,6 @@ export const roadmap: Phase[] = [
         goal: 'conversar com o juiz (flush!), planejar dentro de um orçamento de perguntas, e usar busca binária, ordenação por comparação e codificação binária como estratégias de consulta.',
         modules: ['interativos'],
         problems: [
-          p(3112, 1, ['interactive', 'binary-search']),
           p(3139, 3, ['interactive', 'sorting']),
           p(3228, 3, ['interactive', 'bitwise']),
           p(3273, 4, ['interactive', 'binary-search']),
