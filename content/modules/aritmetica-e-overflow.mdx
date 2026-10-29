@@ -8,52 +8,80 @@ import OverflowLab from '../../src/components/mdx/viz/OverflowLab.tsx';
 
 ## Motivação: o programa certo que dá resposta errada
 
-Você precisa somar $n \le 2 \cdot 10^5$ números, cada um até $10^9$. O algoritmo é um laço, $O(n)$, impossível de errar:
+O problema desta aula:
+
+> Dados $n \le 2 \cdot 10^5$ inteiros $a_i$, cada um entre 1 e $10^9$, imprima:
+> 1. a soma de todos eles;
+> 2. a soma dos produtos $a_i \cdot a_j$ de todos os pares $i < j$, **módulo $10^9 + 7$**.
+
+Com $1, 2, 3$: a soma é 6. Os pares são $1 \cdot 2 + 1 \cdot 3 + 2 \cdot 3 = 2 + 3 + 6 = 11$. A resposta é **6** e **11**.
+
+Parece fácil. Mas experimente $10^9, 10^9, 10^9$ com variáveis `int`:
 
 ```cpp
 int soma = 0;
-rep(i, 0, n) soma += a[i];
+for (int i = 0; i < n; i++) soma += a[i];
+cout << soma;     // imprime -1294967296
 ```
 
-E mesmo assim dá WA. A soma pode chegar a $2 \cdot 10^{14}$, e um `int` só guarda até $2^{31} - 1 \approx 2{,}1 \cdot 10^9$. Quando passa disso, o valor **dá a volta** e vira negativo (tecnicamente é comportamento indefinido; na prática, dá a volta). Não aparece erro nenhum: só um número errado.
+A soma de verdade é $3 \cdot 10^9$, e o programa imprime um número **negativo**. Não houve erro nem aviso: só uma resposta errada. É o **overflow**: o `int` só guarda valores até $2.147.483.647 \approx 2{,}1 \cdot 10^9$, e quando a conta passa disso, o valor "dá a volta". (Tecnicamente, o padrão do C++ chama isso de comportamento indefinido; na prática, nos juízes, dá a volta.)
 
-O segundo tipo de problema é o oposto. A resposta é *astronomicamente* grande, por exemplo o número de subconjuntos de $10^6$ elementos, que tem 301.030 dígitos. Aí o enunciado pede a resposta **módulo $10^9 + 7$**, e você precisa fazer todas as contas sem nunca guardar o número real.
+E a segunda parte? Os produtos dos pares somam $3 \cdot 10^{18}$, que mal cabe até no maior tipo inteiro comum. Com $n = 2 \cdot 10^5$ números, haveria cerca de $2 \cdot 10^{10}$ pares, e a soma real teria uns 29 dígitos. Nenhum tipo guarda isso. É por isso que o enunciado pede o resultado **módulo** $10^9 + 7$: você vai fazer todas as contas **sem nunca guardar o número real**.
 
-## A ideia
+Esta aula ensina as duas coisas: quanto cabe em cada tipo, e como fazer contas "módulo $m$". No fim, resolvemos o problema inteiro.
 
-### Quanto cada tipo guarda
+## A ideia, parte 1: quanto cabe em cada tipo
 
-Um inteiro com sinal de $b$ bits guarda os valores do intervalo
+Um `int` tem 32 bits. Um bit vai para o sinal e sobram 31 para o valor. Por isso o maior `int` é $2^{31} - 1$:
 
 $$
-[-2^{b-1},\; 2^{b-1} - 1]
+\text{intervalo de um inteiro de } b \text{ bits} = [-2^{b-1},\; 2^{b-1} - 1]
 $$
 
-O $b$ é o número de bits; um bit vai para o sinal, sobram $b-1$ para a magnitude.
+$b$ é o número de bits do tipo. O "$-1$" no limite de cima existe porque o zero ocupa um dos valores do lado positivo.
 
-| Tipo | Bits | Máximo | Regra de bolso |
+| Tipo | Bits | Maior valor | Para lembrar |
 |---|---|---|---|
 | `int` | 32 | $2^{31} - 1 = 2.147.483.647$ | $\approx 2 \cdot 10^9$ |
 | `long long` | 64 | $2^{63} - 1 \approx 9{,}2 \cdot 10^{18}$ | $\approx 9 \cdot 10^{18}$ |
-| `__int128` | 128 | $\approx 1{,}7 \cdot 10^{38}$ | não tem `cin`/`cout` direto |
 
-**O hábito que resolve 90% dos casos:** para cada variável, estime o **maior valor possível** que ela pode ter, inclusive nos resultados intermediários, e escolha o tipo a partir disso. Somas de muitos valores grandes, produtos e contagens de pares (que crescem como $n^2$) quase sempre pedem `long long`.
+**O hábito que resolve 90% dos casos:** para cada variável, pergunte "qual o **maior valor** que ela pode ter?", inclusive nos resultados intermediários. Se passa de $2 \cdot 10^9$, use `long long`. Somas de muitos valores grandes, produtos e contagens de pares quase sempre precisam.
 
-### Onde o overflow acontece (não onde você guarda)
+### O overflow acontece na conta, não na variável
 
-A conta é feita **no tipo dos operandos**, antes de ser atribuída:
+<Callout type="tente">
+Este código guarda o resultado num `long long`. Ele imprime $10^{10}$?
 
 ```cpp
 int a = 100000, b = 100000;
-ll x = a * b;        // calcula em int: estoura, e só depois converte
-ll y = (ll)a * b;    // converte a primeiro: a conta é feita em 64 bits
+long long x = a * b;
+cout << x;
 ```
+
+<details>
+<summary>Ver resposta</summary>
+
+Não: imprime **1410065408**. O C++ calcula `a * b` no tipo dos operandos, que são `int`. O produto $10^{10}$ estoura **antes** de ser guardado em `x`, e o `long long` recebe o valor já errado. O conserto é converter um dos operandos antes de multiplicar: `long long x = (long long)a * b;`.
+
+</details>
+</Callout>
+
+Teste outros valores aqui:
 
 <OverflowLab client:visible />
 
-### Aritmética modular
+## A ideia, parte 2: contas módulo $m$
 
-Escrevemos $x \bmod m$ para o resto de $x$ por $m$. As duas regras que permitem nunca guardar números gigantes:
+"$x$ módulo $m$" (escrito $x \bmod m$, e `x % m` em C++) é o **resto** da divisão de $x$ por $m$. Por exemplo, $17 \bmod 7 = 3$.
+
+A propriedade que salva tudo: **você pode tirar o resto no meio das contas**, que o resultado final não muda. Um exemplo com $m = 7$:
+
+| Jeito | Conta | Resultado |
+|---|---|---|
+| Direto | $17 \cdot 23 = 391$, e $391 \bmod 7$ | 6 |
+| Reduzindo antes | $17 \bmod 7 = 3$, $23 \bmod 7 = 2$, $3 \cdot 2 = 6$, e $6 \bmod 7$ | 6 |
+
+Os dois dão 6, mas o segundo nunca lidou com um número maior que 7·7. Em geral:
 
 $$
 (a + b) \bmod m = \big((a \bmod m) + (b \bmod m)\big) \bmod m
@@ -63,55 +91,118 @@ $$
 (a \cdot b) \bmod m = \big((a \bmod m) \cdot (b \bmod m)\big) \bmod m
 $$
 
-Aqui $a$ e $b$ são quaisquer inteiros e $m$ é o módulo. Ou seja: pode reduzir **depois de cada operação**, que o resultado final é o mesmo.
+Aqui $a$ e $b$ são inteiros quaisquer e $m$ é o módulo. Na prática: **reduza depois de cada soma e de cada multiplicação**, e os números nunca crescem.
 
-Para a subtração, o resultado de `%` em C++ tem o sinal do dividendo, então `(a - b) % m` pode ser negativo. Some $m$ antes:
+### A subtração precisa de cuidado
+
+<Callout type="tente">
+Quanto vale `(3 - 5) % 7` em C++?
+
+<details>
+<summary>Ver resposta</summary>
+
+$-2$. Em C++, o resto tem o mesmo sinal do número dividido, então um resultado negativo continua negativo. Mas "módulo 7" deveria dar um valor entre 0 e 6: o certo é 5 (porque $-2 + 7 = 5$). O conserto é somar $m$ antes de tirar o resto: `(3 - 5 + 7) % 7 = 5`.
+
+</details>
+</Callout>
 
 $$
 (a - b) \bmod m = \big((a \bmod m) - (b \bmod m) + m\big) \bmod m
 $$
 
-Por que $10^9 + 7$? Ele é primo (isso importa para a divisão, no milestone 19), e dois valores menores que ele multiplicados dão no máximo $\approx 10^{18}$, que cabe num `long long`. Por isso o padrão é: **guarde em `long long`, reduza depois de cada multiplicação**.
+O "$+\,m$" garante que o valor antes do último `%` não é negativo, porque $(a \bmod m) - (b \bmod m)$ é no mínimo $-(m - 1)$.
 
-<Callout type="nota" title="E a divisão?">
-Não existe regra parecida para dividir: $(a / b) \bmod m \ne (a \bmod m)/(b \bmod m)$ em geral. A divisão modular usa o inverso multiplicativo (pequeno teorema de Fermat), que fica para o milestone 19. Até lá, quando precisar dividir, divida **antes** de reduzir, enquanto o número ainda é exato. Por exemplo, em $n(n+1)/2$, divida pelo 2 o fator que for par.
-</Callout>
+### Por que $10^9 + 7$?
 
-### Matemática de bolso
+Dois valores menores que $10^9 + 7$, multiplicados, dão no máximo cerca de $10^{18}$, que cabe num `long long`. Então o padrão é: **guarde em `long long`, multiplique, reduza**. (Ele também é primo, o que importa para a divisão. Isso fica para o milestone 19.)
 
-As fórmulas que mais aparecem nos problemas introdutórios (CPH 1.5):
+## Resolvendo o problema da motivação
 
-$$
-1 + 2 + \dots + n = \frac{n(n+1)}{2}
-$$
+A soma é fácil: basta usar `long long`. Ela chega no máximo a $2 \cdot 10^5 \cdot 10^9 = 2 \cdot 10^{14}$.
 
-É a soma de uma progressão aritmética: $n$ termos, média $\frac{n+1}{2}$.
+Para a soma dos produtos, testar todos os pares seria $O(n^2)$, cerca de $2 \cdot 10^{10}$ operações. Mas dá para fazer numa passada só. Quando chegamos em $a_j$, ele forma par com **todos os anteriores**, e
 
 $$
-1 + 2 + 4 + \dots + 2^{k-1} = 2^k - 1
+a_j \cdot a_0 + a_j \cdot a_1 + \dots + a_j \cdot a_{j-1} = a_j \cdot (a_0 + a_1 + \dots + a_{j-1})
 $$
 
-Cada potência de 2 é maior que a soma de todas as anteriores (é por isso que bits funcionam).
+O lado esquerdo são os produtos de $a_j$ com cada anterior; o lado direito coloca $a_j$ em evidência. Basta manter a **soma dos anteriores** numa variável. O traço com $1, 2, 3$:
 
-$$
-\binom{n}{2} = \frac{n(n-1)}{2}
-$$
+| $j$ | $a_j$ | Soma dos anteriores | Contribuição $a_j \cdot$ soma | Resposta acumulada |
+|---|---|---|---|---|
+| 0 | 1 | 0 | 0 | 0 |
+| 1 | 2 | 1 | 2 | 2 |
+| 2 | 3 | 1 + 2 = 3 | 9 | 11 |
 
-É o número de pares não ordenados entre $n$ objetos. "Contar pares" quase sempre passa por aqui.
+Dá 11, como na conta à mão. Agora é só fazer isso com módulo, reduzindo depois de cada operação.
 
-Para o número de dígitos de $x > 0$ na base 10: $\lfloor \log_{10} x \rfloor + 1$. Mas calcule com um laço de inteiros (`while (x > 0) x /= 10`), não com `log10`, que é ponto flutuante.
+## Código
 
-**Divisão inteira arredondando para cima**, com $a \ge 0$ e $b > 0$:
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
 
-$$
-\left\lceil \frac{a}{b} \right\rceil = \left\lfloor \frac{a + b - 1}{b} \right\rfloor
-$$
+const long long MOD = 1000000007;      // escrito como inteiro, não como 1e9+7 (que é double)
 
-Em C++: `(a + b - 1) / b`. É útil para calcular "quantos grupos de tamanho $b$ cabem em $a$ itens, arredondando para cima".
+int main() {
+    int n;
+    cin >> n;
+    vector<long long> a(n);
+    for (int i = 0; i < n; i++) cin >> a[i];
 
-## Código: helpers modulares
+    // Parte 1: soma exata. Até 2·10^14: precisa de long long.
+    long long soma = 0;
+    for (int i = 0; i < n; i++) soma += a[i];
 
-A técnica genérica: reduzir depois de cada operação, com as três operações encapsuladas. O exemplo calcula $n! \bmod p$ e $\sum_{i=1}^{n} i^2 \bmod p$ para $n$ até $10^7$.
+    // Parte 2: soma dos produtos dos pares, mod 10^9+7.
+    long long anteriores = 0;          // soma dos a[0..j-1], já reduzida mod MOD
+    long long resposta = 0;
+    for (int j = 0; j < n; j++) {
+        long long x = a[j] % MOD;
+        resposta = (resposta + x * anteriores) % MOD;   // x e anteriores < MOD: o produto cabe
+        anteriores = (anteriores + x) % MOD;
+    }
+
+    cout << soma << "\n" << resposta << "\n";
+}
+```
+
+**Entrada 1:**
+
+```
+3
+1 2 3
+```
+
+**Saída 1:**
+
+```
+6
+11
+```
+
+**Entrada 2:**
+
+```
+3
+1000000000 1000000000 1000000000
+```
+
+**Saída 2:**
+
+```
+3000000000
+147
+```
+
+A soma real dos produtos é $3 \cdot 10^{18}$, e $3 \cdot 10^{18} \bmod (10^9 + 7) = 147$. O programa chega nesse valor sem nunca guardar $3 \cdot 10^{18}$.
+
+- **Tempo:** $O(n)$.
+- **Memória:** $O(n)$ para o array.
+
+### O mesmo código no formato de contest
+
+No template, `ll` é `long long` e `rep(i, a, b)` é `for (int i = a; i < b; i++)`. Vale também encapsular as operações modulares em funções curtas, que você vai reusar em muitos problemas:
 
 ```cpp
 #include <bits/stdc++.h>
@@ -120,46 +211,72 @@ typedef long long ll;
 #define rep(i,a,b) for(int i=(a);i<(b);i++)
 void fastio(){ ios::sync_with_stdio(false); cin.tie(nullptr); }
 
-const ll MOD = 1'000'000'007;            // inteiro: nada de 1e9+7 (double)
-
+const ll MOD = 1'000'000'007;                       // aspas simples só separam os dígitos
 ll add(ll a, ll b) { return (a + b) % MOD; }
-ll sub(ll a, ll b) { return ((a - b) % MOD + MOD) % MOD; }  // nunca negativo
-ll mul(ll a, ll b) { return a % MOD * (b % MOD) % MOD; }   // (<10^9+7)^2 cabe em ll
+ll sub(ll a, ll b) { return ((a - b) % MOD + MOD) % MOD; }    // nunca negativo
+ll mul(ll a, ll b) { return a % MOD * (b % MOD) % MOD; }
 
 int main(){
     fastio();
     int n; cin >> n;
-    ll fat = 1, quadrados = 0;
-    rep(i, 1, n + 1) {
-        fat = mul(fat, i);                       // n! mod p, sem guardar n!
-        quadrados = add(quadrados, mul(i, i));   // i*i em ll: i chega a 10^7
+    vector<ll> a(n);
+    rep(i, 0, n) cin >> a[i];
+    ll soma = 0, anteriores = 0, resposta = 0;
+    rep(j, 0, n) {
+        soma += a[j];
+        resposta = add(resposta, mul(a[j], anteriores));
+        anteriores = add(anteriores, a[j]);
     }
-    cout << fat << " " << quadrados << "\n";
+    cout << soma << "\n" << resposta << "\n";
 }
 ```
 
-- **Tempo:** $O(n)$.
-- **Memória:** $O(1)$.
+## Matemática de bolso
 
-Repare em `mul(i, i)`: com `i` até $10^7$, `i * i` em `int` estouraria ($10^{14}$). Como `mul` recebe `ll`, a conversão acontece antes da multiplicação.
+Fórmulas que resolvem metade dos problemas introdutórios (CPH 1.5). Confira cada uma num caso pequeno antes de confiar:
+
+| Fórmula | Exemplo pequeno | O que significa |
+|---|---|---|
+| $1 + 2 + \dots + n = \frac{n(n+1)}{2}$ | $n = 4$: $1 + 2 + 3 + 4 = 10 = \frac{4 \cdot 5}{2}$ | soma de uma progressão aritmética |
+| $\binom{n}{2} = \frac{n(n-1)}{2}$ | $n = 4$: os pares de $\{a, b, c, d\}$ são 6 | número de pares não ordenados |
+| $1 + 2 + 4 + \dots + 2^{k-1} = 2^k - 1$ | $k = 3$: $1 + 2 + 4 = 7 = 2^3 - 1$ | cada potência de 2 supera a soma das anteriores |
+| $\left\lceil \frac{a}{b} \right\rceil$ = `(a + b - 1) / b` | $a = 7, b = 3$: `(7 + 2) / 3 = 3` | divisão arredondando para cima ($a \ge 0$, $b > 0$) |
+
+Na última linha, $\lceil \cdot \rceil$ é "arredondar para cima". A divisão inteira do C++ arredonda para baixo; somar $b - 1$ antes compensa. É útil para "quantos grupos de tamanho $b$ preciso para $a$ itens".
+
+<Callout type="nota" title="E a divisão módulo m?">
+Não existe regra parecida para dividir: $(a / b) \bmod m$ não é $(a \bmod m)/(b \bmod m)$. A divisão modular usa o inverso multiplicativo, que fica para o milestone 19. Até lá, se precisar dividir, divida **antes** de reduzir, enquanto o número ainda é exato. Por exemplo, em $\frac{n(n+1)}{2}$, divida por 2 o fator que for par.
+</Callout>
 
 ## Armadilhas comuns
 
 <Callout type="armadilha" title="Os overflows que mais aparecem">
 
-- `int * int` atribuído a `long long`: a conta já estourou. Use `(ll)a * b`.
-- `1 << 40` é `int` e estoura. Use `1LL << 40`.
-- Esquecer o `% MOD` em **um** lugar do laço basta para dar WA.
-- `pow(2, 50)` devolve `double`: impreciso para inteiros grandes. Multiplique num laço (ou use exponenciação rápida, no milestone 19).
-- `const int MOD = 1e9 + 7` funciona porque o valor cabe, mas `1e18` como `ll` pode perder precisão. Prefira literais inteiros: `1'000'000'007`.
+- `int * int` guardado em `long long`: a conta já estourou. Use `(long long)a * b`.
+- Somas de muitos valores grandes em `int`.
+- Esquecer o `% MOD` em **um** lugar do laço: basta isso para dar WA.
+- Subtração modular sem o `+ MOD`.
 
 </Callout>
 
-- **Resto negativo.** `-7 % 3 == -1` em C++. Qualquer subtração modular precisa do `+ MOD`.
-- **Comparar `double` com `==`.** `0.1 + 0.2 == 0.3` é falso. Se puder, trabalhe só com inteiros (multiplique em vez de dividir; compare $a \cdot d$ com $b \cdot c$ em vez de $a/b$ com $c/d$).
-- **`sqrt` de inteiro grande.** `(ll)sqrt(x)` pode errar por 1 para $x$ perto de $10^{18}$. Corrija com `while (r*r > x) r--; while ((r+1)*(r+1) <= x) r++;`.
-- **`abs` em `long long`.** Use `abs` de `<cstdlib>` com o tipo certo (`llabs`) ou `std::abs`, que tem sobrecarga. `abs(INT_MIN)` estoura.
-- **Imprimir `__int128`.** Não há `cout`; converta para string na mão.
+- **`1 << 40`** é calculado em `int` e estoura. Para potências de 2 grandes, use `1LL << 40`.
+- **`pow(2, 50)`** devolve `double`, que perde precisão para inteiros grandes. Multiplique num laço.
+- **`1e9 + 7`** é um `double`. Funciona em `const int MOD = 1e9 + 7`, porque o valor cabe, mas prefira escrever o inteiro: `1000000007`.
+
+<details class="para-depois">
+<summary>Para depois: ponto flutuante, raiz quadrada e tipos maiores</summary>
+
+**Comparar `double` com `==`.** `0.1 + 0.2 == 0.3` é falso em C++, por causa de arredondamento. Se puder, trabalhe só com inteiros: em vez de comparar $a/b$ com $c/d$, compare $a \cdot d$ com $b \cdot c$.
+
+**`sqrt` de inteiro grande.** `(long long)sqrt(x)` pode errar por 1 quando $x$ está perto de $10^{18}$. Corrija com dois laços: `while (r * r > x) r--; while ((r + 1) * (r + 1) <= x) r++;`.
+
+**`abs` e o menor `int`.** `abs(INT_MIN)` estoura, porque $2^{31}$ não cabe em `int`. Para `long long`, use `llabs` ou `std::abs`, que tem versão para cada tipo.
+
+**`__int128`.** Guarda até cerca de $1{,}7 \cdot 10^{38}$ e é útil para um produto intermediário que não cabe em `long long`. Não dá para ler nem imprimir com `cin`/`cout`: converta para string na mão.
+
+**Número de dígitos.** $x > 0$ tem $\lfloor \log_{10} x \rfloor + 1$ dígitos, mas calcule com um laço de inteiros (`while (x > 0) x /= 10`), não com `log10`, que é ponto flutuante.
+
+</details>
 
 ## Referências
 
@@ -173,32 +290,30 @@ Repare em `mul(i, i)`: com `i` até $10^7$, `i * i` em `int` estouraria ($10^{14
   client:visible
   questions={[
     {
-      q: '`int n = 100000; ll pares = n * (n - 1) / 2;` Qual o problema?',
-      options: [
-        'Nenhum: o resultado cabe em long long',
-        'n * (n - 1) é calculado em int e estoura antes da atribuição',
-        'A divisão por 2 perde precisão',
-        'Deveria ser n * (n + 1) / 2',
-      ],
+      q: 'O que este código imprime?',
+      code: 'int a = 1000000000, b = 1000000000, c = 1000000000;\nint soma = a + b + c;\ncout << soma;',
+      options: ['3000000000', '-1294967296', '0', 'Erro de compilação'],
       answer: 1,
-      why: 'n·(n−1) ≈ 10^10, calculado em 32 bits. Escreva `(ll)n * (n - 1) / 2`.',
+      why: '3·10^9 passa de 2.147.483.647 e dá a volta: 3·10^9 − 2^32 = −1.294.967.296. Sem aviso nenhum.',
     },
     {
-      q: 'Você quer `(a - b) mod p` com 0 ≤ a, b < p. Qual expressão está sempre certa em C++?',
-      options: ['`(a - b) % p`', '`abs(a - b) % p`', '`(a - b + p) % p`', '`(a % p - b % p)`'],
-      answer: 2,
-      why: 'Com a < b, `a - b` é negativo e `%` em C++ preserva o sinal. Somar p antes deixa o valor em [0, 2p).',
+      q: 'Quanto vale `(-7) % 3` em C++?',
+      options: ['2', '-1', '1', '-2'],
+      answer: 1,
+      why: 'O resto tem o sinal do número dividido: −7 = 3·(−2) − 1. Para ter o resto entre 0 e 2, faça `((-7) % 3 + 3) % 3`, que dá 2.',
     },
     {
-      q: 'Por que é seguro fazer `x * y % MOD` com x, y < 10^9+7 guardados em long long?',
-      options: [
-        'Porque o produto é menor que ~10^18, que cabe em long long',
-        'Porque o C++ reduz automaticamente',
-        'Não é seguro: precisa de __int128',
-        'Porque 10^9+7 é primo',
-      ],
-      answer: 0,
-      why: '(10^9+7)² ≈ 1,0·10^18 < 9,2·10^18. Ser primo importa para divisão, não para isso.',
+      q: 'Com a = [2, 3, 4], qual é a "resposta acumulada" depois de processar j = 2 no algoritmo da aula?',
+      code: 'anteriores = 0; resposta = 0;\nfor j em 0..n-1:\n    resposta += a[j] * anteriores\n    anteriores += a[j]',
+      options: ['20', '26', '24', '9'],
+      answer: 1,
+      why: 'j = 0: 2·0 = 0. j = 1: 3·2 = 6. j = 2: 4·(2 + 3) = 20. Total 0 + 6 + 20 = 26 = 2·3 + 2·4 + 3·4.',
+    },
+    {
+      q: 'Quanto vale `(10 + 4 - 1) / 4` em C++, e o que ele calcula?',
+      options: ['2: 10/4 arredondado para baixo', '3: 10/4 arredondado para cima', '3,25: a divisão exata', '4: o número de grupos de 10'],
+      answer: 1,
+      why: '13 / 4 = 3 na divisão inteira. É ⌈10/4⌉: para 10 itens em grupos de 4, você precisa de 3 grupos.',
     },
   ]}
 />

@@ -40,7 +40,7 @@ O leitor está vendo a técnica **pela primeira vez**: sabe C++ básico (laços,
 
 Cuidado com MDX: `{` e `<` em texto corrido são interpretados como JSX. Use `$\{1, 2\}$` ou crase.
 
-Os módulos `busca-completa` e `busca-binaria` são a referência de estilo (reescritos com esses princípios). Ao escrever um módulo, mude `status` para `'written'` em `data/modules.ts`.
+Os 7 módulos dos milestones 1–3 seguem esses princípios; `busca-completa` e `busca-binaria` são as referências de estilo mais completas. Ao escrever um módulo, mude `status` para `'written'` em `data/modules.ts`.
 
 ## Dicas (data/hints/<milestone>.yaml)
 

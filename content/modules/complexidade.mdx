@@ -8,78 +8,217 @@ import LimitsCalculator from '../../src/components/mdx/viz/LimitsCalculator.tsx'
 
 ## Motivação: o mesmo problema, três limites
 
-Considere o problema: *dado um array de $n$ inteiros, conte quantos pares $(i, j)$ com $i < j$ têm $a_i > a_j$* (as "inversões").
+O problema desta aula:
 
-A força bruta é óbvia: dois laços, testar todo par.
+> Dado um array de $n$ inteiros, conte quantos pares de posições $(i, j)$, com $i < j$, têm $a_i > a_j$.
+
+Esses pares se chamam **inversões**: são pares que estão "fora de ordem". Com o array $3, 1, 4, 1, 5$ (posições 0 a 4):
+
+| Par de posições | Valores | Fora de ordem? |
+|---|---|---|
+| (0, 1) | 3 e 1 | sim |
+| (0, 3) | 3 e 1 | sim |
+| (2, 3) | 4 e 1 | sim |
+| todos os outros 7 pares | | não |
+
+A resposta é **3**. A solução óbvia testa todos os pares com dois laços:
 
 ```cpp
-ll inversoes = 0;
-rep(i, 0, n) rep(j, i + 1, n)
-    if (a[i] > a[j]) inversoes++;
+long long inversoes = 0;
+for (int i = 0; i < n; i++)
+    for (int j = i + 1; j < n; j++)
+        if (a[i] > a[j]) inversoes++;
 ```
 
-Ela testa $\frac{n(n-1)}{2}$ pares. Agora veja o que acontece com três limites diferentes no enunciado:
+Ela funciona sempre. A pergunta é se ela **termina a tempo**. Isso depende do limite de $n$ escrito no enunciado:
 
-| Limite | Pares testados | Veredito em 1 s |
+| Se o enunciado diz | Pares testados | Veredito em 1 segundo |
 |---|---|---|
 | $n \le 10$ | 45 | passa (qualquer coisa passa) |
-| $n \le 5000$ | $\approx 1{,}25 \cdot 10^7$ | passa com folga |
-| $n \le 2 \cdot 10^5$ | $\approx 2 \cdot 10^{10}$ | **TLE**: precisa de outra ideia, em $O(n \log n)$ |
+| $n \le 5000$ | cerca de $1{,}25 \cdot 10^7$ | passa com folga |
+| $n \le 2 \cdot 10^5$ | cerca de $2 \cdot 10^{10}$ | **não passa**: precisa de outra ideia |
 
-O código é o mesmo; o que muda é o limite. **Ler os limites antes de pensar no algoritmo** economiza tempo nas duas direções: você não gasta 40 minutos procurando uma solução esperta quando a força bruta passa, e não codifica uma força bruta que nunca vai passar. (Inversões em $O(n \log n)$ aparecem no milestone 13.)
+O código é o mesmo, só muda o limite. Por isso, **antes de pensar no algoritmo, leia os limites**. Isso economiza tempo nas duas direções: você não gasta 40 minutos procurando uma solução esperta quando a simples passa, e não programa uma solução simples que nunca vai passar. Esta aula ensina a fazer essa conta. No fim, resolvemos o problema para $n \le 5000$. A versão para $n \le 2 \cdot 10^5$ fica para o milestone 13.
 
-## A ideia: contar operações e jogar fora o que não importa
+## A ideia: contar quantas vezes a linha mais interna roda
 
-A complexidade de tempo mede como o número de operações cresce com o tamanho da entrada. Na prática, você:
+O tempo de um programa é dominado pela linha que roda **mais vezes**. Então a pergunta é sempre: quantas vezes ela roda, em função de $n$?
 
-1. conta quantas vezes o trecho mais interno roda (laços aninhados multiplicam, laços em sequência somam);
-2. joga fora constantes e termos menores, porque para $n$ grande eles não mudam o veredito.
+### Contando à mão
 
-Formalmente, dizemos que $f(n) = O(g(n))$ quando
+Pegue $n = 8$ e conte quantas vezes a linha marcada roda em cada formato de laço:
+
+| Laço | Para $n = 8$ | Em geral |
+|---|---|---|
+| `for i < n` → linha | 8 | $n$ |
+| `for i < n` → `for j < n` → linha | 64 | $n^2$ |
+| `for i < n` → `for j = i+1; j < n` → linha | 28 | $\frac{n(n-1)}{2}$ |
+| `while (x > 0) { linha; x /= 2; }` com `x = n` | 4 (x = 8, 4, 2, 1) | cerca de $\log_2 n$ |
+
+O terceiro é o laço das inversões. Por que dá $\frac{n(n-1)}{2}$? Para $i = 0$, o $j$ anda por $n - 1$ valores; para $i = 1$, por $n - 2$; e assim por diante até 0. Somando:
 
 $$
-\exists\, c > 0,\ n_0 \;:\; f(n) \le c \cdot g(n) \quad \forall\, n \ge n_0
+(n-1) + (n-2) + \dots + 1 + 0 = \frac{n(n-1)}{2}
 $$
 
-Isto é: a partir de algum tamanho $n_0$, $f$ nunca passa de uma constante $c$ vezes $g$. Por isso $3n^2 + 10n + 7 = O(n^2)$: para $n \ge 11$, vale $3n^2 + 10n + 7 \le 4n^2$.
+O lado esquerdo é a quantidade de valores de $j$ para cada $i$; o lado direito é a fórmula da soma de $1$ até $n - 1$. Para $n = 8$, dá $\frac{8 \cdot 7}{2} = 28$, como na tabela.
 
-### Os padrões que mais aparecem
+<Callout type="tente">
+Quantas vezes a linha roda neste laço, para $n = 12$?
 
-- **Laço simples** até $n$: $O(n)$. **Dois laços aninhados** até $n$: $O(n^2)$.
-- **Dividir pela metade** a cada passo (busca binária, `while (x > 0) x /= 2`): $O(\log n)$.
-- **Laço que pula de $i$ em $i$**, para cada $i$:
+```cpp
+for (int i = 1; i <= n; i++)
+    for (int j = i; j <= n; j += i)   // j anda de i em i
+        linha;
+```
 
-  $$
-  \sum_{i=1}^{n} \frac{n}{i} = n\left(1 + \frac12 + \frac13 + \dots + \frac1n\right) \approx n \ln n = O(n \log n)
-  $$
+<details>
+<summary>Ver resposta</summary>
 
-  O termo entre parênteses é a série harmônica, que cresce como $\ln n$. Esse truque aparece em crivos e em contagem de múltiplos.
-- **Recursão que se divide em 2 e diminui 1**, $T(n) = 2\,T(n-1) + O(1)$, dá $O(2^n)$: é a busca completa sobre subconjuntos.
-- **Ordenar**: $O(n \log n)$.
+35. Para $i = 1$, o $j$ passa por 1, 2, …, 12 (12 vezes). Para $i = 2$, por 2, 4, …, 12 (6 vezes). Para $i = 3$, 4 vezes; $i = 4$, 3; $i = 5$ e $i = 6$, 2 cada; e de $i = 7$ a $i = 12$, 1 vez cada. Total: $12 + 6 + 4 + 3 + 2 + 2 + 6 \cdot 1 = 35$.
+
+Repare que é bem menos que $12^2 = 144$. Em geral, a soma é $\frac{n}{1} + \frac{n}{2} + \dots + \frac{n}{n} = n\left(1 + \frac12 + \dots + \frac1n\right)$. O termo entre parênteses (a série harmônica) cresce como $\ln n$, então o total é cerca de $n \ln n$. Para $n = 100$, são 482 execuções, contra $10^4$ de um laço duplo.
+
+</details>
+</Callout>
+
+### Jogando fora o que não importa
+
+Para $n$ grande, só o termo que cresce mais rápido importa. Em $\frac{n(n-1)}{2} = \frac{n^2}{2} - \frac{n}{2}$, com $n = 10^5$, o primeiro termo vale $5 \cdot 10^9$ e o segundo $5 \cdot 10^4$: o segundo é irrelevante. A constante $\frac12$ também não muda o veredito ("passa" ou "não passa"). Então dizemos que o laço é $O(n^2)$, lido "ó de $n$ ao quadrado".
+
+A definição formal, para quem quiser:
+
+$$
+f(n) = O(g(n)) \iff \exists\, c > 0,\ n_0 \;:\; f(n) \le c \cdot g(n) \text{ para todo } n \ge n_0
+$$
+
+$f(n)$ é o número exato de operações, $g(n)$ é a expressão simples ($n^2$, $n \log n$…), $c$ é uma constante e $n_0$ é um tamanho a partir do qual a desigualdade vale. Em palavras: a partir de algum tamanho, $f$ nunca passa de uma constante vezes $g$. Por exemplo, $3n^2 + 10n + 7 = O(n^2)$, porque para $n \ge 11$ vale $3n^2 + 10n + 7 \le 4n^2$.
 
 ### Quanto cabe em 1 segundo
 
-Um computador de juiz faz algo entre $10^8$ e $5 \cdot 10^8$ operações simples por segundo em C++. Daí sai a tabela que você deve ter decorada (é a mesma ideia da seção 2.3 do CPH):
+Um juiz faz algo entre $10^8$ e $5 \cdot 10^8$ operações simples por segundo em C++. Daí sai a tabela que você deve saber de cor. É a mesma ideia da seção 2.3 do CPH:
 
 | $n$ até | Complexidade que cabe | Cara típica da solução |
 |---|---|---|
 | 10 | $O(n!)$ | todas as permutações |
-| 20 | $O(2^n)$ ou $O(2^n \cdot n)$ | todos os subconjuntos, DP em bitmask |
+| 20 | $O(2^n)$ | todos os subconjuntos |
 | 40 | $O(2^{n/2})$ | meet in the middle |
-| 500 | $O(n^3)$ | três laços, Floyd-Warshall |
-| 5000 | $O(n^2)$ | dois laços, DP quadrática |
-| $10^6$ | $O(n \log n)$ ou $O(n)$ | ordenar, busca binária, estruturas |
-| $10^{18}$ | $O(\log n)$ ou $O(1)$ | fórmula, exponenciação rápida |
+| 500 | $O(n^3)$ | três laços aninhados |
+| 5000 | $O(n^2)$ | dois laços aninhados |
+| $10^6$ | $O(n \log n)$ ou $O(n)$ | ordenar, busca binária, um laço |
+| $10^{18}$ | $O(\log n)$ ou $O(1)$ | fórmula, dividir pela metade |
+
+Arraste o limite e veja quantas operações cada complexidade faz:
 
 <LimitsCalculator client:visible />
 
+<Callout type="tente">
+O enunciado diz $n \le 2 \cdot 10^5$. Um laço duplo $O(n^2)$ passa? E $O(n \log n)$?
+
+<details>
+<summary>Ver resposta</summary>
+
+$O(n^2)$: $(2 \cdot 10^5)^2 = 4 \cdot 10^{10}$ operações, umas 100 vezes acima do que cabe em 1 segundo. Não passa.
+
+$O(n \log n)$: $2 \cdot 10^5 \cdot \log_2(2 \cdot 10^5) \approx 2 \cdot 10^5 \cdot 18 \approx 3{,}5 \cdot 10^6$. Passa com folga.
+
+</details>
+</Callout>
+
 ### Memória
 
-O limite costuma ser 256 MB ou 512 MB. Um `int` ocupa 4 bytes e um `long long` 8, então 256 MB comportam cerca de $6 \cdot 10^7$ ints. Um `vector<ll>` com $10^7$ posições usa 80 MB, o que está ok. Uma matriz `int` de $10^4 \times 10^4$ usa 400 MB e não cabe.
+O limite costuma ser 256 MB ou 512 MB. Um `int` ocupa 4 bytes e um `long long` 8. Então:
 
-## Código: medir em vez de chutar
+| Estrutura | Memória | Cabe em 256 MB? |
+|---|---|---|
+| `vector<int>` com $10^6$ posições | 4 MB | sim |
+| `vector<long long>` com $10^7$ posições | 80 MB | sim |
+| matriz `int` de $5000 \times 5000$ | 100 MB | sim |
+| matriz `int` de $10^4 \times 10^4$ | 400 MB | **não** |
 
-Quando estiver em dúvida se uma constante grande atrapalha, meça na sua máquina. Este é o template mais um cronômetro:
+## Complexidade escondida
+
+Algumas operações **parecem** custar 1, mas percorrem um vetor ou uma string inteira.
+
+O exemplo clássico é montar uma string letra por letra com `s = s + c`. Essa linha cria uma **cópia** de `s` com uma letra a mais. Com 5 letras, as cópias têm tamanho 1, 2, 3, 4 e 5: são $1 + 2 + 3 + 4 + 5 = 15$ caracteres copiados para montar uma string de 5. Com $n = 10^5$ letras, são $\frac{n(n+1)}{2} \approx 5 \cdot 10^9$ caracteres copiados, o que dá TLE. Já `s += c` (ou `s.push_back(c)`) acrescenta no fim sem copiar: $O(1)$ por letra.
+
+Outras operações que custam $O(n)$, e não $O(1)$:
+
+- passar um `vector` **por valor** para uma função (`void f(vector<int> v)` copia o vetor inteiro);
+- `v.erase(v.begin())` e `v.insert(v.begin(), x)`, que deslocam todos os elementos;
+- `s.substr(...)`, que cria uma string nova;
+- `count`, `find` e `min_element` num `vector`, que percorrem tudo.
+
+Uma dessas dentro de um laço de $n$ voltas transforma uma solução $O(n)$ em $O(n^2)$.
+
+## Código: o problema da motivação
+
+Para $n \le 5000$, o laço duplo cabe ($\approx 1{,}25 \cdot 10^7$ operações):
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int main() {
+    int n;
+    cin >> n;
+    vector<int> a(n);
+    for (int i = 0; i < n; i++) cin >> a[i];
+
+    long long inversoes = 0;              // até ~1,25·10^7 pares: cabe em int, mas long long é hábito
+    for (int i = 0; i < n; i++)
+        for (int j = i + 1; j < n; j++)
+            if (a[i] > a[j]) inversoes++;
+
+    cout << inversoes << "\n";
+}
+```
+
+**Entrada:**
+
+```
+6
+5 2 8 1 9 3
+```
+
+**Saída:**
+
+```
+7
+```
+
+Os 7 pares fora de ordem são: 5 e 2, 5 e 1, 5 e 3, 2 e 1, 8 e 1, 8 e 3, 9 e 3.
+
+- **Tempo:** $O(n^2)$, já que a linha do `if` roda $\frac{n(n-1)}{2}$ vezes.
+- **Memória:** $O(n)$, só o array.
+
+### Medindo em vez de chutar
+
+Quando estiver em dúvida se uma constante grande atrapalha, meça na sua máquina com um cronômetro:
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int main() {
+    auto inicio = chrono::steady_clock::now();      // marca o tempo agora
+
+    long long soma = 0;
+    for (int i = 0; i < 100000000; i++)             // 10^8 operações simples
+        soma += i ^ (i >> 3);
+
+    auto fim = chrono::steady_clock::now();
+    double segundos = chrono::duration<double>(fim - inicio).count();
+    cerr << "tempo: " << segundos << " s\n";        // cerr não se mistura com a saída
+    cout << soma << "\n";                           // imprime para o compilador não apagar o laço
+}
+```
+
+Compile com `-O2`, que é o que os juízes usam. Sem otimização, o tempo medido pode ser de 3 a 10 vezes maior e enganar você.
+
+### O mesmo código no formato de contest
+
+Com o template do site (`rep(i, a, b)` é `for (int i = a; i < b; i++)`, `ll` é `long long` e `fastio()` acelera a leitura):
 
 ```cpp
 #include <bits/stdc++.h>
@@ -90,43 +229,41 @@ void fastio(){ ios::sync_with_stdio(false); cin.tie(nullptr); }
 
 int main(){
     fastio();
-    auto t0 = chrono::steady_clock::now();
-
-    // Trecho a medir: ~10^8 operações simples.
-    // O resultado é impresso para o compilador não apagar o laço.
-    ll soma = 0;
-    rep(i, 0, 100000000) soma += i ^ (i >> 3);
-
-    auto t1 = chrono::steady_clock::now();
-    cerr << "tempo: " << chrono::duration<double>(t1 - t0).count() << " s\n";
-    cout << soma << "\n";
+    int n; cin >> n;
+    vector<int> a(n);
+    rep(i, 0, n) cin >> a[i];
+    ll inversoes = 0;
+    rep(i, 0, n) rep(j, i + 1, n) inversoes += (a[i] > a[j]);
+    cout << inversoes << "\n";
 }
 ```
 
-- **Tempo:** $O(N)$ com $N = 10^8$, o próprio laço medido.
-- **Memória:** $O(1)$.
-
-Compile com `-O2` (é o que os juízes usam): sem otimização, o tempo medido pode ser 3–10× maior e enganar você.
-
 ## Armadilhas comuns
 
-<Callout type="armadilha" title="Complexidade escondida em operações que parecem O(1)">
-
-- `s = s + c` copia a string inteira a cada vez, o que dá $O(n^2)$ num laço. Use `s += c` ou `s.pb(c)`.
-- Passar `vector` **por valor** para uma função copia o vetor inteiro; numa recursão chamada $n$ vezes, isso vira $O(n^2)$. Passe por referência: `const vector<int>& v`.
-- `v.erase(v.begin())`, `v.insert(v.begin(), x)` e `s.substr(...)` custam $O(n)$ cada.
-- `count`, `find` e `min_element` em vector percorrem tudo: $O(n)$.
-
+<Callout type="armadilha" title="Complexidade escondida">
+`s = s + c`, vetores passados por valor, `erase`/`insert` no começo do vetor e `substr` custam $O(n)$ cada. Dentro de um laço, viram $O(n^2)$ sem você perceber.
 </Callout>
 
-- **Vários casos de teste.** Se o enunciado diz "a soma de $n$ em todos os testes é no máximo $2 \cdot 10^5$", some as complexidades. Mas atenção: zerar um array de tamanho máximo **a cada teste** custa $O(t \cdot N_{\max})$, mesmo que cada teste seja pequeno.
-- **Constante alta.** `map`, `set` e `unordered_map` têm constante bem maior que `vector`. Com $10^6$ operações tudo bem; com $10^7$ pode não passar.
-- **`endl`** força um flush a cada linha. Com $10^5$ linhas de saída, troque por `"\n"`.
-- **Recursão profunda.** Profundidade $10^6$ pode estourar a pilha. Os juízes do CSES têm pilha grande, mas não conte com isso em todo lugar.
+- **Vários casos de teste.** Se o enunciado diz "a soma de $n$ em todos os testes é no máximo $2 \cdot 10^5$", some as complexidades. Mas zerar um array de tamanho máximo **a cada teste** custa $O(t \cdot N_{\max})$, mesmo que cada teste seja pequeno. Limpe só o que usou.
+- **`endl` em saídas grandes.** `endl` força a saída a ser enviada a cada linha. Com $10^5$ linhas, troque por `"\n"`.
+- **Esquecer de ler o limite.** Antes de codar, escreva num canto: "$n \le$ …, então mire em $O(\dots)$".
+
+<details class="para-depois">
+<summary>Para depois: constantes, recursão e memória fina</summary>
+
+**Constantes escondidas.** `map`, `set` e `unordered_map` são $O(\log n)$ ou $O(1)$ por operação, mas com constante bem maior que acessar um `vector`. Com $10^6$ operações tudo bem; com $10^7$ pode não passar.
+
+**Recursão profunda.** Cada chamada recursiva ocupa um pouco de pilha. Profundidade $10^6$ pode estourar a pilha em alguns juízes (o do CSES tem pilha grande, mas não conte com isso em todo lugar).
+
+**`fastio()`.** Sem ele, ler $10^6$ números com `cin` pode levar mais de um segundo. O template já chama `fastio()` no começo do `main`.
+
+**Laços que "parecem" quadráticos.** Dois ponteiros que só andam para frente, mesmo com um `while` dentro de um `for`, fazem no total $O(n)$ passos. Isso aparece no milestone 5 (análise amortizada).
+
+</details>
 
 ## Referências
 
-- **CPH, capítulo 2 — Time complexity** (seções 2.1 a 2.3: regras de cálculo, classes de complexidade e estimativa de eficiência). O exemplo da seção 2.4 é parecido com um problema do milestone 7, então vale ler depois de chegar lá.
+- **CPH, capítulo 2 — Time complexity**, seções 2.1 a 2.3: regras de cálculo, classes de complexidade e estimativa de eficiência. O exemplo da seção 2.4 é parecido com um problema do milestone 7, então vale ler depois de chegar lá.
 - [USACO Guide — Time Complexity](https://usaco.guide/bronze/time-comp)
 - [USACO Guide — Fast Input & Output](https://usaco.guide/general/fast-io)
 
@@ -136,27 +273,31 @@ Compile com `-O2` (é o que os juízes usam): sem otimização, o tempo medido p
   client:visible
   questions={[
     {
+      q: 'Quantas vezes `x` é incrementado, para n = 10?',
+      code: 'int x = 0;\nfor (int i = 0; i < n; i++)\n    for (int j = i + 1; j < n; j++)\n        x++;',
+      options: ['100', '45', '55', '10'],
+      answer: 1,
+      why: 'É o número de pares i < j: 9 + 8 + … + 1 + 0 = 10·9/2 = 45.',
+    },
+    {
+      q: 'Quantas vezes o corpo do while roda, começando com x = 100?',
+      code: 'int x = 100, voltas = 0;\nwhile (x > 0) {\n    x /= 2;\n    voltas++;\n}',
+      options: ['50', '7', '6', '100'],
+      answer: 1,
+      why: 'x passa por 100, 50, 25, 12, 6, 3, 1 e depois vira 0: são 7 voltas, cerca de log₂ 100 ≈ 6,6.',
+    },
+    {
+      q: 'Quantos caracteres este laço copia ao todo, para n = 4?',
+      code: 'string s = "";\nfor (int i = 0; i < n; i++)\n    s = s + \'a\';',
+      options: ['4', '10', '16', '8'],
+      answer: 1,
+      why: 'Cada `s + \'a\'` cria uma string nova com 1, 2, 3 e 4 caracteres: 1 + 2 + 3 + 4 = 10. Com `s += \'a\'`, seriam só 4.',
+    },
+    {
       q: 'O enunciado diz `n <= 2·10^5`. Qual complexidade você deve mirar?',
       options: ['O(n²)', 'O(n log n) ou O(n)', 'O(2ⁿ)', 'Tanto faz: o juiz é rápido'],
       answer: 1,
-      why: '(2·10^5)² = 4·10^10, uns 100 segundos. O(n log n) dá ~3,5·10^6 operações.',
-    },
-    {
-      q: 'Qual é a complexidade de `for (int i = 1; i <= n; i++) for (int j = i; j <= n; j += i) ...`?',
-      options: ['O(n²)', 'O(n)', 'O(n log n)', 'O(n√n)'],
-      answer: 2,
-      why: 'Para cada i o laço interno roda n/i vezes; a soma n/1 + n/2 + … + n/n é n vezes a série harmônica ≈ n ln n.',
-    },
-    {
-      q: 'Uma função recursiva `f(vector<int> v, int i)` é chamada n = 10^5 vezes, cada chamada com o vetor inteiro. Qual o problema?',
-      options: [
-        'Nenhum, vetores são passados por referência automaticamente',
-        'Cada chamada copia o vetor: O(n) por chamada, O(n²) no total',
-        'Estoura a memória por causa do int',
-        'O compilador recusa',
-      ],
-      answer: 1,
-      why: 'Em C++ o parâmetro `vector<int> v` é uma cópia. Use `const vector<int>& v` (ou um vetor global).',
+      why: '(2·10^5)² = 4·10^10, umas 100 vezes acima do que cabe em 1 s. O(n log n) dá ~3,5·10^6 operações.',
     },
     {
       q: 'Cabe um `vector<long long>` de 5·10^7 posições num limite de 256 MB?',
