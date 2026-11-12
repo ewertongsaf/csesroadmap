@@ -1,0 +1,125 @@
+# Dicas do milestone 9 — DP I-b: grids, strings e LIS.
+problems:
+  1638: # Grid Paths I
+    hints:
+      - >-
+        Para chegar a uma casa, o último passo veio de cima ou da esquerda. O número de caminhos até ela é a soma dos dois.
+      - >-
+        É a tabela do módulo de grid, com soma no lugar do máximo. Uma casa com armadilha vale 0 caminhos, e a transição nem precisa de caso especial para ela.
+    pitfalls:
+      - >-
+        Se a casa inicial ou a final tiver armadilha, a resposta é 0. Tire o módulo a cada soma.
+
+  1639: # Edit Distance
+    hints:
+      - >-
+        Olhe para as últimas letras das duas palavras. Se são iguais, não custam nada. Se são diferentes, alguma operação acontece no fim.
+      - >-
+        Estado: `d[i][j]` = menor custo para transformar as $i$ primeiras letras de uma nas $j$ primeiras da outra. Além de apagar e inserir (as duas do módulo), aqui existe **trocar** uma letra por outra: para qual casa essa opção olha?
+    pitfalls:
+      - >-
+        Os casos base não são zero: `d[i][0] = i` e `d[0][j] = j`. A $i$-ésima letra é `a[i - 1]`. Com 5000 letras em cada palavra, use `int` na tabela.
+
+  3403: # Longest Common Subsequence
+    hints:
+      - >-
+        Mesmo estado de prefixos: `t[i][j]` = tamanho da maior subsequência comum entre os $i$ primeiros de um vetor e os $j$ primeiros do outro.
+      - >-
+        Se os últimos elementos são iguais, eles entram: diagonal mais 1. Se não, descarte o último de um dos lados e fique com o melhor.
+      - >-
+        Para imprimir a subsequência, guarde a tabela inteira e ande do canto final para trás: nos elementos iguais, anote o valor e suba na diagonal; senão, vá para o vizinho de maior valor.
+    pitfalls:
+      - >-
+        O passeio para trás encontra os elementos na ordem inversa: inverta antes de imprimir. Imprima o tamanho mesmo quando ele for 0.
+
+  1744: # Rectangle Cutting
+    hints:
+      - >-
+        Um corte divide o retângulo em dois retângulos menores, e cada um é resolvido separadamente. Qual é o estado?
+      - >-
+        `cortes[a][b]` = menor número de cortes para um retângulo $a \times b$. Um quadrado vale 0. Senão, teste todo corte horizontal e todo corte vertical: 1 mais a soma das duas partes.
+    pitfalls:
+      - >-
+        São cerca de $500^3 / 2$ operações: passa. Preencha em ordem crescente de $a$ e $b$, para as partes menores já estarem prontas.
+
+  2413: # Counting Towers
+    hints:
+      - >-
+        Construa a torre de baixo para cima, uma linha de cada vez. Para saber como a próxima linha pode ser, o que você precisa lembrar da linha atual?
+      - >-
+        Só o formato do topo: ou ele é **um** bloco de largura 2, ou são **dois** blocos de largura 1 lado a lado. São dois estados por altura.
+      - >-
+        Para cada formato, liste à mão o que pode acontecer na linha seguinte: cada bloco pode continuar subindo ou ser fechado, e a linha nova pode ter um formato ou o outro. Conte as opções com calma; os coeficientes da transição saem dessa lista.
+    pitfalls:
+      - >-
+        Há muitos casos de teste: calcule a tabela uma vez só, até $10^6$, e responda cada caso consultando. A altura 1 tem 2 torres e a altura 2 tem 8: use para conferir a transição.
+
+  3359: # Minimal Grid Path
+    hints:
+      - >-
+        Todo caminho tem o mesmo tamanho, e a $k$-ésima letra dele vem de uma casa da $k$-ésima diagonal. A menor string é decidida letra por letra.
+      - >-
+        Guarde o conjunto de casas onde um caminho ótimo pode estar depois de $k$ passos. Olhe os vizinhos (direita e baixo) de todas elas: a próxima letra é a menor que aparece.
+      - >-
+        O novo conjunto são os vizinhos que têm essa letra. Marque as casas já incluídas para não repetir a mesma casa vinda de dois lados.
+    pitfalls:
+      - >-
+        Sem a marcação, o conjunto pode dobrar a cada passo. Com ela, cada casa entra no máximo uma vez, e o total é $O(n^2)$. Comparar strings inteiras por casa não passa com $n = 3000$.
+
+  1145: # Increasing Subsequence
+    hints:
+      - >-
+        Com $n$ até $2 \cdot 10^5$, a DP de dois laços não passa. Para cada tamanho, qual sequência vale a pena guardar?
+      - >-
+        A de menor valor final. Esses finais ficam ordenados, e cada elemento novo encontra o seu lugar com uma busca binária.
+    pitfalls:
+      - >-
+        Aqui a sequência é **estritamente** crescente: confira qual das duas buscas (`lower_bound` ou `upper_bound`) você precisa, testando com dois valores iguais.
+
+  1140: # Projects
+    hints:
+      - >-
+        Ordene os projetos pelo dia de término. Para o último projeto da ordem, há duas opções: não fazer, ou fazer.
+      - >-
+        Se fizer, some a recompensa dele ao melhor resultado entre os projetos que terminam **antes** do dia em que ele começa.
+      - >-
+        Esses projetos formam um prefixo da ordem. Ache o tamanho do prefixo com busca binária nos dias de término.
+    pitfalls:
+      - >-
+        Um projeto que termina no dia $b$ e outro que começa no dia $b$ se sobrepõem: o término precisa ser estritamente menor. As recompensas somam até $2 \cdot 10^{14}$: `long long`.
+
+  2229: # Permutation Inversions
+    hints:
+      - >-
+        Monte a permutação inserindo os números em ordem: 1, depois 2, e assim por diante. Quando o maior número entra, quantas inversões novas ele cria?
+      - >-
+        Ele é maior que todos os que já estão lá, então cria uma inversão para cada elemento à sua direita: de 0 a $i - 1$, conforme a posição. Daí `t[i][k]` soma $i$ casas consecutivas da linha anterior.
+      - >-
+        Somar $i$ casas para cada estado é lento demais. A soma de um trecho consecutivo sai em tempo constante com prefixos da linha anterior.
+    pitfalls:
+      - >-
+        $k$ vai até cerca de $1{,}2 \cdot 10^5$: guarde só duas linhas (a anterior e a atual). Ao subtrair prefixos com módulo, some o módulo antes de tirar o resto.
+
+  3413: # Filled Subgrid Count I
+    hints:
+      - >-
+        Conte os quadrados pelo canto de baixo à direita. Se o maior quadrado de uma letra só que termina numa casa tem lado $s$, quantos quadrados terminam ali?
+      - >-
+        Exatamente $s$ (lados 1, 2, …, $s$). Então basta calcular, para cada casa, o lado do maior quadrado uniforme que termina nela.
+      - >-
+        Esse lado depende de três vizinhos: a casa de cima, a da esquerda e a da diagonal. Se as três têm a mesma letra que a casa atual, o lado é 1 mais o menor dos três lados; senão, é 1.
+    pitfalls:
+      - >-
+        A resposta por letra pode passar de $2 \cdot 10^9$: use `long long` nos contadores. Na primeira linha e na primeira coluna, o lado é sempre 1.
+
+  3404: # Permutation Subsequence
+    hints:
+      - >-
+        A tabela de prefixos teria $4 \cdot 10^{10}$ casas. O que há de especial aqui é que nenhum valor se repete dentro de cada vetor.
+      - >-
+        Troque cada valor do segundo vetor pela **posição** em que ele aparece no primeiro (descarte os que não aparecem). Uma subsequência comum corresponde a quê nessa lista de posições?
+      - >-
+        A uma subsequência crescente. O problema vira uma LIS, com a recuperação da sequência descrita no "Para depois" do módulo.
+    pitfalls:
+      - >-
+        Os vetores podem ter tamanhos diferentes, então há valores que só existem em um deles. Imprima os **valores** da subsequência, não as posições.

@@ -1,0 +1,121 @@
+# Dicas do milestone 8 — DP I: estados, contagem e mochila.
+problems:
+  1633: # Dice Combinations
+    hints:
+      - >-
+        Qual foi o **último** lançamento? Ele valeu de 1 a 6, e antes dele a soma era $n$ menos esse valor.
+      - >-
+        Estado: `formas[s]` = número de jeitos de chegar à soma $s$. Cada estado soma até seis estados anteriores. É a escada do módulo de introdução, com passos de 1 a 6.
+    pitfalls:
+      - >-
+        Tire o módulo a cada soma, não só no fim. Para $s < 6$, nem todos os seis valores existem: não leia índice negativo. O caso base é `formas[0] = 1`.
+
+  1634: # Minimizing Coins
+    hints:
+      - >-
+        Pegar sempre a maior moeda falha: com moedas 1, 5 e 6, a soma 10 sai com duas moedas (5 + 5), e o guloso usa cinco (6 + 1 + 1 + 1 + 1).
+      - >-
+        Estado: `menor[s]` = menor número de moedas que soma exatamente $s$. Qual foi a última moeda? Para cada moeda $c$, a opção é `menor[s - c] + 1`.
+      - >-
+        Somas que não dá para formar valem "infinito". Se `menor[x]` terminar infinito, a resposta é $-1$.
+    pitfalls:
+      - >-
+        Não some 1 a um infinito que seja o maior valor do tipo: estoura. Use um infinito com folga e só considere `menor[s - c]` quando ele for possível.
+
+  1635: # Coin Combinations I
+    hints:
+      - >-
+        No exemplo do enunciado, $2 + 2 + 5$ e $2 + 5 + 2$ contam como formas diferentes. Você está contando **sequências**.
+      - >-
+        Para cada soma, pergunte qual foi a última moeda: qualquer moeda pode ser a última. Qual laço fica por fora, o das somas ou o das moedas?
+    pitfalls:
+      - >-
+        São até $10^8$ operações: use vetor de `int`, tire o módulo com uma subtração (`if (v >= MOD) v -= MOD`) e evite `long long` no laço interno.
+
+  1636: # Coin Combinations II
+    hints:
+      - >-
+        Agora $2 + 2 + 5$ e $2 + 5 + 2$ são a **mesma** forma. Você está contando conjuntos de moedas, sem ordem.
+      - >-
+        Faça cada conjunto ser montado numa única ordem: libere uma moeda de cada vez. Compare com o problema anterior: o que muda é só qual laço fica por fora.
+    pitfalls:
+      - >-
+        O tempo é apertado. Use uma tabela de uma dimensão (só as somas), `int`, e módulo por subtração. Uma tabela de duas dimensões com $100 \times 10^6$ casas não cabe na memória.
+
+  1637: # Removing Digits
+    hints:
+      - >-
+        De um número $x$, você pode ir para $x - d$, para cada dígito $d$ de $x$ diferente de zero. Quantos passos até o zero, no mínimo?
+      - >-
+        Estado: `passos[x]` = menor número de passos de $x$ até 0. Ele depende de valores menores que $x$, então preencha de 1 até $n$.
+    pitfalls:
+      - >-
+        Subtrair 0 não muda o número: ignore o dígito 0. (Subtrair sempre o maior dígito também dá a resposta certa, mas a DP não exige que você prove isso.)
+
+  1158: # Book Shop
+    hints:
+      - >-
+        Cada livro é comprado no máximo uma vez, há um limite para o preço total, e você quer o máximo de páginas. Qual é o "tamanho" e qual é a "nota"?
+      - >-
+        É a mochila 0/1 do módulo: `melhor[c]` = máximo de páginas gastando no máximo $c$. Em que sentido o laço dos preços precisa andar para um livro não ser comprado duas vezes?
+    pitfalls:
+      - >-
+        São $10^3 \times 10^5 = 10^8$ atualizações: use uma tabela de uma linha com `int`. A tabela de duas dimensões estoura a memória.
+
+  1745: # Money Sums
+    hints:
+      - >-
+        A maior soma possível é $100 \times 1000 = 10^5$, pequena o bastante para um vetor de verdadeiro/falso.
+      - >-
+        Subset sum: `pode[s]` diz se alguma escolha de moedas soma $s$. Processe uma moeda de cada vez, com as somas de trás para a frente.
+    pitfalls:
+      - >-
+        A soma 0 (não pegar nada) não entra na resposta. Imprima primeiro a quantidade e depois as somas em ordem crescente.
+
+  1093: # Two Sets II
+    hints:
+      - >-
+        A soma total é $n(n+1)/2$. Se ela for ímpar, não há divisão possível. Se for par, um dos conjuntos precisa somar exatamente a metade.
+      - >-
+        Conte os subconjuntos de $1, 2, \dots, n$ que somam a metade: é a contagem do módulo de mochila, com cada número usado no máximo uma vez.
+      - >-
+        Essa contagem vê cada divisão **duas vezes** (uma por cada lado). Para contar uma vez só, decida de antemão em qual conjunto fica o número $n$: conte os subconjuntos de $1, \dots, n-1$ que somam a metade.
+    pitfalls:
+      - >-
+        Não divida a resposta por 2 depois do módulo: o resto pode ser ímpar. Fixar o número $n$ evita a divisão.
+
+  1746: # Array Description
+    hints:
+      - >-
+        Para estender um vetor em uma posição, só importa o **último valor** dele: o próximo precisa diferir em no máximo 1.
+      - >-
+        Estado: `formas[i][v]` = número de jeitos de preencher as $i$ primeiras posições terminando no valor $v$. Ele soma `formas[i-1]` em $v - 1$, $v$ e $v + 1$.
+      - >-
+        Numa posição com valor conhecido, só esse $v$ pode ser diferente de zero. Numa posição desconhecida, todos os $v$ de 1 a $m$ são calculados.
+    pitfalls:
+      - >-
+        Cuidado com as bordas $v = 1$ e $v = m$ (uma moldura com zeros em $0$ e $m + 1$ resolve). A resposta é a soma da última linha.
+
+  3302: # Subsets with Fixed Average
+    hints:
+      - >-
+        A média vale $a$ exatamente quando a soma dos elementos é $a$ vezes a quantidade. Subtraia $a$ de cada elemento: o que a condição vira?
+      - >-
+        Vira "a soma dos valores deslocados é zero". Agora é contar subconjuntos com uma soma fixa, como na mochila, só que os valores podem ser negativos.
+      - >-
+        Guarde as somas com um deslocamento, para o índice não ficar negativo. Para um valor positivo, percorra as somas de cima para baixo; para um negativo, de baixo para cima. Nos dois casos a casa lida ainda não pode ter sido alterada nesta passada.
+    pitfalls:
+      - >-
+        O subconjunto vazio tem soma zero e não conta: subtraia 1 no final (com cuidado para o resultado do módulo não ficar negativo).
+
+  3190: # Distinct Values Splits
+    hints:
+      - >-
+        Qual foi o **último** segmento? Se ele vai da posição $j + 1$ até $i$, o resto é uma divisão válida das $j$ primeiras posições.
+      - >-
+        `formas[i]` soma `formas[j]` para todo $j$ em que o trecho de $j + 1$ a $i$ não tem valor repetido. Esses $j$ formam um intervalo contínuo que termina em $i - 1$.
+      - >-
+        O começo desse intervalo só anda para a direita quando $i$ cresce (two pointers com um mapa do último lugar de cada valor), e a soma de um intervalo de `formas` sai de um vetor de prefixos.
+    pitfalls:
+      - >-
+        `formas[0] = 1` (o vetor vazio tem uma divisão). Ao subtrair prefixos com módulo, some o módulo antes de tirar o resto. Os valores vão até $10^9$: use `map` ou compressão de coordenadas.

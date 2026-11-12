@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { useProgress } from '../../lib/progress/react.ts';
 import { isMastered, milestoneProgress, nextProblem, totalSolved } from '../../lib/progress/selectors.ts';
 import { milestoneStars, worldOf, worldProgress } from '../../lib/journey.ts';
@@ -14,6 +15,19 @@ export default function RoadmapTrail({ trail, details }: { trail: TrailData; det
   const next = ready ? nextProblem(trail, state) : null;
   const current = next?.ms ?? -1;
   const total = totalSolved(state);
+  // Fases concluídas começam recolhidas; o clique no cabeçalho (ou num atalho) abre e fecha.
+  const [toggled, setToggled] = useState<Record<number, boolean>>({});
+  const isOpen = (pi: number, done: boolean) => toggled[pi] ?? !(ready && done);
+  const open = (pi: number) => setToggled((t) => ({ ...t, [pi]: true }));
+  // Link direto para um milestone de uma fase recolhida: abre a fase e rola até ele.
+  useEffect(() => {
+    const id = decodeURIComponent(location.hash.slice(1));
+    const m = trail.milestones.find((x) => x.slug === id);
+    if (!ready || !m) return;
+    open(m.phase);
+    requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready]);
 
   return (
     <div>
@@ -28,7 +42,7 @@ export default function RoadmapTrail({ trail, details }: { trail: TrailData; det
             const w = worldOf(pi);
             const wp = worldProgress(trail, state, pi);
             return (
-              <a key={ph.slug} href={`#${ph.slug}`} className="flex shrink-0 items-center gap-1.5 rounded-full border border-line bg-surface px-2.5 py-1 hover:border-accent/60">
+              <a key={ph.slug} href={`#${ph.slug}`} onClick={() => open(pi)} className="flex shrink-0 items-center gap-1.5 rounded-full border border-line bg-surface px-2.5 py-1 hover:border-accent/60">
                 <span className="size-2 rounded-full" style={{ background: w.color }} />
                 Fase {pi + 1}
                 {ready && <span className="tabular-nums text-faint">{wp.cleared}/{wp.milestones}</span>}
@@ -36,7 +50,7 @@ export default function RoadmapTrail({ trail, details }: { trail: TrailData; det
             );
           })}
           {next && (
-            <a href={`#${trail.milestones[next.ms].slug}`} className="ml-auto flex shrink-0 items-center gap-1.5 rounded-full bg-accent px-2.5 py-1 font-semibold text-accent-fg">
+            <a href={`#${trail.milestones[next.ms].slug}`} onClick={() => open(trail.milestones[next.ms].phase)} className="ml-auto flex shrink-0 items-center gap-1.5 rounded-full bg-accent px-2.5 py-1 font-semibold text-accent-fg">
               Onde estou <Icon name="arrow" size={12} />
             </a>
           )}
@@ -48,24 +62,35 @@ export default function RoadmapTrail({ trail, details }: { trail: TrailData; det
           const ms = trail.milestones.filter((m) => m.phase === pi);
           const w = worldOf(pi);
           const wp = worldProgress(trail, state, pi);
+          const shown = isOpen(pi, wp.done);
           return (
             <section key={phase.slug} id={phase.slug} className="scroll-mt-36">
-              <header className="mb-6 overflow-hidden rounded-2xl border border-line bg-surface" style={{ backgroundImage: `linear-gradient(100deg, color-mix(in oklab, ${w.color} 20%, transparent), transparent 60%)` }}>
-                <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2 p-5">
-                  <div className="min-w-0">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">Fase {pi + 1} · {w.name}</p>
-                    <h2 className="mt-1 text-xl font-semibold tracking-tight">{phase.name.replace(/^Fase \d+ — /, '')}</h2>
-                    <p className="mt-1 text-sm text-muted">{w.blurb}</p>
-                  </div>
-                  <p className="shrink-0 text-sm tabular-nums text-muted">
+              <header className={`overflow-hidden rounded-2xl border border-line bg-surface ${shown ? 'mb-6' : ''}`} style={{ backgroundImage: `linear-gradient(100deg, color-mix(in oklab, ${w.color} 20%, transparent), transparent 60%)` }}>
+                <button
+                  type="button"
+                  aria-expanded={shown}
+                  aria-controls={`${phase.slug}-lista`}
+                  onClick={() => setToggled((t) => ({ ...t, [pi]: !shown }))}
+                  className="flex w-full flex-wrap items-end justify-between gap-x-6 gap-y-2 p-5 text-left"
+                >
+                  <span className="block min-w-0">
+                    <span className="block text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">Fase {pi + 1} · {w.name}</span>
+                    <span role="heading" aria-level={2} className="mt-1 block text-xl font-semibold tracking-tight">{phase.name.replace(/^Fase \d+ — /, '')}</span>
+                    <span className="mt-1 block text-sm text-muted">{w.blurb}</span>
+                  </span>
+                  <span className="flex shrink-0 items-center gap-3 text-sm tabular-nums text-muted">
+                    {ready && wp.done && <span className="rounded-full bg-ok/15 px-2 py-0.5 text-xs font-semibold text-ok">concluída</span>}
                     {ready ? `${wp.solved}/${wp.total} problemas · ${wp.cleared}/${wp.milestones} milestones` : `${wp.total} problemas · ${wp.milestones} milestones`}
-                  </p>
-                </div>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className={`transition-transform ${shown ? 'rotate-180' : ''}`}>
+                      <path d="m6 9 6 6 6-6" />
+                    </svg>
+                  </span>
+                </button>
                 <div className="h-1.5 bg-surface-2">
                   <div className="h-full transition-[width] duration-700" style={{ width: `${ready && wp.total ? (wp.solved / wp.total) * 100 : 0}%`, background: w.color }} />
                 </div>
               </header>
-              <ol className="relative space-y-3 before:absolute before:top-4 before:bottom-4 before:left-[21px] before:w-0.5 before:rounded-full before:bg-line">
+              <ol id={`${phase.slug}-lista`} hidden={!shown} className="relative space-y-3 before:absolute before:top-4 before:bottom-4 before:left-[21px] before:w-0.5 before:rounded-full before:bg-line">
                 {ms.map((m) => {
                   const prog = milestoneProgress(state, m);
                   const mastered = isMastered(state, m.slug);

@@ -42,9 +42,10 @@ export function AccountSection({ trail }: { trail: TrailData }) {
   const { state, ready } = useProgress();
   const gear = ready ? journeySummary(trail, state).gear : [];
 
-  // Nesta página o SDK é carregado sempre: mostra se há sessão e conclui a volta dos links de e-mail.
+  // O SDK só é baixado se houver chance de sessão (token salvo ou volta de um link de e-mail);
+  // para quem está sem conta, ele entra quando um formulário é usado.
   useEffect(() => {
-    void currentUser(true);
+    void currentUser();
   }, []);
 
   return (
