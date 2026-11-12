@@ -39,8 +39,8 @@ test('níveis: limites exatos e progresso dentro do nível', () => {
   assert.equal(levelInfo(50).level, 2);
   assert.equal(levelInfo(xpForLevel(10)).level, 10);
   assert.equal(levelInfo(xpForLevel(10) - 1).level, 9);
-  assert.equal(titleFor(1), 'Novata');
-  assert.equal(titleFor(7), 'Exploradora');
+  assert.equal(titleFor(1), 'Iniciante');
+  assert.equal(titleFor(7), 'Viajante');
   assert.deepEqual(gearAt(2), []);
   assert.deepEqual(gearAt(10), ['scarf', 'cape', 'staff']);
 });

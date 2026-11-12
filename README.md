@@ -72,10 +72,11 @@ configuração ou trocar de projeto.
 3. Só para usar outro projeto: copie de **Project Settings → API** a *Project URL* e a chave *publishable* para as variáveis
    `PUBLIC_SUPABASE_URL` e `PUBLIC_SUPABASE_ANON_KEY`: na Vercel (Settings → Environment Variables, depois um novo deploy)
    e, localmente, num arquivo `.env` (modelo em `.env.example`).
-4. No site, abra **Progresso**, informe o e-mail e clique no link recebido. Repita em cada dispositivo.
+4. No site, abra **Conta**, crie a conta (nome de usuário, e-mail e senha) e confirme pelo link recebido.
+   Nos outros dispositivos, basta entrar com e-mail e senha.
 
-Opcional: para entrar digitando um código em vez de abrir o link, inclua `{{ .Token }}` no template
-*Magic Link* (**Authentication → Emails**).
+O nome de usuário é único (tabela `profiles`) e o avatar personalizado fica salvo na conta.
+"Esqueci minha senha" manda um link que volta para a página **Conta** pedindo a senha nova.
 
 Como funciona: o `localStorage` continua sendo a cópia imediata (funciona offline). A cada carga, e quando outro
 dispositivo salva, o estado local é mesclado com o da nuvem (`src/lib/progress/merge.ts`): em cada problema vale a

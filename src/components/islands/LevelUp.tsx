@@ -2,7 +2,7 @@
 // resolvido (página do problema, milestone, checkpoint), não só na /jornada.
 // O último nível comemorado fica em localStorage; a primeira visita só registra, sem comemorar.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useProgress } from '../../lib/progress/react.ts';
+import { useProfile, useProgress } from '../../lib/progress/react.ts';
 import { GEAR, gearAt, levelInfo, titleFor, totalXpFromTable, type XpTable } from '../../lib/journey.ts';
 import { playLevelUp } from '../../lib/sound.ts';
 import { HeroPortrait } from '../journey/Hero.tsx';
@@ -42,6 +42,7 @@ const PARTICLES = Array.from({ length: 28 }, (_, i) => {
 
 export default function LevelUp({ table }: { table: XpTable }) {
   const { state, ready } = useProgress();
+  const { look, username } = useProfile();
   const info = useMemo(() => levelInfo(totalXpFromTable(table, state)), [table, state]);
   const level = info.level;
   const [shown, setShown] = useState<{ level: number; gear: string | null } | null>(null);
@@ -89,7 +90,7 @@ export default function LevelUp({ table }: { table: XpTable }) {
       <Ring value={ready ? info.into : 0} total={info.span} size={26} stroke={3} color="var(--c-accent)">
         <span className="text-[11px] font-semibold tabular-nums">{ready ? level : '·'}</span>
       </Ring>
-      <span className="hidden font-medium text-muted sm:inline">{ready ? titleFor(level) : 'Nível'}</span>
+      <span className="hidden font-medium text-muted sm:inline">{ready ? (username ? `@${username}` : titleFor(level)) : 'Nível'}</span>
     </a>
   );
   if (!shown) return chip;
@@ -113,7 +114,7 @@ export default function LevelUp({ table }: { table: XpTable }) {
         </div>
         <div className="relative mx-auto grid size-36 place-items-center">
           <div className="lv-rays absolute inset-0 rounded-full" aria-hidden="true" />
-          <HeroPortrait gear={gearAt(shown.level)} className="relative h-28" />
+          <HeroPortrait look={look} gear={gearAt(shown.level)} className="relative h-28" />
         </div>
         <p className="mt-4 text-xs font-semibold uppercase tracking-[0.2em] text-accent">Subiu de nível</p>
         <p className="lv-number mt-1 text-5xl font-semibold tracking-tight tabular-nums">Nível {shown.level}</p>

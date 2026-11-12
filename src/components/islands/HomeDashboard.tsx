@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useProgress } from '../../lib/progress/react.ts';
+import { useProfile, useProgress } from '../../lib/progress/react.ts';
 import { milestoneProgress, nextProblem, statusOf, streaks, totalSolved } from '../../lib/progress/selectors.ts';
 import { addDays, dayKey } from '../../lib/progress/dates.ts';
 import { isSolved } from '../../lib/progress/types.ts';
@@ -13,6 +13,7 @@ const WEEKDAYS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
 
 export default function HomeDashboard({ trail, details }: { trail: TrailData; details: Record<string, MilestoneDetail> }) {
   const { state, ready } = useProgress();
+  const { look } = useProfile();
   const next = nextProblem(trail, state);
   const ms = next ? trail.milestones[next.ms] : null;
   const msProg = ms ? milestoneProgress(state, ms) : null;
@@ -92,7 +93,7 @@ export default function HomeDashboard({ trail, details }: { trail: TrailData; de
 
         <a href="/jornada" className="lift flex items-center gap-4 rounded-2xl border border-line bg-surface p-5 lg:flex-col lg:items-stretch lg:text-center">
           <span className="grid size-24 shrink-0 place-items-center rounded-2xl lg:mx-auto lg:size-28" style={{ background: `color-mix(in oklab, ${world.color} 22%, var(--c-surface-2))` }}>
-            <HeroPortrait gear={ready ? sum.gear : []} className="h-20 lg:h-24" />
+            <HeroPortrait look={look} gear={ready ? sum.gear : []} className="h-20 lg:h-24" />
           </span>
           <span className="min-w-0 flex-1">
             {ready ? (

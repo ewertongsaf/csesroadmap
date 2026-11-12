@@ -3,8 +3,9 @@ import Base from '../layouts/Base.astro';
 import ConfigPanel from '../components/islands/ConfigPanel.tsx';
 import { trailData } from '../lib/data.ts';
 ---
-<Base title="Progresso">
-  <h1 class="text-3xl font-semibold tracking-tight">Progresso</h1>
+<Base title="Conta">
+  <h1 class="text-3xl font-semibold tracking-tight">Conta</h1>
+  <p class="mt-2 text-muted">Login, avatar, backup do progresso e preferências.</p>
   <div class="mt-8">
     <ConfigPanel client:load trail={trailData} />
   </div>

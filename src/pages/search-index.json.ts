@@ -9,7 +9,7 @@ export const GET: APIRoute = () => {
     { kind: 'page', title: 'Estatísticas', sub: 'Progresso, streak e heatmap', href: '/stats' },
     { kind: 'page', title: 'Checklist antes de submeter', sub: 'Erros clássicos', href: '/checklist' },
     { kind: 'page', title: 'Template C++', sub: 'Copiar template', href: '/template' },
-    { kind: 'page', title: 'Progresso', sub: 'Exportar, importar, já domino', href: '/config' },
+    { kind: 'page', title: 'Conta', sub: 'Login, avatar, exportar, importar, já domino', href: '/config' },
     ...milestones.flatMap((m): SearchItem[] => [
       { kind: 'milestone', title: m.name, sub: `Milestone ${m.num}`, href: milestonePath(m.slug) },
       { kind: 'milestone', title: `Checkpoint Cego ${m.num}`, sub: m.name, href: checkpointPath(m.slug) },

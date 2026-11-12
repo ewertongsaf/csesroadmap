@@ -61,11 +61,11 @@ export function levelInfo(xp: number) {
 }
 
 const TITLES: [minLevel: number, title: string][] = [
-  [1, 'Novata'],
+  [1, 'Iniciante'],
   [3, 'Aprendiz'],
-  [6, 'Exploradora'],
+  [6, 'Viajante'],
   [10, 'Estrategista'],
-  [15, 'Mestra das estruturas'],
+  [15, 'Especialista em estruturas'],
   [20, 'Lenda do CSES'],
 ];
 export const titleFor = (level: number) => TITLES.filter(([min]) => level >= min).at(-1)![1];
@@ -73,7 +73,7 @@ export const titleFor = (level: number) => TITLES.filter(([min]) => level >= min
 /** Equipamentos da personagem, liberados por nível. A ordem é a de desbloqueio. */
 export const GEAR = [
   { key: 'scarf', level: 3, name: 'Cachecol de aprendiz' },
-  { key: 'cape', level: 6, name: 'Capa de exploradora' },
+  { key: 'cape', level: 6, name: 'Capa de viajante' },
   { key: 'staff', level: 10, name: 'Cajado de estrategista' },
   { key: 'aura', level: 15, name: 'Aura das estruturas' },
   { key: 'crown', level: 20, name: 'Coroa de lenda' },

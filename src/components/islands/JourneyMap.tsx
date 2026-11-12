@@ -1,7 +1,7 @@
 // Página /jornada: o roadmap como um mapa de mundos. A personagem caminha até o milestone escolhido;
 // o caminho aceso mostra o progresso real. XP, nível, estrelas e conquistas vêm de src/lib/journey.ts.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useProgress } from '../../lib/progress/react.ts';
+import { useProfile, useProgress } from '../../lib/progress/react.ts';
 import { isMastered, milestoneProgress, nextProblem, statusOf, streaks, totalSolved } from '../../lib/progress/selectors.ts';
 import { isSolved } from '../../lib/progress/types.ts';
 import { GEAR, MILESTONE_BONUS, achievements, journeySummary, milestoneStars, problemXp, worldOf, worldProgress } from '../../lib/journey.ts';
@@ -34,6 +34,7 @@ const reducedMotion = () => typeof window !== 'undefined' && window.matchMedia('
 export default function JourneyMap({ trail, details }: { trail: TrailData; details: Record<string, MilestoneDetail> }) {
   const { state, ready } = useProgress();
   const n = trail.milestones.length;
+  const { look } = useProfile();
   const sum = useMemo(() => journeySummary(trail, state), [trail, state]);
   const [selected, setSelected] = useState(0);
   const [toast, setToast] = useState<string | null>(null);
@@ -204,7 +205,7 @@ export default function JourneyMap({ trail, details }: { trail: TrailData; detai
       <section className="grid gap-4 rounded-2xl border border-line bg-surface p-5 sm:grid-cols-[auto_1fr] sm:p-6">
         <div className="flex items-center gap-4">
           <div className="grid size-24 shrink-0 place-items-center rounded-2xl bg-surface-2">
-            <HeroPortrait gear={ready ? sum.gear : []} className="h-20" />
+            <HeroPortrait look={look} gear={ready ? sum.gear : []} className="h-20" />
           </div>
           <div className="min-w-0 sm:hidden">
             <LevelLine ready={ready} level={sum.level} title={sum.title} />
@@ -281,7 +282,7 @@ export default function JourneyMap({ trail, details }: { trail: TrailData; detai
             <g ref={heroRef} className="pointer-events-none opacity-0 transition-opacity duration-300">
               <g ref={flipRef} className="jr-idle">
                 <g transform="scale(1.15)">
-                  <HeroFigure gear={ready ? sum.gear : []} />
+                  <HeroFigure look={look} gear={ready ? sum.gear : []} />
                 </g>
               </g>
             </g>
@@ -357,7 +358,7 @@ export default function JourneyMap({ trail, details }: { trail: TrailData; detai
               return (
                 <li key={g.key} className={`flex items-center gap-3 ${on ? '' : 'opacity-55'}`}>
                   <span className="grid size-11 shrink-0 place-items-center rounded-lg bg-surface-2">
-                    <HeroPortrait gear={[g.key]} className="h-9" />
+                    <HeroPortrait look={look} gear={[g.key]} className="h-9" label={g.name} />
                   </span>
                   <span className="min-w-0 text-sm">
                     <span className="block font-medium">{g.name}</span>
