@@ -36,6 +36,10 @@ export interface ProgressState {
   activity: Record<string, DayActivity>;
   /** Chave = id do problema; o palpite de técnica escrito no Checkpoint Cego. */
   checkpointGuesses: Record<string, string>;
+  /** Última alteração de qualquer coisa neste estado (ISO). Usado pela sincronização para decidir quem é mais novo. */
+  updatedAt?: string;
+  /** Quando o estado foi substituído por inteiro (import ou "apagar tudo"). O que for mais antigo que isso em outro dispositivo é descartado. */
+  resetAt?: string;
 }
 
 /**

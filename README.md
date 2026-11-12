@@ -59,3 +59,22 @@ Reordenar ou adicionar um problema = editar `data/roadmap.ts` e rodar `npm run v
 ## Progresso
 
 O progresso fica no `localStorage` do navegador. Em **Progresso** dá para exportar/importar um JSON, para trocar de máquina sem perder nada. A persistência passa por um `ProgressAdapter` (`src/lib/progress/types.ts`), então a sincronização (Supabase, Vercel KV…) entra como outro adapter, sem mexer no resto.
+
+## Sincronização entre dispositivos (Supabase)
+
+Opcional. Sem configurar, o progresso fica só no `localStorage` de cada navegador.
+
+1. Crie um projeto em https://supabase.com e rode `supabase/schema.sql` no **SQL Editor**.
+2. Em **Authentication → URL Configuration**, ponha o endereço do site em *Site URL* e adicione
+   `https://SEU-DOMINIO/config` (e `http://localhost:4321/config`, para desenvolvimento) em *Redirect URLs*.
+3. Copie de **Project Settings → API** a *Project URL* e a chave *anon/publishable* para as variáveis
+   `PUBLIC_SUPABASE_URL` e `PUBLIC_SUPABASE_ANON_KEY`: na Vercel (Settings → Environment Variables, depois um novo deploy)
+   e, localmente, num arquivo `.env` (modelo em `.env.example`).
+4. No site, abra **Progresso**, informe o e-mail e clique no link recebido. Repita em cada dispositivo.
+
+Opcional: para entrar digitando um código em vez de abrir o link, inclua `{{ .Token }}` no template
+*Magic Link* (**Authentication → Emails**).
+
+Como funciona: o `localStorage` continua sendo a cópia imediata (funciona offline). A cada carga, e quando outro
+dispositivo salva, o estado local é mesclado com o da nuvem (`src/lib/progress/merge.ts`): em cada problema vale a
+alteração mais recente; importar um JSON ou "apagar tudo" vale para todos os dispositivos.

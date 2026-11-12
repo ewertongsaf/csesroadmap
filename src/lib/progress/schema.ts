@@ -17,6 +17,8 @@ const v1Schema = z.object({
   masteredMilestones: z.array(z.string()).catch([]),
   activity: z.record(z.string(), z.object({ solved: z.number().int().min(0), actions: z.number().int().min(0) })).catch({}),
   checkpointGuesses: z.record(z.string(), z.string()).catch({}),
+  updatedAt: z.string().optional().catch(undefined),
+  resetAt: z.string().optional().catch(undefined),
 });
 
 /** Formato do arquivo exportado. */

@@ -1,6 +1,6 @@
 // Estado de progresso compartilhado entre todas as ilhas da página (nanostores).
 import { atom } from 'nanostores';
-import { localStorageAdapter } from './adapters/localStorage.ts';
+import { syncedAdapter } from './adapters/synced.ts';
 import { emptyProblem, emptyProgress, isSolved, type ProblemProgress, type ProgressAdapter, type ProgressState, type Status } from './types.ts';
 import { todayKey } from './dates.ts';
 
@@ -10,7 +10,7 @@ export const $ready = atom(false);
 /** Mensagem quando o storage falha (o site segue funcionando só em memória). */
 export const $storageError = atom<string | null>(null);
 
-let adapter: ProgressAdapter = localStorageAdapter;
+let adapter: ProgressAdapter = syncedAdapter;
 let started = false;
 let applyingLoad = false;
 let saveTimer: ReturnType<typeof setTimeout> | undefined;
@@ -18,6 +18,8 @@ let saveTimer: ReturnType<typeof setTimeout> | undefined;
 const describe = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
 async function load() {
+  // Mudança ainda não salva (debounce) vai para o storage antes de reler: senão o reload a apagaria.
+  flush();
   try {
     const state = await adapter.load();
     applyingLoad = true;
@@ -51,7 +53,7 @@ export function startProgress() {
   void load();
 }
 
-/** Troca o backend de persistência (fase 2: sync). */
+/** Troca o backend de persistência. */
 export function setAdapter(next: ProgressAdapter) {
   adapter = next;
   if (started) void load();
@@ -60,6 +62,7 @@ export function setAdapter(next: ProgressAdapter) {
 function update(fn: (draft: ProgressState) => void) {
   const draft = structuredClone($progress.get());
   fn(draft);
+  draft.updatedAt = new Date().toISOString();
   $progress.set(draft);
 }
 
@@ -112,7 +115,9 @@ export function setGuess(id: number, guess: string) {
 
 /** Substitui tudo (import de JSON ou reset). Salva na hora. */
 export function replaceProgress(state: ProgressState) {
-  $progress.set(state);
+  // resetAt avisa os outros dispositivos de que o que eles têm de mais antigo não vale mais.
+  const now = new Date().toISOString();
+  $progress.set({ ...state, updatedAt: now, resetAt: now });
   clearTimeout(saveTimer);
   saveTimer = setTimeout(flush, 0);
 }

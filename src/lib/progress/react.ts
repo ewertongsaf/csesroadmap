@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react';
 import { useStore } from '@nanostores/react';
 import { $progress, $ready, $storageError, startProgress } from './store.ts';
 import { emptyProgress } from './types.ts';
+import { $sync, type SyncState } from './sync.ts';
+
+const SSR_SYNC: SyncState = { email: null, status: 'off', lastSyncedAt: null, error: null };
 
 const SSR_STATE = emptyProgress();
 
@@ -22,6 +25,13 @@ export function useStorageError() {
   const mounted = useMounted();
   const error = useStore($storageError);
   return mounted ? error : null;
+}
+
+/** Estado da sincronização (vazio até o mount, como o useProgress). */
+export function useSync() {
+  const mounted = useMounted();
+  const sync = useStore($sync);
+  return mounted ? sync : SSR_SYNC;
 }
 
 function useMounted() {
