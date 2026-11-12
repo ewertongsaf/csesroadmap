@@ -87,15 +87,21 @@ export default function ConfigPanel({ trail }: { trail: TrailData }) {
         </button>
       </section>
 
-      <section>
-        <h2 className="text-lg font-semibold">Milestones que você já domina</h2>
-        <p className="mt-1 text-sm text-muted">
-          Marcados aqui são pulados no cálculo do "próximo problema", mas os problemas não contam como resolvidos.
-        </p>
-        <ul className="mt-4 grid gap-2 sm:grid-cols-2">
+      <details className="reveal group rounded-xl border border-line bg-surface">
+        <summary className="flex items-center justify-between gap-3 p-6">
+          <span>
+            <span className="block text-lg font-semibold">Milestones que você já domina</span>
+            <span className="mt-1 block text-sm text-muted">
+              {ready && state.masteredMilestones.length > 0 ? `${state.masteredMilestones.length} marcados. ` : ''}Marcados são pulados no "próximo problema", mas não contam como resolvidos.
+            </span>
+          </span>
+          <span className="shrink-0 text-xs text-faint group-open:hidden">mostrar</span>
+        </summary>
+        <div className="border-t border-line p-6 pt-4">
+        <ul className="grid gap-2 sm:grid-cols-2">
           {trail.milestones.map((m) => (
             <li key={m.slug} className="min-w-0">
-              <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-line bg-surface px-3 py-2 text-sm select-none hover:bg-surface-2">
+              <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-line bg-bg px-3 py-2 text-sm select-none hover:bg-surface-2">
                 <input type="checkbox" className="accent-[var(--c-accent)]" disabled={!ready} checked={isMastered(state, m.slug)} onChange={() => toggleMastered(m.slug)} />
                 <span className="tabular-nums text-faint">{m.num}.</span>
                 <span className="min-w-0 truncate">{m.name}</span>
@@ -103,7 +109,8 @@ export default function ConfigPanel({ trail }: { trail: TrailData }) {
             </li>
           ))}
         </ul>
-      </section>
+        </div>
+      </details>
     </div>
   );
 }

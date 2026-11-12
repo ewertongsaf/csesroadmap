@@ -66,7 +66,7 @@ export function StatusPicker({ id, difficulty, nextHref, nextTitle }: { id: numb
             aria-checked={ready && status === s}
             disabled={!ready}
             onClick={() => choose(s)}
-            className={`flex items-center justify-center gap-1.5 rounded-lg border px-2 py-2.5 text-sm whitespace-nowrap transition-colors sm:text-[13px] ${
+            className={`flex items-center justify-center gap-1.5 rounded-lg border px-2 py-2.5 text-[13px] whitespace-nowrap transition-colors ${
               ready && status === s ? `${ACTIVE[s]} font-medium` : 'border-line text-muted hover:bg-surface-2 hover:text-fg'
             }`}
           >
@@ -105,7 +105,7 @@ export function MilestoneStrip({ current, items }: { current: number; items: { i
   const { state, ready } = useProgress();
   const color: Record<Status, string> = { not_started: 'bg-line', trying: 'bg-try', solved: 'bg-ok', solved_with_hint: 'bg-hint' };
   return (
-    <ol className="flex flex-wrap gap-1" aria-label="Problemas deste milestone">
+    <ol className="-my-2 flex flex-wrap gap-1" aria-label="Problemas deste milestone">
       {items.map((it, i) => {
         const st = ready ? statusOf(state, it.id) : 'not_started';
         const here = it.id === current;
@@ -116,8 +116,10 @@ export function MilestoneStrip({ current, items }: { current: number; items: { i
               title={`${i + 1}. ${it.title} (${STATUS_LABEL[st]})`}
               aria-label={`${i + 1}. ${it.title}: ${STATUS_LABEL[st]}`}
               aria-current={here ? 'page' : undefined}
-              className={`block h-2.5 rounded-full transition-all hover:opacity-80 ${color[st]} ${here ? 'w-7 ring-2 ring-fg/70 ring-offset-2 ring-offset-bg' : 'w-4'}`}
-            />
+              className="group block py-2"
+            >
+              <span className={`block h-2.5 rounded-full transition-all group-hover:opacity-80 ${color[st]} ${here ? 'w-7 ring-2 ring-fg/70 ring-offset-2 ring-offset-bg' : 'w-4'}`} />
+            </a>
           </li>
         );
       })}
@@ -199,7 +201,7 @@ export function NotesAndCode({ id }: { id: number }) {
           onKeyDown={onCodeKey}
           onChange={(e) => setCode(id, e.target.value)}
           placeholder="Cole aqui sua solução aceita."
-          className="mt-3 min-h-56 w-full resize-y rounded-lg border border-line bg-surface p-3 font-mono text-[13px] leading-relaxed outline-none focus:border-accent/60"
+          className="mt-3 min-h-40 w-full resize-y rounded-lg border border-line bg-surface p-3 font-mono text-[13px] leading-relaxed outline-none focus:border-accent/60"
         />
       </section>
     </div>

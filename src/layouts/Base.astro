@@ -72,10 +72,10 @@ const active = (href: string) => (href === '/' ? path === '/' : path === href ||
       </div>
     </header>
     <StorageWarning client:load />
-    <main id="conteudo" class:list={['page-enter mx-auto w-full flex-1 px-4 pt-8 pb-28 md:pb-12', wide ? 'max-w-6xl' : 'max-w-3xl']}>
+    <main id="conteudo" class:list={['page-enter mx-auto w-full flex-1 px-4 pt-8 pb-10 md:pb-12', wide ? 'max-w-6xl' : 'max-w-3xl']}>
       <slot />
     </main>
-    <footer class="hidden border-t border-line py-6 text-center text-xs text-faint md:block">
+    <footer class="border-t border-line px-4 pt-6 pb-24 text-center text-xs text-faint md:pb-6">
       Problemas do <a class="underline" href="https://cses.fi/problemset/">CSES Problem Set</a> (CC BY-NC-SA). Este site só linka os
       enunciados, não os copia. Teoria: <a class="underline" href="https://cses.fi/book/book.pdf">Competitive Programmer's Handbook</a>.
     </footer>

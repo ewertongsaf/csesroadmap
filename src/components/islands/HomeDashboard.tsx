@@ -3,10 +3,10 @@ import { useProfile, useProgress } from '../../lib/progress/react.ts';
 import { milestoneProgress, nextProblem, statusOf, streaks, totalSolved } from '../../lib/progress/selectors.ts';
 import { addDays, dayKey } from '../../lib/progress/dates.ts';
 import { isSolved } from '../../lib/progress/types.ts';
-import { journeySummary, milestoneStars, problemXp, worldOf, worldProgress } from '../../lib/journey.ts';
+import { journeySummary, problemXp, worldOf, worldProgress } from '../../lib/journey.ts';
 import { checkpointPath, csesUrl, milestonePath, problemPath, type TrailData } from '../../lib/trail.ts';
 import { HeroPortrait } from '../journey/Hero.tsx';
-import { DifficultyDots, Icon, ProgressBar, Ring, Skeleton, StatusDot } from '../ui.tsx';
+import { DifficultyDots, Icon, Ring, Skeleton, StatusDot } from '../ui.tsx';
 import type { MilestoneDetail } from './RoadmapTrail.tsx';
 
 const WEEKDAYS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
@@ -21,7 +21,6 @@ export default function HomeDashboard({ trail, details }: { trail: TrailData; de
   const streak = streaks(state);
   const sum = useMemo(() => journeySummary(trail, state), [trail, state]);
   const world = worldOf(ms?.phase ?? trail.phases.length - 1);
-  const starsTotal = useMemo(() => trail.milestones.reduce((a, m) => a + milestoneStars(state, m), 0), [trail, state]);
 
   const week = useMemo(() => {
     const today = new Date();
@@ -79,12 +78,6 @@ export default function HomeDashboard({ trail, details }: { trail: TrailData; de
                   Abrir no CSES <Icon name="external" size={14} />
                 </a>
               </div>
-              {msProg && (
-                <div className="mt-6 flex items-center gap-3 text-xs text-muted">
-                  <ProgressBar value={msProg.solved} total={msProg.total} />
-                  <span className="shrink-0 tabular-nums">{msProg.solved}/{msProg.total} no milestone</span>
-                </div>
-              )}
             </>
           ) : (
             <p className="mt-3 text-2xl font-semibold">Trilha completa. Todos os {trail.problems.length} problemas resolvidos.</p>
@@ -113,7 +106,7 @@ export default function HomeDashboard({ trail, details }: { trail: TrailData; de
       </section>
 
       {/* Números */}
-      <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <section className="grid gap-4 sm:grid-cols-3">
         <Tile label="Resolvidos" ready={ready}>
           <div className="flex items-center gap-3">
             <Ring value={total.solved} total={trail.problems.length} size={52} stroke={5}>
@@ -130,6 +123,7 @@ export default function HomeDashboard({ trail, details }: { trail: TrailData; de
             <Icon name="fire" size={20} className={streak.current > 0 ? 'text-accent' : 'text-faint'} />
             {streak.current}<span className="text-sm font-normal text-muted">{streak.current === 1 ? 'dia' : 'dias'}</span>
           </p>
+          <p className="text-xs text-muted">Melhor: {streak.best} {streak.best === 1 ? 'dia' : 'dias'}</p>
           <div className="mt-2.5 flex gap-1.5" aria-label="Últimos 7 dias">
             {week.map((d, i) => (
               <span key={i} className="flex flex-col items-center gap-1 text-[10px] text-faint">
@@ -153,10 +147,6 @@ export default function HomeDashboard({ trail, details }: { trail: TrailData; de
           ) : (
             <p className="text-2xl font-semibold">—</p>
           )}
-        </Tile>
-        <Tile label="Estrelas" ready={ready}>
-          <p className="text-2xl font-semibold tabular-nums"><span className="text-accent">★</span> {starsTotal}<span className="ml-1 text-sm font-normal text-muted">/ {trail.milestones.length * 3}</span></p>
-          <p className="mt-1 text-xs text-muted">Melhor streak: {streak.best} {streak.best === 1 ? 'dia' : 'dias'}</p>
         </Tile>
       </section>
 
@@ -230,14 +220,13 @@ export default function HomeDashboard({ trail, details }: { trail: TrailData; de
         </div>
       </section>
 
-      <nav aria-label="Atalhos" className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+      {/* No celular, Checklist e Template não cabem na barra inferior. */}
+      <nav aria-label="Ferramentas" className="grid grid-cols-2 gap-3 text-sm md:hidden">
         {([
-          ['/roadmap', 'list', 'Trilha completa'],
-          ['/jornada', 'map', 'Mapa da jornada'],
           ['/checklist', 'check', 'Checklist de submit'],
           ['/template', 'code', 'Template C++'],
         ] as const).map(([href, icon, label]) => (
-          <a key={href} href={href} className="lift flex items-center gap-2.5 rounded-xl border border-line bg-surface px-3.5 py-3 text-muted hover:text-fg">
+          <a key={href} href={href} className="flex items-center gap-2.5 rounded-xl border border-line bg-surface px-3.5 py-3 text-muted">
             <Icon name={icon} size={17} className="text-accent" /> {label}
           </a>
         ))}

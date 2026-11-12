@@ -9,7 +9,7 @@ export default function HintLadder({ id, hints }: { id: number; hints: string[] 
   const revealed = Math.min(state.problems[id]?.hintsRevealed ?? 0, hints.length);
 
   if (hints.length === 0)
-    return <p className="text-sm text-muted">As dicas deste problema ainda não foram escritas. Elas chegam junto com os módulos do milestone.</p>;
+    return <p className="rounded-xl border border-dashed border-line px-4 py-3 text-sm text-muted">Ainda não há dicas para este problema. Se travar, releia os módulos do milestone e passe pelo <a className="underline underline-offset-4 hover:text-fg" href="/checklist">checklist</a>.</p>;
 
   return (
     <ol className="space-y-3">

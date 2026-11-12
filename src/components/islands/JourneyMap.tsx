@@ -38,6 +38,7 @@ export default function JourneyMap({ trail, details }: { trail: TrailData; detai
   const sum = useMemo(() => journeySummary(trail, state), [trail, state]);
   const [selected, setSelected] = useState(0);
   const [toast, setToast] = useState<string | null>(null);
+  const [allBadges, setAllBadges] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const heroRef = useRef<SVGGElement>(null);
@@ -175,6 +176,9 @@ export default function JourneyMap({ trail, details }: { trail: TrailData; detai
   const streak = streaks(state);
   const starsTotal = nodes.reduce((acc, v) => acc + v.stars, 0);
   const badges = useMemo(() => achievements(trail, state), [trail, state]);
+  // Por padrão: as conquistadas e as 4 próximas. O resto fica atrás de "ver todas".
+  const unlockedCount = badges.filter((b) => b.unlocked).length;
+  const shownBadges = allBadges ? badges : [...badges.filter((b) => ready && b.unlocked), ...badges.filter((b) => !(ready && b.unlocked)).slice(0, 4)];
   const msXp = useMemo(() => {
     const byId = new Map(trail.problems.map((p) => [p.id, p]));
     let earned = 0;
@@ -371,10 +375,10 @@ export default function JourneyMap({ trail, details }: { trail: TrailData; detai
         </div>
         <div className="rounded-2xl border border-line bg-surface p-5">
           <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-muted">
-            Conquistas{ready && <span className="ml-2 font-normal tabular-nums normal-case tracking-normal">{badges.filter((b) => b.unlocked).length}/{badges.length}</span>}
+            Conquistas{ready && <span className="ml-2 font-normal tabular-nums normal-case tracking-normal">{unlockedCount}/{badges.length}</span>}
           </h2>
           <ul className="mt-4 grid gap-2.5 sm:grid-cols-2">
-            {badges.map((b) => {
+            {shownBadges.map((b) => {
               const on = ready && b.unlocked;
               return (
                 <li key={b.key} className={`flex items-center gap-3 rounded-xl border p-3 ${on ? 'border-accent/50' : 'border-line opacity-55'}`}>
@@ -387,6 +391,11 @@ export default function JourneyMap({ trail, details }: { trail: TrailData; detai
               );
             })}
           </ul>
+          {badges.length > shownBadges.length || allBadges ? (
+            <button type="button" onClick={() => setAllBadges(!allBadges)} className="mt-3 rounded-md border border-line px-2.5 py-1 text-xs text-muted hover:bg-surface-2 hover:text-fg">
+              {allBadges ? 'Mostrar menos' : `Ver todas as ${badges.length}`}
+            </button>
+          ) : null}
         </div>
       </section>
     </div>

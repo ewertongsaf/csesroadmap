@@ -95,13 +95,13 @@ export default function RoadmapTrail({ trail, details }: { trail: TrailData; det
                             {mastered && ' · já domino'}
                           </span>
                         </div>
-                        <p className="mt-1.5 text-sm text-muted">Ao final você sabe {d.goal}</p>
+                        <p className={`mt-1.5 text-sm text-muted ${isCurrent ? '' : 'line-clamp-2 sm:line-clamp-none'}`}>Ao final você sabe {d.goal}</p>
                         {isCurrent && next && (
                           <a href={problemPath(next.id)} className="mt-3 inline-flex max-w-full items-center gap-2 rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-accent-fg hover:opacity-90">
                             <span className="truncate">Continuar: {next.title}</span> <Icon name="arrow" size={14} />
                           </a>
                         )}
-                        <div className="mt-3 flex flex-wrap gap-1.5 text-xs">
+                        <div className={`mt-3 flex-wrap gap-1.5 text-xs ${isCurrent ? 'flex' : 'hidden sm:flex'}`}>
                           {d.modules.map((mod) =>
                             mod.href ? (
                               <a key={mod.title} href={mod.href} className="inline-flex items-center gap-1.5 rounded-md bg-surface-2 px-2 py-1 hover:text-accent">
