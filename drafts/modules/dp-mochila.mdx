@@ -1,0 +1,398 @@
+---
+title: Mochila e subset sum
+description: Escolher itens com um limite de tamanho. O estado é "quanto já usei", a transição é "levo ou não levo", e o sentido de um laço decide se cada item pode ser usado uma vez ou muitas.
+---
+import Callout from '../../src/components/mdx/Callout.astro';
+import Quiz from '../../src/components/mdx/Quiz.tsx';
+
+## Motivação: o que cabe no pendrive
+
+O problema desta aula, do começo ao fim:
+
+> Você tem um pendrive com $C$ GB livres e $n$ arquivos. O arquivo $i$ ocupa $t_i$ GB e tem uma nota de importância $v_i$. Cada arquivo vai inteiro ou não vai. Qual a **maior soma de notas** que cabe no pendrive?
+
+Um exemplo com $C = 10$:
+
+| arquivo | Fotos | Músicas | Filme | Livros |
+|---|---|---|---|---|
+| tamanho (GB) | 6 | 4 | 7 | 2 |
+| nota | 8 | 10 | 11 | 6 |
+
+Duas ideias gulosas aparecem logo, e as duas falham aqui:
+
+- **Levar primeiro o de maior nota.** O Filme (nota 11) ocupa 7. Sobram 3 GB, onde só cabem os Livros (nota 6). Total: **17**.
+- **Levar primeiro o de melhor nota por GB.** Os Livros rendem 3 por GB, as Músicas 2,5, o Filme 1,57 e as Fotos 1,33. Leva Livros e Músicas, que ocupam 6. Nos 4 GB que sobram não cabe nem o Filme nem as Fotos. Total: **16**.
+
+A melhor escolha é Fotos e Músicas: ocupam exatamente 10 GB e somam **18**. Nenhuma das duas regras chega nela, porque nenhuma olha para o espaço que vai **sobrar** sem uso.
+
+Testar todas as escolhas resolve, mas cada arquivo pode ir ou não ir, então são $2^n$ escolhas: 16 para $n = 4$, mais de um milhão para $n = 20$ e cerca de $10^{30}$ para $n = 100$. Não passa.
+
+Esta aula resolve o problema com uma tabela de $C + 1$ casas, atualizada uma vez por arquivo. Antes das notas, uma versão mais simples: só os tamanhos.
+
+## Primeiro passo: quais somas dá para formar?
+
+Esqueça as notas. Três arquivos, de 3, 5 e 6 GB. Dá para ocupar **exatamente** 10 GB? E 11?
+
+Com três itens dá para listar tudo à mão. São $2^3 = 8$ escolhas:
+
+| Escolha | nada | 3 | 5 | 6 | 3 + 5 | 3 + 6 | 5 + 6 | 3 + 5 + 6 |
+|---|---|---|---|---|---|---|---|---|
+| Soma | 0 | 3 | 5 | 6 | 8 | 9 | 11 | 14 |
+
+Dá para formar 11 (5 + 6), mas não 10. Esse problema, "existe um subconjunto com soma exatamente $S$?", chama-se **subset sum**.
+
+Para não listar $2^n$ escolhas, use a pergunta do módulo anterior: **qual foi a última decisão?** Aqui a decisão é sobre o **último item**: ele entra ou não entra.
+
+- Se o 6 **não entra**, a soma 11 teria de sair só de 3 e 5. Não sai (as somas possíveis são 0, 3, 5, 8).
+- Se o 6 **entra**, o resto precisa somar $11 - 6 = 5$ usando só 3 e 5. Sai: é o próprio 5.
+
+Então 11 é possível. A mesma pergunta para a soma 10: sem o 6, precisaria de 10 com 3 e 5 (não dá); com o 6, precisaria de 4 com 3 e 5 (não dá). Então 10 é impossível.
+
+Repare no que aconteceu: a pergunta sobre três itens virou duas perguntas sobre **dois** itens. É a mesma estrutura da escada, com um detalhe novo: o estado precisa de **duas** informações.
+
+### O estado tem duas dimensões
+
+**Estado.** `pode[i][s]` = dá para formar a soma exatamente $s$ usando só os $i$ primeiros itens?
+
+**Transição.** O item $i$ entra ou não entra:
+
+$$
+\text{pode}(i, s) = \text{pode}(i - 1, s) \ \ \text{ou}\ \ \text{pode}(i - 1, s - a_i)
+$$
+
+$a_i$ é o tamanho do item $i$. A primeira parcela é "não uso o item $i$": a soma $s$ já saía com os itens anteriores. A segunda é "uso o item $i$": os anteriores precisam formar o que falta, $s - a_i$ (e ela só vale quando $s \ge a_i$).
+
+**Caso base.** `pode[0][0]` é verdadeiro (com nenhum item, a soma 0 sai sem fazer nada) e `pode[0][s]` é falso para todo $s > 0$.
+
+**Ordem.** Um item de cada vez, $i$ de 1 até $n$. Cada linha só lê a linha de cima.
+
+A tabela para os itens 3, 5 e 6 (S = dá, ponto = não dá):
+
+| | $s = 0$ | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| nenhum item | S | · | · | · | · | · | · | · | · | · | · | · | · | · | · |
+| até o 3 | S | · | · | S | · | · | · | · | · | · | · | · | · | · | · |
+| até o 5 | S | · | · | S | · | S | · | · | S | · | · | · | · | · | · |
+| até o 6 | S | · | · | S | · | S | S | · | S | S | · | S | · | · | S |
+
+A última linha confere com a lista feita à mão: 0, 3, 5, 6, 8, 9, 11 e 14.
+
+Para ler a tabela: cada "S" de uma linha ou **desceu** da linha de cima (item não usado) ou veio da linha de cima **deslocado para a direita** pelo tamanho do item (item usado). Na linha "até o 6", o S da coluna 11 veio do S da coluna 5 da linha de cima, deslocado 6 casas.
+
+<Callout type="tente">
+Acrescente um quarto item, de tamanho 2. Sem refazer a tabela inteira: a soma 10 passa a ser possível? E a 12?
+
+<details>
+<summary>Ver resposta</summary>
+
+Para a coluna 10, olhe a última linha nas colunas 10 (não usar o 2) e $10 - 2 = 8$ (usar o 2). A coluna 8 tem S, então **10 passa a ser possível** (3 + 5 + 2). Para a 12: colunas 12 e 10 da última linha, as duas com ponto. **12 continua impossível.** Só foi preciso olhar duas casas para cada pergunta.
+
+</details>
+</Callout>
+
+### Uma linha só, e o sentido do laço
+
+Cada linha só lê a linha de cima. Então dá para guardar **uma linha só** e atualizá-la no lugar, um item de cada vez:
+
+```cpp
+vector<bool> pode(S + 1, false);
+pode[0] = true;                               // caso base
+for (int x : itens)                           // um item de cada vez
+    for (int s = S; s >= x; s--)              // somas de TRÁS PARA FRENTE
+        if (pode[s - x]) pode[s] = true;
+```
+
+O laço de dentro anda **da maior soma para a menor**. Não é capricho: é o que garante que cada item seja usado no máximo uma vez. Veja o que acontece com o laço para a frente, só com o item 3:
+
+```cpp
+for (int s = 3; s <= S; s++)                  // ERRADO para "cada item uma vez"
+    if (pode[s - 3]) pode[s] = true;
+```
+
+| $s$ | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| para a frente, só o item 3 | S | · | · | S | · | · | **S** | · | · | **S** | · | · | **S** |
+
+Com um único item de tamanho 3, o código diz que dá para formar 6, 9 e 12. Ele marcou `pode[3]`, e logo em seguida, **na mesma passada**, leu `pode[3]` para marcar `pode[6]`: usou o mesmo item duas vezes. Com os três itens, o laço para a frente declara a soma 10 possível (5 + 5), o que é falso.
+
+Andando de trás para a frente, quando o código olha `pode[s - x]`, essa casa **ainda não foi tocada nesta passada**. Ela ainda guarda a resposta "sem o item atual", que é exatamente o que a transição pede: `pode[i-1][s - x]`.
+
+| Sentido do laço das somas | `pode[s - x]` já inclui o item atual? | Cada item pode ser usado |
+|---|---|---|
+| de trás para a frente | não | no máximo uma vez |
+| para a frente | sim | quantas vezes quiser |
+
+Isso liga com o módulo anterior. Lá, o laço "peça por fora, total por dentro" andava para a frente, e a peça podia repetir (2 + 2). Era a mesma tabela, com o outro sentido.
+
+## A mochila: agora com notas
+
+De volta ao pendrive. Em vez de "dá ou não dá", cada casa guarda **o melhor que dá para fazer**.
+
+**Estado.** `melhor[c]` = maior soma de notas usando **no máximo** $c$ GB, com os arquivos considerados até agora.
+
+**Transição.** O arquivo atual, de tamanho $t$ e nota $v$, vai ou não vai:
+
+$$
+\text{melhor}(c) = \max\bigl(\text{melhor}(c),\ \ \text{melhor}(c - t) + v\bigr)
+$$
+
+A primeira opção é não levar o arquivo: o valor da casa fica como estava. A segunda é levar: ele ocupa $t$ GB e rende $v$, e nos $c - t$ GB restantes vale o melhor que já se sabia fazer **sem ele**. Essa segunda opção só existe quando $c \ge t$.
+
+**Caso base.** `melhor[c] = 0` para todo $c$: sem arquivo nenhum, a soma é 0.
+
+**Ordem.** Arquivos por fora; capacidades por dentro, **de trás para a frente**, pelo mesmo motivo do subset sum.
+
+**Resposta.** `melhor[C]`.
+
+A tabela, uma linha por arquivo processado:
+
+| | $c = 0$ | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| início | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| depois de Fotos (6 GB, nota 8) | 0 | 0 | 0 | 0 | 0 | 0 | 8 | 8 | 8 | 8 | 8 |
+| depois de Músicas (4 GB, nota 10) | 0 | 0 | 0 | 0 | 10 | 10 | 10 | 10 | 10 | 10 | **18** |
+| depois de Filme (7 GB, nota 11) | 0 | 0 | 0 | 0 | 10 | 10 | 10 | 11 | 11 | 11 | 18 |
+| depois de Livros (2 GB, nota 6) | 0 | 0 | 6 | 6 | 10 | 10 | 16 | 16 | 16 | 17 | 18 |
+
+A resposta é `melhor[10] = 18`.
+
+Acompanhe o 18 nascer, na linha das Músicas. Para $c = 10$, o código compara "não levar as Músicas" (a casa vale 8, só as Fotos) com "levar as Músicas": `melhor[10 - 4] + 10 = melhor[6] + 10 = 8 + 10 = 18`. A casa 6 ainda guardava o valor **sem as Músicas**, porque o laço vem de trás e ainda não tinha chegado nela.
+
+Veja também a casa 9 da última linha: `melhor[7] + 6 = 11 + 6 = 17`. É a escolha Filme + Livros do guloso por nota. Ela aparece na tabela, só que na casa certa: é o melhor para 9 GB, e perde para Fotos + Músicas quando há 10.
+
+<Callout type="tente">
+Na linha do Filme, por que a casa 10 continua 18 e não vira `melhor[3] + 11`?
+
+<details>
+<summary>Ver resposta</summary>
+
+Porque `melhor[3]` vale 0 (em 3 GB não cabem as Fotos nem as Músicas), então levar o Filme daria $0 + 11 = 11$. A outra opção, não levar o Filme, mantém o 18. O $\max$ fica com 18. A DP não "desiste" do Filme: ela o registra nas casas 7, 8 e 9, onde ele é de fato o melhor.
+
+</details>
+</Callout>
+
+### O laço para a frente, de novo
+
+Se você errar o sentido do laço das capacidades, o programa leva o mesmo arquivo várias vezes. No exemplo, o laço para a frente imprime **30**: cinco cópias dos Livros (5 × 2 GB, 5 × nota 6).
+
+Só que esse "erro" é a solução certa de **outro** problema: a mochila em que cada item pode ser levado **quantas vezes quiser** (uma loja com estoque infinito, por exemplo). O código é idêntico, com o laço invertido:
+
+```cpp
+for (int i = 0; i < n; i++)
+    for (int c = tam[i]; c <= C; c++)         // para a frente: o item pode repetir
+        melhor[c] = max(melhor[c], melhor[c - tam[i]] + nota[i]);
+```
+
+| Problema | Cada item | Laço das capacidades |
+|---|---|---|
+| mochila 0/1 | no máximo uma vez | de trás para a frente |
+| mochila ilimitada | quantas vezes quiser | para a frente |
+
+O nome "0/1" vem daí: de cada item você leva 0 ou 1 cópia. Antes de escrever o laço, releia o enunciado procurando essa informação.
+
+## Contar em vez de maximizar
+
+A mesma tabela responde uma terceira pergunta: **de quantas formas** dá para ocupar exatamente $S$? Troque o "ou" (ou o $\max$) por uma **soma**:
+
+```cpp
+const long long MOD = 1e9 + 7;
+vector<long long> formas(S + 1, 0);
+formas[0] = 1;                                // 1 forma de somar 0: não pegar nada
+for (int x : itens)
+    for (int s = S; s >= x; s--)              // cada item uma vez: de trás para a frente
+        formas[s] = (formas[s] + formas[s - x]) % MOD;
+```
+
+Com os itens 2, 3, 5 e 5:
+
+| $s$ | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| `formas[s]` | 1 | 0 | 1 | 1 | 0 | 3 | 0 | 2 | 2 | 0 | 3 |
+
+Há 3 formas de somar 10: 2 + 3 + (primeiro 5), 2 + 3 + (segundo 5) e 5 + 5. Os dois itens de tamanho 5 são **itens diferentes**, então trocar um pelo outro conta como outra forma. É o mesmo motivo de `formas[5]` valer 3 (2 + 3, um 5, o outro 5). Se o enunciado tratar itens iguais como indistinguíveis, a conta é outra.
+
+As três versões lado a lado:
+
+| Pergunta | Cada casa guarda | Caso base | Combinar as duas opções com |
+|---|---|---|---|
+| dá para formar $s$? | verdadeiro ou falso | `pode[0] = true` | ou |
+| maior nota em até $c$ | um número | tudo 0 | $\max$ |
+| quantas formas de formar $s$? | uma contagem (com módulo) | `formas[0] = 1` | soma |
+
+## Quanto custa, e quando não dá
+
+A tabela tem $C + 1$ casas e é varrida uma vez por item:
+
+- **Tempo:** $O(n \cdot C)$.
+- **Memória:** $O(C)$.
+
+Com $n = 1000$ e $C = 10^5$, são $10^8$ operações simples: passa. Mas o custo depende do **valor** de $C$, e não só da quantidade de itens. Com $n = 100$ e $C = 10^9$, seriam $10^{11}$ operações e um vetor de um bilhão de casas: não passa, embora $n$ seja pequeno.
+
+Por isso, antes de usar essa DP, olhe o limite da **capacidade** (ou da soma). Ela só serve quando a capacidade cabe num vetor. Um sinal comum nos enunciados é um limite pequeno para a soma total, como "a soma dos valores é no máximo $10^5$".
+
+## Código: o problema do pendrive completo
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int main() {
+    int n, C;
+    cin >> n >> C;
+    vector<int> tam(n), nota(n);
+    for (int i = 0; i < n; i++) cin >> tam[i] >> nota[i];
+
+    // melhor[c] = maior soma de notas usando no máximo c GB, com os arquivos já considerados
+    vector<long long> melhor(C + 1, 0);        // caso base: sem arquivo nenhum, a soma é 0
+    for (int i = 0; i < n; i++) {              // um arquivo de cada vez...
+        for (int c = C; c >= tam[i]; c--) {    // ...e as capacidades de TRÁS PARA FRENTE
+            melhor[c] = max(melhor[c],                       // não levo o arquivo i
+                            melhor[c - tam[i]] + nota[i]);   // levo: sobram c - tam[i] GB
+        }
+    }
+    cout << melhor[C] << "\n";
+}
+```
+
+**Entrada** (primeiro $n$ e $C$, depois o tamanho e a nota de cada arquivo):
+
+```
+4 10
+6 8
+4 10
+7 11
+2 6
+```
+
+**Saída:**
+
+```
+18
+```
+
+O programa preenche as cinco linhas da tabela da mochila e imprime a última casa: Fotos e Músicas.
+
+O laço de dentro para em `c >= tam[i]`. Abaixo disso o arquivo não cabe, a casa não muda, e parar ali ainda evita ler `melhor` num índice negativo.
+
+### O mesmo código no formato de contest
+
+Como cada arquivo só é usado na sua própria passada, não é preciso guardar os vetores `tam` e `nota`: dá para ler e processar na hora.
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+typedef long long ll;
+#define rep(i,a,b) for(int i=(a);i<(b);i++)
+void fastio(){ ios::sync_with_stdio(false); cin.tie(nullptr); }
+
+int main(){
+    fastio();
+    int n, C; cin >> n >> C;
+    vector<ll> melhor(C + 1, 0);
+    rep(i, 0, n) {
+        int tam, nota; cin >> tam >> nota;
+        for (int c = C; c >= tam; c--) melhor[c] = max(melhor[c], melhor[c - tam] + nota);
+    }
+    cout << melhor[C] << "\n";
+}
+```
+
+## Armadilhas comuns
+
+- **Sentido do laço trocado.** De trás para a frente: cada item uma vez. Para a frente: item repetido. O programa roda nos dois casos e imprime um número plausível (30 em vez de 18 no exemplo).
+- **Laços na ordem errada.** O item fica **por fora**. Com a capacidade por fora e os itens por dentro, a tabela de uma linha não representa mais "os itens até aqui", e um mesmo item pode entrar várias vezes.
+- **Índice negativo.** `melhor[c - tam]` com `c < tam` lê fora do vetor. Faça o laço parar em `c >= tam`, ou teste antes de ler.
+- **"No máximo" ou "exatamente".** Com tudo iniciado em 0, `melhor[c]` significa "usando **no máximo** $c$". Se o problema exige ocupar **exatamente** $c$, o caso base muda: só `melhor[0] = 0`, e as outras casas começam impossíveis (veja "Para depois").
+- **Capacidade grande demais.** Confira $n \cdot C$ antes de escrever. Se $C$ vai a $10^9$, essa DP não serve.
+- **Overflow e módulo.** A soma de notas pode passar de $2 \cdot 10^9$: use `long long`. Em contagem, tire o módulo a cada soma.
+- **Itens iguais na contagem.** Dois itens de mesmo tamanho são itens diferentes para o código.
+
+<details class="para-depois">
+<summary>Para depois: ocupar exatamente, descobrir quais itens e outros caminhos</summary>
+
+**Ocupar exatamente $c$.** Inicie as casas com "impossível" em vez de 0, como no módulo anterior:
+
+```cpp
+const long long NEG = -1e18;                  // "impossível" numa DP de máximo
+vector<long long> melhor(C + 1, NEG);
+melhor[0] = 0;
+for (int i = 0; i < n; i++)
+    for (int c = C; c >= tam[i]; c--)
+        if (melhor[c - tam[i]] != NEG)
+            melhor[c] = max(melhor[c], melhor[c - tam[i]] + nota[i]);
+```
+
+No exemplo do pendrive a tabela final fica 0, −, 6, −, 10, −, 16, 11, 14, 17, 18 (o traço é "impossível"): não há como ocupar exatamente 1, 3 ou 5 GB. Numa DP de máximo, impossível é **menos** infinito, pelo mesmo motivo de ser mais infinito numa DP de mínimo: ele nunca pode ganhar a comparação.
+
+**Descobrir quais itens foram escolhidos.** A tabela de uma linha apaga o histórico. Para recuperar a escolha, guarde a tabela inteira, com uma linha por item (`melhor[i][c]`), e ande de trás para a frente: se `melhor[i][c]` é diferente de `melhor[i-1][c]`, o item $i$ foi levado, e você continua em `c - tam[i]`; senão, continua em `c`. No exemplo, esse passeio encontra as Músicas e depois as Fotos. A memória passa a ser $O(n \cdot C)$.
+
+**Capacidade enorme, poucos itens.** Com $n \le 40$ e $C$ até $10^{18}$, a tabela não cabe, mas o *meet in the middle* do milestone 2 resolve: $2^{20}$ somas de cada metade.
+
+**Capacidade enorme, notas pequenas.** Dá para inverter o estado: `menor[v]` = menor tamanho total que atinge nota exatamente $v$. A tabela passa a ter o tamanho da soma das notas, e a resposta é o maior $v$ com `menor[v] <= C`.
+
+**Subset sum mais rápido.** Uma linha de verdadeiro/falso é uma sequência de bits, e "deslocar a linha $x$ casas e fazer um ou" é uma operação que o `bitset` do C++ faz 64 casas por vez. Aparece no módulo de técnicas avançadas.
+
+</details>
+
+## Referências
+
+- **CPH, capítulo 7 — Dynamic programming, seção 7.4 *Knapsack problems*:** o subset sum com a tabela de duas dimensões e a versão de uma linha, com o laço de trás para a frente.
+- [USACO Guide — Knapsack DP](https://usaco.guide/gold/knapsack)
+- [cp-algorithms — Knapsack Problem](https://cp-algorithms.com/dynamic_programming/knapsack.html), com a mochila 0/1, a ilimitada e variações.
+
+## Mini-quiz
+
+<Quiz
+  client:visible
+  questions={[
+    {
+      q: 'Capacidade 7 e três itens (tamanho, nota): (3, 4), (4, 5), (2, 3). O que o código imprime?',
+      code: 'for (cada item (t, v))\n    for (int c = 7; c >= t; c--)\n        melhor[c] = max(melhor[c], melhor[c - t] + v);\ncout << melhor[7];',
+      options: ['8', '9', '10', '12'],
+      answer: 1,
+      why: 'A tabela final é 0, 0, 3, 4, 5, 7, 8, 9. O melhor para 7 é levar os itens de tamanho 3 e 4 (4 + 5 = 9). Levar 3 e 2 dá 7; levar 4 e 2 dá 8.',
+    },
+    {
+      q: 'Itens 4 e 5, soma alvo 8. O que este código imprime?',
+      code: 'pode[0] = true;\nfor (int x : {4, 5})\n    for (int s = x; s <= 8; s++)\n        if (pode[s - x]) pode[s] = true;\ncout << (pode[8] ? "sim" : "nao");',
+      options: ['nao, porque 4 + 5 = 9', 'sim, porque o laço para a frente usa o 4 duas vezes', 'sim, porque 8 = 4 + 5 - 1', 'O código lê fora do vetor'],
+      answer: 1,
+      why: 'Na passada do item 4, o código marca pode[4] e, logo depois, lê pode[4] para marcar pode[8]. Com o laço de trás para a frente a resposta seria "nao", que é a correta se cada item só pode ser usado uma vez.',
+    },
+    {
+      q: 'Itens 1, 2 e 3, cada um usado no máximo uma vez. Quanto vale `formas[3]`?',
+      code: 'formas[0] = 1;\nfor (int x : {1, 2, 3})\n    for (int s = 6; s >= x; s--)\n        formas[s] += formas[s - x];',
+      options: ['1', '2', '3', '4'],
+      answer: 1,
+      why: 'Há duas formas: o item 3 sozinho, e 1 + 2. A tabela final é 1, 1, 1, 2, 1, 1, 1.',
+    },
+    {
+      q: 'Por que, na mochila 0/1 com uma linha só, o laço das capacidades anda de trás para a frente?',
+      options: [
+        'Porque é mais rápido',
+        'Para que melhor[c - t] ainda guarde o valor de antes do item atual quando for lido',
+        'Para evitar overflow',
+        'Porque os itens precisam estar ordenados por tamanho',
+      ],
+      answer: 1,
+      why: 'A transição precisa do melhor resultado SEM o item atual. De trás para a frente, as casas menores ainda não foram atualizadas nesta passada.',
+    },
+    {
+      q: 'Um problema tem n = 100 itens e capacidade até 10^9. A DP desta aula serve?',
+      options: [
+        'Sim, n é pequeno',
+        'Não: o custo é n × C = 10^11 operações, e o vetor teria um bilhão de casas',
+        'Sim, desde que use long long',
+        'Só se os itens estiverem ordenados',
+      ],
+      answer: 1,
+      why: 'O custo depende do valor da capacidade. Com C enorme é preciso outro caminho, como inverter o estado (se as notas forem pequenas) ou meet in the middle (se n for até 40).',
+    },
+    {
+      q: 'No pendrive da aula (Fotos: 6 GB/8, Músicas: 4/10, Filme: 7/11, Livros: 2/6), a regra passa a ser "cada arquivo pode ser copiado quantas vezes quiser". Com capacidade 10, a resposta é:',
+      options: ['18', '24', '30', '36'],
+      answer: 2,
+      why: 'Cinco cópias dos Livros ocupam 10 GB e somam 30. É o que o laço para a frente calcula: 0, 0, 6, 6, 12, 12, 18, 18, 24, 24, 30.',
+    },
+  ]}
+/>
