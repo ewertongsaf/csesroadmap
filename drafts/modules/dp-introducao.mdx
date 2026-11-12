@@ -1,0 +1,550 @@
+---
+title: 'DP: estados, transições e ordem de cálculo'
+description: Programação dinâmica é resolver um problema grande a partir de respostas menores já anotadas. O trabalho todo está em quatro decisões - o que anotar, como combinar, por onde começar e em que ordem preencher.
+---
+import Callout from '../../src/components/mdx/Callout.astro';
+import Quiz from '../../src/components/mdx/Quiz.tsx';
+
+## Motivação: a escada com pedágio
+
+O problema desta aula, do começo ao fim:
+
+> Uma escada tem $n$ degraus. Você começa no chão (degrau 0) e, a cada passo, sobe **1 ou 2 degraus**. Pisar no degrau $i$ custa $c_i$ moedas. Qual o **menor total de moedas** para chegar ao degrau $n$? (O degrau $n$ também é pago.)
+
+Um exemplo com $n = 6$:
+
+| degrau | 1 | 2 | 3 | 4 | 5 | 6 |
+|---|---|---|---|---|---|---|
+| custo $c_i$ | 3 | 9 | 3 | 4 | 6 | 8 |
+
+Uma primeira ideia é ser guloso: a cada passo, pisar no **mais barato** dos dois degraus alcançáveis. Do chão, o degrau 1 (custo 3) ganha do 2 (custo 9). Do 1, o degrau 3 (custo 3) ganha do 2. Do 3, o 4 (custo 4) ganha do 5. Do 4, o 5 (custo 6) ganha do 6 (custo 8). Do 5 só resta o 6. O caminho guloso é 0 → 1 → 3 → 4 → 5 → 6, e custa $3 + 3 + 4 + 6 + 8 = 24$.
+
+Só que o caminho 0 → 1 → 3 → 4 → 6 custa $3 + 3 + 4 + 8 = 18$. O guloso pisou no degrau 5 porque ele era mais barato que o 6, sem perceber que o 6 teria de ser pago de qualquer jeito. A escolha que parece melhor agora pode custar caro depois.
+
+A saída segura é testar **todos** os caminhos. Mas quantos são? Com $n = 6$ são 13. Com $n = 50$ são mais de 20 bilhões. Com $n = 2 \cdot 10^5$, o número de caminhos tem mais de 40 mil dígitos. Não passa.
+
+Esta aula mostra como achar o melhor caminho olhando cada degrau **uma vez só**. Antes de lidar com os custos, um problema mais simples na mesma escada: só contar os caminhos.
+
+## Primeiro passo: contar caminhos
+
+Esqueça os custos por enquanto. De quantas formas dá para subir uma escada de $n$ degraus, com passos de 1 ou 2?
+
+Com $n = 3$, dá para listar à mão:
+
+- 1 + 1 + 1
+- 1 + 2
+- 2 + 1
+
+São **3** formas. Com $n = 4$:
+
+- 1 + 1 + 1 + 1
+- 1 + 1 + 2
+- 1 + 2 + 1
+- 2 + 1 + 1
+- 2 + 2
+
+São **5** formas. Listar à mão para $n = 30$ não dá. A pergunta que destrava tudo é: **qual foi o último passo?**
+
+Só há duas possibilidades para chegar ao degrau 4:
+
+- o último passo foi de 1: antes disso você estava no degrau 3, e havia 3 formas de chegar lá;
+- o último passo foi de 2: antes disso você estava no degrau 2, e havia 2 formas de chegar lá (1 + 1 e 2).
+
+Toda forma de chegar ao 4 cai em exatamente um desses dois grupos. Então são $3 + 2 = 5$ formas, sem listar nenhuma. Confira na lista acima: três das cinco terminam em "+ 1" e duas terminam em "+ 2".
+
+O mesmo raciocínio vale para qualquer degrau:
+
+$$
+\text{formas}(i) = \text{formas}(i - 1) + \text{formas}(i - 2)
+$$
+
+$\text{formas}(i)$ é o número de jeitos de chegar ao degrau $i$. As duas parcelas são os dois grupos: quem chegou vindo do degrau $i - 1$ e quem chegou vindo do $i - 2$.
+
+Falta dizer onde isso para. Há 1 forma de estar no degrau 0 (não fazer nada) e 1 forma de chegar ao degrau 1 (um passo de 1):
+
+$$
+\text{formas}(0) = 1, \qquad \text{formas}(1) = 1
+$$
+
+Esses dois valores, que não dependem de ninguém, são os **casos base**.
+
+### A recursão direta, e por que ela é lenta
+
+A fórmula vira código quase palavra por palavra:
+
+```cpp
+long long formas(int i) {
+    if (i <= 1) return 1;                     // casos base
+    return formas(i - 1) + formas(i - 2);     // último passo de 1 ou de 2
+}
+```
+
+Ela está correta, mas veja o que acontece ao chamar `formas(5)`. Para calcular `formas(5)` ela chama `formas(4)` e `formas(3)`. O `formas(4)` chama `formas(3)` **de novo**, e assim por diante:
+
+| Chamada | Quantas vezes acontece dentro de `formas(5)` |
+|---|---|
+| `formas(5)` | 1 |
+| `formas(4)` | 1 |
+| `formas(3)` | 2 |
+| `formas(2)` | 3 |
+| `formas(1)` | 5 |
+| `formas(0)` | 3 |
+| **total** | **15** |
+
+Quinze chamadas para descobrir seis números. E piora depressa:
+
+| $n$ | Resposta | Chamadas da recursão direta |
+|---|---|---|
+| 5 | 8 | 15 |
+| 30 | 1 346 269 | 2 692 537 |
+| 50 | 20 365 011 074 | 40 730 022 147 |
+
+Para $n = 50$ são 40 bilhões de chamadas, e só existem 51 perguntas diferentes (`formas(0)` até `formas(50)`). A função gasta quase todo o tempo **respondendo de novo o que já respondeu**.
+
+<Callout type="tente">
+Na tabela de $n = 5$, `formas(2)` é chamada 3 vezes. Sem rodar nada: quantas vezes `formas(2)` seria chamada dentro de `formas(6)`?
+
+<details>
+<summary>Ver resposta</summary>
+
+`formas(6)` chama `formas(5)` uma vez e `formas(4)` uma vez. Dentro de `formas(5)` há 3 chamadas a `formas(2)` (a tabela). Dentro de `formas(4)` há 2 (ela chama `formas(3)`, que chama `formas(2)` uma vez, e chama `formas(2)` direto). Total: $3 + 2 = 5$. O número de repetições cresce do mesmo jeito que a própria resposta, e por isso explode.
+
+</details>
+</Callout>
+
+### Conserto 1: anotar o que já foi calculado (memoização)
+
+Se o problema é responder a mesma pergunta várias vezes, a solução é **anotar a resposta na primeira vez** e consultar a anotação nas outras. Isso se chama **memoização**.
+
+```cpp
+vector<long long> memo;                       // memo[i] = -1 significa "ainda não calculei"
+
+long long formas(int i) {
+    if (i <= 1) return 1;
+    if (memo[i] != -1) return memo[i];        // já calculei: devolve a anotação
+    memo[i] = formas(i - 1) + formas(i - 2);  // calcula uma vez e anota
+    return memo[i];
+}
+```
+
+Antes de chamar, o vetor é preenchido com −1: `memo.assign(n + 1, -1);`. Agora `formas(5)` faz só 9 chamadas, nesta ordem:
+
+| # | Chamada | O que acontece | Devolve |
+|---|---|---|---|
+| 1 | `formas(1)` | caso base | 1 |
+| 2 | `formas(0)` | caso base | 1 |
+| 3 | `formas(2)` | calcula $1 + 1$ e anota | 2 |
+| 4 | `formas(1)` | caso base | 1 |
+| 5 | `formas(3)` | calcula $2 + 1$ e anota | 3 |
+| 6 | `formas(2)` | **já anotado** | 2 |
+| 7 | `formas(4)` | calcula $3 + 2$ e anota | 5 |
+| 8 | `formas(3)` | **já anotado** | 3 |
+| 9 | `formas(5)` | calcula $5 + 3$ e anota | 8 |
+
+(A ordem é a de quando cada chamada **termina**.) Cada valor de 2 a 5 é calculado uma única vez. Para $n = 50$, em vez de 40 bilhões de chamadas são menos de 100, e a resposta sai na hora: 20 365 011 074.
+
+### Conserto 2: preencher uma tabela na ordem certa
+
+Olhe a coluna "Devolve" das linhas que calculam: 2, 3, 5, 8. Os valores ficam prontos **do menor degrau para o maior**. Então dá para dispensar a recursão e preencher um vetor nessa ordem, com um laço:
+
+```cpp
+vector<long long> formas(n + 1);
+formas[0] = 1;                                // casos base
+formas[1] = 1;
+for (int i = 2; i <= n; i++)
+    formas[i] = formas[i - 1] + formas[i - 2];
+```
+
+Para $n = 8$, a tabela fica:
+
+| $i$ | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+|---|---|---|---|---|---|---|---|---|---|
+| `formas[i]` | 1 | 1 | 2 | 3 | 5 | 8 | 13 | 21 | 34 |
+
+Cada casa é a soma das duas à esquerda. Quando o laço chega em $i$, as casas $i - 1$ e $i - 2$ já estão prontas: é isso que "ordem certa" quer dizer. Um laço de $n$ voltas, uma soma por volta.
+
+Isso é **programação dinâmica** (DP, de *dynamic programming*): resolver um problema a partir de respostas de problemas menores, **guardando cada resposta para não calcular duas vezes**. A memoização e a tabela são dois jeitos de fazer a mesma coisa. Nesta trilha vamos usar quase sempre a tabela.
+
+## A ideia geral: quatro perguntas
+
+Toda DP desta trilha é montada respondendo quatro perguntas, sempre nesta ordem. Para a contagem de caminhos:
+
+| Pergunta | Nome | Na contagem de caminhos |
+|---|---|---|
+| O que cada casa da tabela guarda? | **estado** | `formas[i]` = número de formas de chegar ao degrau $i$ |
+| Como uma casa sai de casas menores? | **transição** | `formas[i] = formas[i-1] + formas[i-2]` |
+| Quais casas eu sei sem calcular? | **casos base** | `formas[0] = 1`, `formas[1] = 1` |
+| Em que ordem preencher? | **ordem de cálculo** | $i$ crescente: quando chego em $i$, os menores já estão prontos |
+
+E uma quinta, que parece boba mas causa erro: **em que casa está a resposta?** Aqui, em `formas[n]`.
+
+O estado é a decisão mais importante. Escreva-o como uma **frase completa em português** antes de escrever qualquer código: "`formas[i]` é o número de formas de chegar ao degrau $i$". Se a frase sai vaga ("`dp[i]` é a resposta até $i$"), a transição também vai sair errada.
+
+Para achar a transição, a pergunta é sempre a mesma que usamos na escada: **qual foi a última decisão?** Cada resposta possível para essa pergunta vira uma parcela.
+
+## Voltando ao pedágio
+
+Agora o problema da motivação, com as quatro perguntas.
+
+**Estado.** `custo[i]` = menor total de moedas para estar em cima do degrau $i$.
+
+**Transição.** Qual foi o último passo? Ou vim do degrau $i - 1$, ou do $i - 2$. Nos dois casos pago $c_i$ por pisar em $i$. Como quero o menor total, escolho a melhor das duas origens:
+
+$$
+\text{custo}(i) = \min\bigl(\text{custo}(i - 1),\ \text{custo}(i - 2)\bigr) + c_i
+$$
+
+$\text{custo}(i - 1)$ e $\text{custo}(i - 2)$ são os menores totais para chegar aos dois degraus de onde dá para vir, e $c_i$ é o pedágio do degrau $i$. É a mesma forma da contagem, com $\min$ no lugar da soma.
+
+**Caso base.** `custo[0] = 0`: você começa no chão sem pagar nada. Para $i = 1$ só existe uma origem (o chão), então a parcela do $i - 2$ é ignorada.
+
+**Ordem.** $i$ de 1 até $n$.
+
+**Resposta.** `custo[n]`.
+
+A tabela para o exemplo:
+
+| $i$ | $c_i$ | `custo[i-1]` | `custo[i-2]` | menor dos dois | `custo[i]` |
+|---|---|---|---|---|---|
+| 0 | | | | | 0 |
+| 1 | 3 | 0 | (não existe) | 0 | $0 + 3 = 3$ |
+| 2 | 9 | 3 | 0 | 0 | $0 + 9 = 9$ |
+| 3 | 3 | 9 | 3 | 3 | $3 + 3 = 6$ |
+| 4 | 4 | 6 | 9 | 6 | $6 + 4 = 10$ |
+| 5 | 6 | 10 | 6 | 6 | $6 + 6 = 12$ |
+| 6 | 8 | 12 | 10 | 10 | $10 + 8 = 18$ |
+
+A resposta é `custo[6] = 18`, o caminho 0 → 1 → 3 → 4 → 6 que o guloso perdeu.
+
+Repare na linha $i = 6$: o degrau 5 tem custo acumulado 12 e o degrau 4 tem 10. A DP **não decide** se vale a pena pisar no 5 quando está no 4. Ela calcula o melhor jeito de chegar a **cada** degrau, e só na hora de chegar ao 6 compara as duas origens. Nenhuma escolha é feita cedo demais.
+
+<Callout type="tente">
+Mude só o custo do degrau 6 de 8 para 1. Quais linhas da tabela mudam? Qual a nova resposta?
+
+<details>
+<summary>Ver resposta</summary>
+
+Só a última. As linhas 1 a 5 não dependem de $c_6$, porque `custo[i]` só olha para degraus menores que $i$. A linha 6 vira $\min(12, 10) + 1 = 11$. Essa é uma propriedade útil de toda DP: mudar um dado só afeta os estados que vêm **depois** dele na ordem de cálculo.
+
+</details>
+</Callout>
+
+### Por que isso está certo
+
+A DP parece testar pouca coisa: em cada degrau, só duas opções. Mas ela vale por todos os caminhos, por causa de uma propriedade do problema: **o melhor caminho até o degrau $i$ é formado por um melhor caminho até o degrau anterior dele, mais um passo**.
+
+Se o melhor caminho até o 6 passa pelo 4, o trecho até o 4 tem de ser o mais barato possível. Se não fosse, bastaria trocá-lo por um trecho mais barato e o caminho inteiro ficaria melhor. Isso só funciona porque **o que acontece depois do degrau 4 não depende de como você chegou nele**: do 4 em diante, as opções e os custos são os mesmos para qualquer um.
+
+Guarde essa frase. Quando ela é falsa, o estado está incompleto. Por exemplo, se a regra fosse "não pode dar dois passos de 2 seguidos", o futuro dependeria do último passo, e `custo[i]` sozinho não bastaria: o estado teria de incluir essa informação. Estados com mais de uma dimensão aparecem nos próximos módulos.
+
+## Ordem de cálculo: o que acontece se errar
+
+A transição lê `custo[i-1]` e `custo[i-2]`. Eles precisam estar **prontos** quando o laço chega em $i$. Veja o mesmo código com o laço ao contrário:
+
+```cpp
+vector<long long> custo(n + 1, 0);
+for (int i = n; i >= 1; i--) {                // ERRADO: de n para 1
+    long long melhor = custo[i - 1];
+    if (i >= 2) melhor = min(melhor, custo[i - 2]);
+    custo[i] = melhor + c[i];
+}
+cout << custo[n] << "\n";
+```
+
+Na primeira volta, $i = 6$, e o código lê `custo[5]` e `custo[4]`, que ainda valem 0 (o valor inicial do vetor). Ele calcula `custo[6] = 0 + 8 = 8` e nunca mais mexe nessa casa. O programa compila, roda e imprime **8** em vez de 18. Nenhum erro, nenhum aviso.
+
+A regra: **a ordem do laço tem de respeitar as dependências**. Se o estado $i$ lê estados menores, o laço cresce. Se lesse estados maiores (acontece em algumas DPs, como "menor custo do degrau $i$ até o topo"), o laço diminuiria. Antes de escrever o laço, olhe a transição e pergunte: de quem este estado depende?
+
+## Estados impossíveis
+
+Uma variação comum: alguns degraus estão **quebrados**, e não se pode pisar neles. Suponha que o degrau 3 do exemplo quebrou.
+
+Agora existem degraus em que "o menor custo para estar aqui" não faz sentido, porque é impossível estar ali. A tabela precisa de um valor especial para isso. O valor certo é um **infinito**: um número tão grande que nunca ganha um $\min$.
+
+```cpp
+const long long INF = 1e18;                   // "impossível"
+
+vector<long long> custo(n + 1, INF);          // tudo começa impossível
+custo[0] = 0;
+for (int i = 1; i <= n; i++) {
+    if (quebrado[i]) continue;                // fica INF
+    long long melhor = custo[i - 1];
+    if (i >= 2) melhor = min(melhor, custo[i - 2]);
+    if (melhor != INF) custo[i] = melhor + c[i];   // só soma se alguma origem é possível
+}
+if (custo[n] == INF) cout << -1 << "\n";      // não dá para chegar
+else cout << custo[n] << "\n";
+```
+
+Com o degrau 3 quebrado:
+
+| $i$ | 0 | 1 | 2 | 3 | 4 | 5 | 6 |
+|---|---|---|---|---|---|---|---|
+| `custo[i]` | 0 | 3 | 9 | INF | 13 | 19 | 21 |
+
+A resposta é **21** (0 → 2 → 4 → 6). Se dois degraus seguidos estiverem quebrados, tudo depois deles fica INF, e o programa imprime −1.
+
+Dois jeitos comuns de errar isso:
+
+**Usar 0 como "impossível".** Parece natural deixar a casa do degrau quebrado valendo 0. Mas aí o $\min$ **adora** essa casa:
+
+| $i$ | 0 | 1 | 2 | 3 | 4 | 5 | 6 |
+|---|---|---|---|---|---|---|---|
+| `custo[i]` (errado) | 0 | 3 | 9 | 0 | 4 | 6 | 12 |
+
+O programa imprime **12**: ele "passou" pelo degrau quebrado de graça. Numa DP de mínimo, impossível é infinito. (Numa DP de **contagem**, impossível é 0 formas, e aí o 0 está certo: `formas[i] = 0` para um degrau quebrado.)
+
+**Somar no infinito.** Se `INF` for o maior valor do tipo, como `INT_MAX`, então `INF + c[i]` **estoura** e vira um número negativo enorme (com `int`, `INT_MAX + 8` dá −2 147 483 641). Um negativo ganha qualquer $\min$ dali em diante, e a resposta sai absurda. Por isso o código acima faz duas coisas: usa $10^{18}$ em `long long`, que ainda deixa folga para somar, e só soma quando `melhor != INF`.
+
+## A ordem dos laços muda o que você conta
+
+A contagem de caminhos na escada conta **sequências**: 1 + 2 e 2 + 1 são formas diferentes de subir 3 degraus. Às vezes a pergunta é outra: quantos **conjuntos de peças** somam um total, sem importar a ordem? Para o total 3 com peças 1 e 2, a resposta seria 2 (1 + 1 + 1 e 1 + 2), e não 3.
+
+As duas perguntas usam a **mesma transição**. O que muda é só qual laço fica por fora. Com peças 1 e 2 e total 4:
+
+**Total por fora, peça por dentro** (é a escada):
+
+```cpp
+vector<long long> f(T + 1, 0);
+f[0] = 1;
+for (int t = 1; t <= T; t++)                  // para cada total...
+    for (int p : pecas)                       // ...qual foi a ÚLTIMA peça?
+        if (t >= p) f[t] += f[t - p];
+```
+
+| $t$ | 0 | 1 | 2 | 3 | 4 |
+|---|---|---|---|---|---|
+| `f[t]` | 1 | 1 | 2 | 3 | 5 |
+
+Resultado: **5** (1+1+1+1, 1+1+2, 1+2+1, 2+1+1, 2+2). Cada total pergunta "qual foi a última peça?", e qualquer peça pode ser a última. Por isso 1 + 2 e 2 + 1 são contados separadamente.
+
+**Peça por fora, total por dentro:**
+
+```cpp
+vector<long long> f(T + 1, 0);
+f[0] = 1;
+for (int p : pecas)                           // libera uma peça de cada vez...
+    for (int t = p; t <= T; t++)              // ...e atualiza todos os totais
+        f[t] += f[t - p];
+```
+
+| | $t = 0$ | 1 | 2 | 3 | 4 |
+|---|---|---|---|---|---|
+| depois de liberar a peça 1 | 1 | 1 | 1 | 1 | 1 |
+| depois de liberar a peça 2 | 1 | 1 | 2 | 2 | 3 |
+
+Resultado: **3** (1+1+1+1, 1+1+2, 2+2). Aqui as peças entram **em ordem**: primeiro todas as de valor 1, depois todas as de valor 2. Uma soma como 2 + 1 + 1 nunca é montada, porque depois de usar um 2 o laço de fora não volta mais para a peça 1. Cada conjunto aparece em uma única ordem, e por isso é contado uma vez só.
+
+| Laço de fora | Conta | 1 + 2 e 2 + 1 são |
+|---|---|---|
+| total | sequências (a ordem importa) | duas formas |
+| peça | conjuntos (a ordem não importa) | a mesma forma |
+
+Antes de escrever os laços de uma DP de contagem, releia o enunciado e decida qual das duas perguntas ele faz.
+
+<Callout type="tente">
+Na segunda tabela, de onde vem o 3 da última casa (peça 2, $t = 4$)? Escreva a conta.
+
+<details>
+<summary>Ver resposta</summary>
+
+A instrução é `f[4] += f[4 - 2]`. Antes dela, `f[4]` vale 1 (da linha de cima: só 1+1+1+1). `f[2]` **já foi atualizado nesta mesma linha** e vale 2 (1+1 e 2). Então `f[4] = 1 + 2 = 3`. O fato de `f[2]` já incluir a peça 2 é o que permite usar a peça 2 mais de uma vez (2 + 2).
+
+</details>
+</Callout>
+
+## Respostas enormes: módulo
+
+Contagens crescem muito rápido. `formas(90)` vale 4 660 046 610 375 530 309, quase o limite de um `long long`, e `formas(100)` já não cabe. Por isso os problemas de contagem pedem a resposta **módulo $10^9 + 7$**. A regra, vista no módulo de aritmética e overflow, é tirar o resto **a cada soma**, e não só no fim:
+
+```cpp
+const long long MOD = 1e9 + 7;
+for (int i = 2; i <= n; i++)
+    formas[i] = (formas[i - 1] + formas[i - 2]) % MOD;
+```
+
+Com isso, `formas[100]` vale 782 204 094. Se você tirar o resto só na hora de imprimir, o valor já estourou muito antes, e a saída é lixo.
+
+## Código: o problema do pedágio completo
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int main() {
+    int n;
+    cin >> n;
+    vector<long long> c(n + 1);
+    for (int i = 1; i <= n; i++) cin >> c[i];
+
+    // custo[i] = menor total de moedas para estar em cima do degrau i
+    vector<long long> custo(n + 1);
+    custo[0] = 0;                              // caso base: o chão é de graça
+    for (int i = 1; i <= n; i++) {             // ordem: do degrau 1 até o n
+        long long melhor = custo[i - 1];       // cheguei com um passo de 1
+        if (i >= 2) melhor = min(melhor, custo[i - 2]);   // ou com um passo de 2
+        custo[i] = melhor + c[i];              // e pago o pedágio do degrau i
+    }
+    cout << custo[n] << "\n";                  // a resposta mora no estado n
+}
+```
+
+**Entrada:**
+
+```
+6
+3 9 3 4 6 8
+```
+
+**Saída:**
+
+```
+18
+```
+
+O programa preenche exatamente a tabela da seção do pedágio (0, 3, 9, 6, 10, 12, 18) e imprime a última casa.
+
+- **Tempo:** $O(n)$: um laço de $n$ voltas, com trabalho constante em cada uma.
+- **Memória:** $O(n)$: os vetores `c` e `custo`.
+
+Em geral, o tempo de uma DP é **(número de estados) × (trabalho por transição)**. Aqui são $n + 1$ estados e 2 opções em cada um. Essa conta é a primeira coisa a fazer quando você pensa numa DP: se dá mais que umas $10^8$ operações, o estado está grande demais.
+
+### O mesmo código no formato de contest
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+typedef long long ll;
+#define rep(i,a,b) for(int i=(a);i<(b);i++)
+void fastio(){ ios::sync_with_stdio(false); cin.tie(nullptr); }
+
+int main(){
+    fastio();
+    int n; cin >> n;
+    vector<ll> c(n + 1), custo(n + 1, 0);
+    rep(i, 1, n + 1) cin >> c[i];
+    rep(i, 1, n + 1) {
+        ll melhor = custo[i - 1];
+        if (i >= 2) melhor = min(melhor, custo[i - 2]);
+        custo[i] = melhor + c[i];
+    }
+    cout << custo[n] << "\n";
+}
+```
+
+`rep(i, 1, n + 1)` é o `for` de 1 até $n$ do template: o limite de cima fica de fora, por isso o `n + 1`.
+
+## Armadilhas comuns
+
+- **Estado vago.** Se você não consegue completar a frase "`dp[i]` é …" com precisão, pare e reescreva. "Menor custo para **estar em** $i$" e "menor custo para **passar de** $i$" são estados diferentes, com casos base diferentes.
+- **Esquecer um caso base** ou ler fora do vetor. Em $i = 1$ não existe `custo[i-2]`: ler `custo[-1]` é comportamento indefinido. O `if (i >= 2)` não é enfeite.
+- **Ordem de cálculo errada.** O programa roda e imprime um número plausível, só que errado (veja o exemplo que imprime 8).
+- **Responder a casa errada.** A resposta é `custo[n]`, não `custo[n-1]`. Decida se os degraus são 0…$n$ ou 0…$n-1$ antes de declarar o vetor, e dê a ele o tamanho que casa com isso (`n + 1` aqui).
+- **Impossível como 0 numa DP de mínimo**, ou infinito que estoura ao somar.
+- **`int` onde precisa de `long long`.** Com $n = 2 \cdot 10^5$ degraus de custo até $10^9$, o total chega a $2 \cdot 10^{14}$.
+- **Ordem dos laços na contagem.** Total por fora conta sequências; peça por fora conta conjuntos.
+- **Módulo só no fim** em vez de a cada soma.
+
+<details class="para-depois">
+<summary>Para depois: recuperar o caminho, gastar menos memória e quando usar memoização</summary>
+
+**Recuperar o caminho, e não só o custo.** Guarde, para cada degrau, **de onde** veio o melhor caminho:
+
+```cpp
+vector<int> de(n + 1, 0);
+for (int i = 1; i <= n; i++) {
+    de[i] = i - 1;
+    if (i >= 2 && custo[i - 2] < custo[i - 1]) de[i] = i - 2;
+    custo[i] = custo[de[i]] + c[i];
+}
+vector<int> caminho;
+for (int i = n; i != 0; i = de[i]) caminho.push_back(i);   // anda para trás a partir do n
+caminho.push_back(0);
+reverse(caminho.begin(), caminho.end());                   // e inverte
+```
+
+No exemplo, `de` vale 0, 0, 1, 3, 3, 4 para os degraus 1 a 6. Andando para trás a partir do 6: 6 → 4 → 3 → 1 → 0. Invertido, é o caminho 0 → 1 → 3 → 4 → 6.
+
+**Só as duas últimas casas.** `custo[i]` só lê as duas casas anteriores, então dá para trocar o vetor por duas variáveis e gastar $O(1)$ de memória:
+
+```cpp
+long long ant2 = 0, ant1 = 0;                 // custo[i-2] e custo[i-1]
+for (int i = 1; i <= n; i++) {
+    long long atual = (i >= 2 ? min(ant1, ant2) : ant1) + c[i];
+    ant2 = ant1;
+    ant1 = atual;
+}
+// a resposta está em ant1
+```
+
+Isso impede recuperar o caminho (as casas antigas se perderam). Só vale a pena quando a memória aperta, o que acontece em DPs com duas dimensões.
+
+**Memoização ou tabela?** As duas calculam os mesmos estados. A memoização é mais fácil de escrever quando a ordem de cálculo é difícil de enxergar (a recursão descobre a ordem sozinha) e só visita os estados que importam. A tabela é mais rápida, não corre o risco de estourar a pilha de recursão (uma recursão com profundidade $10^6$ costuma estourar) e permite o truque das duas variáveis. No CSES, a tabela é a escolha segura.
+
+**"De onde venho" ou "para onde vou".** Esta aula escreveu a transição olhando para trás: `custo[i]` lê `custo[i-1]` e `custo[i-2]`. Dá para escrever olhando para a frente: a partir de `custo[i]`, tente melhorar `custo[i+1]` e `custo[i+2]`. As duas formas dão a mesma tabela; a segunda é mais natural quando é fácil dizer para onde um estado vai e difícil dizer de onde ele vem.
+
+</details>
+
+## Referências
+
+- **CPH, capítulo 7 — Dynamic programming, seção 7.1 *Coin problem*:** apresenta a DP com o problema das moedas, da recursão à memoização e à tabela, incluindo construir a solução e contar soluções.
+- [USACO Guide — Introduction to DP](https://usaco.guide/gold/intro-dp)
+- [cp-algorithms — Introduction to Dynamic Programming](https://cp-algorithms.com/dynamic_programming/intro-to-dp.html), com memoização e tabela lado a lado.
+- [Errichto — Dynamic Programming lecture #1: Fibonacci, iteration vs recursion](https://www.youtube.com/watch?v=YBSt1jYwVfU) (vídeo, em inglês).
+
+## Mini-quiz
+
+<Quiz
+  client:visible
+  questions={[
+    {
+      q: 'Agora os passos são de 1 ou de **3** degraus. O que o código imprime para `n = 6`?',
+      code: 'w[0] = 1;\nfor (int i = 1; i <= n; i++) {\n    w[i] = w[i - 1];\n    if (i >= 3) w[i] += w[i - 3];\n}\ncout << w[n];',
+      options: ['4', '5', '6', '13'],
+      answer: 2,
+      why: 'A tabela é 1, 1, 1, 2, 3, 4, 6. Por exemplo, w[6] = w[5] + w[3] = 4 + 2 = 6. O 13 seria a resposta com passos de 1 ou 2.',
+    },
+    {
+      q: 'Pedágio com custos 2, 7, 1, 5, 3 (degraus 1 a 5). Quanto vale `custo[5]`?',
+      code: 'custo[0] = 0;\nfor (int i = 1; i <= n; i++) {\n    melhor = custo[i - 1];\n    if (i >= 2) melhor = min(melhor, custo[i - 2]);\n    custo[i] = melhor + c[i];\n}',
+      options: ['6', '8', '11', '18'],
+      answer: 0,
+      why: 'custo = 0, 2, 7, 3, 8, 6. O último é min(8, 3) + 3 = 6: o caminho 0 → 1 → 3 → 5.',
+    },
+    {
+      q: 'Por que a recursão direta de `formas(50)` faz 40 bilhões de chamadas se só existem 51 valores diferentes para calcular?',
+      options: [
+        'Porque a soma de dois long long é lenta',
+        'Porque ela recalcula os mesmos valores muitas vezes: cada chamada dispara duas outras, sem lembrar o que já foi respondido',
+        'Porque faltam casos base',
+        'Porque a recursão sempre é mais lenta que um laço',
+      ],
+      answer: 1,
+      why: 'O problema não é a recursão em si, é a falta de memória. Com a anotação (memoização), a mesma recursão faz menos de 100 chamadas.',
+    },
+    {
+      q: 'Peças 1 e 3, total 4. O que este código imprime?',
+      code: 'f[0] = 1;\nfor (int p : {1, 3})\n    for (int t = p; t <= 4; t++)\n        f[t] += f[t - p];\ncout << f[4];',
+      options: ['1', '2', '3', '4'],
+      answer: 1,
+      why: 'Peça por fora conta conjuntos: 1+1+1+1 e 1+3. Depois da peça 1 a tabela é 1,1,1,1,1; a peça 3 faz f[3] = 2 e f[4] = 1 + f[1] = 2. Com o total por fora daria 3 (1+3 e 3+1 contados separadamente).',
+    },
+    {
+      q: 'Numa DP de **mínimo**, você marca estados impossíveis com `INT_MAX` e escreve `custo[i] = min(custo[i-1], custo[i-2]) + c[i]` sem nenhum teste. O que acontece quando as duas origens são impossíveis?',
+      options: [
+        'custo[i] fica INT_MAX, como deveria',
+        'O programa dá erro de execução',
+        'A soma estoura e custo[i] vira um número negativo, que passa a ganhar todos os min seguintes',
+        'custo[i] vira 0',
+      ],
+      answer: 2,
+      why: 'INT_MAX + c[i] não cabe em int. O resultado negativo parece um custo ótimo e contamina o resto da tabela. Use um infinito com folga (1e18 em long long) e só some quando a origem for possível.',
+    },
+    {
+      q: 'Você trocou o laço do pedágio para `for (int i = n; i >= 1; i--)`, com o vetor `custo` iniciado em 0. Para os custos 3, 9, 3, 4, 6, 8, o programa imprime:',
+      options: ['18, por coincidência', '8', '24', 'Nada: ele trava'],
+      answer: 1,
+      why: 'Na primeira volta (i = 6) ele lê custo[5] e custo[4], que ainda valem 0, e grava custo[6] = 0 + 8 = 8. Essa casa nunca mais é alterada.',
+    },
+  ]}
+/>
