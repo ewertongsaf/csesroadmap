@@ -1,0 +1,422 @@
+---
+title: DP em grid e em strings
+description: Quando o estado precisa de duas coordenadas. Num tabuleiro, são a linha e a coluna; em duas palavras, são os tamanhos dos dois prefixos. A tabela é a mesma.
+---
+import Callout from '../../src/components/mdx/Callout.astro';
+import Quiz from '../../src/components/mdx/Quiz.tsx';
+
+## Motivação: o tabuleiro de moedas
+
+O problema desta aula, do começo ao fim:
+
+> Um tabuleiro de $n$ linhas e $m$ colunas tem um número de moedas em cada casa. Você começa no canto de cima à esquerda e, a cada passo, anda **uma casa para a direita ou uma casa para baixo**, até o canto de baixo à direita. Você recolhe as moedas de todas as casas por onde passa. Qual o **maior total** possível?
+
+Um exemplo com 3 linhas e 4 colunas:
+
+| | col. 0 | col. 1 | col. 2 | col. 3 |
+|---|---|---|---|---|
+| **linha 0** | 1 | 4 | 8 | 6 |
+| **linha 1** | 6 | 9 | 1 | 8 |
+| **linha 2** | 3 | 4 | 1 | 5 |
+
+A ideia gulosa é ir sempre para o vizinho com mais moedas. Da casa inicial (1), abaixo há 6 e à direita há 4: desce. Dali, abaixo há 3 e à direita há 9: vai para a direita. Depois, abaixo há 4 e à direita há 1: desce. Na última linha só resta andar para a direita, passando por 1 e 5. Total: $1 + 6 + 9 + 4 + 1 + 5 = 26$.
+
+O caminho que segue a linha de cima inteira e depois desce recolhe $1 + 4 + 8 + 6 + 8 + 5 = 32$. O guloso foi atrás do 9 e perdeu o 8, o 6 e o outro 8.
+
+Testar todos os caminhos resolve, mas eles são muitos: 10 neste tabuleiro, 48 620 num de 10 × 10, mais de 35 bilhões num de 20 × 20, e um número com cerca de 600 dígitos num de 1000 × 1000. Não passa.
+
+## A ideia: a última decisão, em duas dimensões
+
+A pergunta é a mesma dos módulos anteriores: **qual foi o último passo?** Para estar numa casa, você veio **de cima** ou **da esquerda**. Não há outra possibilidade.
+
+Comece por um pedaço pequeno do tabuleiro, só as duas primeiras linhas e colunas:
+
+| | col. 0 | col. 1 |
+|---|---|---|
+| **linha 0** | 1 | 4 |
+| **linha 1** | 6 | 9 |
+
+- Para chegar à casa do 4, só há um caminho: $1 + 4 = 5$.
+- Para chegar à casa do 6, só há um caminho: $1 + 6 = 7$.
+- Para chegar à casa do 9, você vem de cima (onde o melhor total é 5) ou da esquerda (onde o melhor total é 7). Vindo da esquerda é melhor: $7 + 9 = 16$.
+
+Para decidir a casa do 9 bastou conhecer **o melhor total das duas casas vizinhas**. Não foi preciso saber por onde cada caminho passou.
+
+**Estado.** `melhor[i][j]` = maior total de moedas de um caminho do canto de cima até a casa da linha $i$, coluna $j$.
+
+**Transição.**
+
+$$
+\text{melhor}(i, j) = \max\bigl(\text{melhor}(i - 1, j),\ \text{melhor}(i, j - 1)\bigr) + \text{moedas}(i, j)
+$$
+
+$\text{melhor}(i - 1, j)$ é a casa de cima, $\text{melhor}(i, j - 1)$ é a da esquerda, e $\text{moedas}(i, j)$ é o que há na própria casa.
+
+**Casos base.** A casa inicial vale as próprias moedas. Na primeira linha só dá para vir da esquerda; na primeira coluna, só de cima.
+
+**Ordem.** Linha por linha, de cima para baixo, e cada linha da esquerda para a direita. Quando o laço chega numa casa, a de cima (linha anterior) e a da esquerda (mesma linha, coluna anterior) já estão prontas.
+
+**Resposta.** A casa do canto de baixo à direita.
+
+A tabela `melhor` do exemplo:
+
+| | col. 0 | col. 1 | col. 2 | col. 3 |
+|---|---|---|---|---|
+| **linha 0** | 1 | 5 | 13 | 19 |
+| **linha 1** | 7 | 16 | 17 | 27 |
+| **linha 2** | 10 | 20 | 21 | **32** |
+
+Algumas casas, com a conta:
+
+| Casa | De cima | Da esquerda | Maior | Moedas | `melhor` |
+|---|---|---|---|---|---|
+| linha 1, col. 1 | 5 | 7 | 7 | 9 | 16 |
+| linha 1, col. 2 | 13 | 16 | 16 | 1 | 17 |
+| linha 1, col. 3 | 19 | 17 | 19 | 8 | 27 |
+| linha 2, col. 3 | 27 | 21 | 27 | 5 | 32 |
+
+A resposta é **32**. Veja a casa da linha 1, coluna 3: o caminho que passou pelo 9 chega ali com 17, e o que veio pela linha de cima chega com 19. A DP guarda os dois valores nas casas vizinhas e só compara na hora certa.
+
+<Callout type="tente">
+Qual o valor de `melhor` na linha 2, coluna 1? Faça a conta antes de olhar a tabela, usando só as casas vizinhas.
+
+<details>
+<summary>Ver resposta</summary>
+
+De cima vem 16 (linha 1, col. 1) e da esquerda vem 10 (linha 2, col. 0). O maior é 16, e a casa tem 4 moedas: $16 + 4 = 20$.
+
+</details>
+</Callout>
+
+### A ordem de preenchimento
+
+A transição lê a casa de cima e a da esquerda. A ordem "linha por linha, da esquerda para a direita" funciona porque as duas já foram preenchidas. Coluna por coluna, de cima para baixo, também funcionaria.
+
+O que **não** funciona é percorrer cada linha da direita para a esquerda:
+
+```cpp
+for (int i = 0; i < n; i++)
+    for (int j = m - 1; j >= 0; j--)          // ERRADO: a casa da esquerda ainda não foi calculada
+        ...
+```
+
+Com o vetor iniciado em 0, esse código lê zeros no lugar dos vizinhos da esquerda e imprime **19** em vez de 32 no exemplo. Como no módulo de introdução, ele roda sem erro e sem aviso.
+
+A regra para qualquer tabela de duas dimensões: desenhe, numa casa qualquer, **setas para as casas que ela lê**. A ordem dos laços precisa visitar a ponta de cada seta antes da origem.
+
+### As bordas e a moldura
+
+As casas da primeira linha e da primeira coluna têm um vizinho a menos. Há dois jeitos de tratar isso.
+
+O primeiro é testar cada caso com `if`, como no código completo mais abaixo. O segundo é pôr uma **moldura**: uma linha e uma coluna extras, preenchidas com "impossível", e numerar as casas reais a partir de 1. Assim toda casa tem os dois vizinhos, e a transição fica igual para todas.
+
+O valor da moldura importa. Como é uma DP de máximo, impossível é **menos infinito**. Usar 0 parece funcionar, e funciona quando todas as casas têm valores positivos. Com valores negativos (uma casa que **tira** moedas), dá errado:
+
+| | col. 0 | col. 1 |
+|---|---|---|
+| **linha 0** | −5 | −1 |
+| **linha 1** | −2 | −3 |
+
+Os dois caminhos somam $-5 - 1 - 3 = -9$ e $-5 - 2 - 3 = -10$. A resposta é **−9**. Com a moldura valendo 0, a casa do −1 calcula $\max(0, -5) + (-1) = -1$: ela "veio" da moldura, um lugar que não existe, sem pagar o −5. O programa imprime **−4**.
+
+## A mesma tabela para duas palavras
+
+O segundo uso de uma tabela de duas dimensões não tem tabuleiro nenhum. O problema:
+
+> Você quer transformar uma palavra em outra. Cada operação **apaga uma letra** ou **insere uma letra**, em qualquer posição. Qual o menor número de operações?
+
+Com palavras minúsculas dá para fazer à mão. De `ab` para `ba`: apague o `a` (fica `b`) e insira um `a` no fim (fica `ba`). São 2 operações, e com 1 só não dá.
+
+Para palavras maiores, a pergunta de sempre: qual foi a última decisão? Olhe para as **últimas letras** das duas palavras. Queremos transformar `casa` em `saco`:
+
+- As últimas letras são `a` e `o`. São diferentes, então alguma coisa precisa acontecer no fim:
+  - ou a última letra de `casa` é **apagada**: custa 1, e sobra transformar `cas` em `saco`;
+  - ou a última letra de `saco` é **inserida**: custa 1, e sobra transformar `casa` em `sac`.
+- Se as últimas letras fossem **iguais**, como em `cas` e `sacos`, elas ficariam paradas no lugar, sem custo, e sobraria transformar `ca` em `saco`.
+
+Cada caso reduz o problema a palavras **mais curtas**, sempre cortando letras do fim. Os pedaços que aparecem são **prefixos**: as primeiras letras de cada palavra.
+
+**Estado.** `d[i][j]` = menor número de operações para transformar as $i$ primeiras letras da primeira palavra nas $j$ primeiras letras da segunda.
+
+**Transição.** Chamando de $x$ a $i$-ésima letra da primeira palavra e de $y$ a $j$-ésima da segunda:
+
+$$
+d(i, j) =
+\begin{cases}
+d(i - 1, j - 1) & \text{se } x = y \\
+1 + \min\bigl(d(i - 1, j),\ d(i, j - 1)\bigr) & \text{se } x \ne y
+\end{cases}
+$$
+
+Na segunda linha, $d(i - 1, j)$ é o caso "apago $x$" e $d(i, j - 1)$ é o caso "insiro $y$"; o 1 é o custo dessa operação.
+
+**Casos base.** `d[i][0] = i`: para chegar à palavra vazia, apague as $i$ letras. `d[0][j] = j`: partindo da vazia, insira as $j$ letras.
+
+**Ordem.** A mesma do tabuleiro: linha por linha, da esquerda para a direita. Cada casa lê a de cima, a da esquerda e a da diagonal.
+
+**Resposta.** `d[n][m]`, com as duas palavras inteiras.
+
+A tabela para `casa` → `saco`. A linha 0 e a coluna 0 são os casos base (a palavra vazia, escrita como ∅):
+
+| | ∅ | s | a | c | o |
+|---|---|---|---|---|---|
+| **∅** | 0 | 1 | 2 | 3 | 4 |
+| **c** | 1 | 2 | 3 | 2 | 3 |
+| **a** | 2 | 3 | 2 | 3 | 4 |
+| **s** | 3 | 2 | 3 | 4 | 5 |
+| **a** | 4 | 3 | 2 | 3 | **4** |
+
+A resposta é **4**: apagar `c`, apagar o primeiro `a` (sobra `sa`), inserir `c`, inserir `o`.
+
+Três casas para conferir:
+
+| Casa | Letras | Conta | Valor |
+|---|---|---|---|
+| linha `c`, coluna `s` | diferentes | $1 + \min(1, 1)$ | 2 |
+| linha `c`, coluna `c` | iguais | diagonal: transformar ∅ em `sa` | 2 |
+| última casa | `a` e `o`, diferentes | $1 + \min(5, 3)$ | 4 |
+
+<Callout type="tente">
+Na tabela, a casa da linha `s` (terceira letra de `casa`), coluna `s` vale 2. De qual casa esse valor veio, e o que ele significa?
+
+<details>
+<summary>Ver resposta</summary>
+
+As letras são iguais, então o valor vem da **diagonal**: a casa da linha `a`, coluna ∅, que vale 2. Significa: para transformar `cas` em `s`, o `s` final fica no lugar, e o que sobra é transformar `ca` na palavra vazia, o que custa 2 (apagar as duas letras).
+
+</details>
+</Callout>
+
+### O índice que sempre engana
+
+O estado fala de **quantidade de letras**: `d[i][j]` usa as $i$ primeiras. Mas em C++ a string começa no índice 0. Então a $i$-ésima letra da palavra `a` é **`a[i - 1]`**, e não `a[i]`.
+
+Trocar isso não dá erro de compilação. Com `a[i] == b[j]` no lugar de `a[i - 1] == b[j - 1]`, o programa compara letras deslocadas (e, no fim, lê uma posição depois do fim da string) e responde **6** para `casa` → `saco`, em vez de 4.
+
+O hábito que evita o erro: declare a tabela com tamanho `(n + 1) × (m + 1)`, faça os laços de 1 até $n$ e de 1 até $m$, e escreva `a[i - 1]` e `b[j - 1]` **sempre**, sem pensar.
+
+### Por que isso é a mesma coisa que o tabuleiro
+
+Olhe a tabela de `casa` → `saco` como um tabuleiro. Você começa no canto de cima à esquerda (nada transformado) e quer chegar ao canto de baixo à direita (tudo transformado). Cada passo:
+
+| Passo no tabuleiro | Significa | Custo |
+|---|---|---|
+| para baixo | apagar uma letra da primeira palavra | 1 |
+| para a direita | inserir uma letra da segunda palavra | 1 |
+| na diagonal (só quando as letras são iguais) | manter a letra | 0 |
+
+O menor número de operações é o **caminho mais barato** nesse tabuleiro. É por isso que os dois problemas estão na mesma aula: muda o que as coordenadas significam e quais passos existem, e a tabela é a mesma.
+
+Essa forma de estado, **um prefixo de cada sequência**, é o padrão para qualquer problema que compara duas strings ou dois vetores posição a posição. Outras operações (trocar uma letra por outra, por exemplo) entram como mais uma opção dentro do $\min$.
+
+## Código: o problema do tabuleiro completo
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int main() {
+    int n, m;
+    cin >> n >> m;
+    vector<vector<long long>> moedas(n, vector<long long>(m));
+    for (int i = 0; i < n; i++)
+        for (int j = 0; j < m; j++) cin >> moedas[i][j];
+
+    // melhor[i][j] = maior total de moedas de um caminho do canto (0,0) até a casa (i,j)
+    vector<vector<long long>> melhor(n, vector<long long>(m));
+    for (int i = 0; i < n; i++) {              // linha por linha, de cima para baixo...
+        for (int j = 0; j < m; j++) {          // ...e cada linha da esquerda para a direita
+            long long antes = 0;                               // (0,0): não vim de lugar nenhum
+            if (i > 0 && j > 0) antes = max(melhor[i - 1][j], melhor[i][j - 1]);
+            else if (i > 0) antes = melhor[i - 1][j];          // primeira coluna: só de cima
+            else if (j > 0) antes = melhor[i][j - 1];          // primeira linha: só da esquerda
+            melhor[i][j] = antes + moedas[i][j];
+        }
+    }
+    cout << melhor[n - 1][m - 1] << "\n";
+}
+```
+
+`vector<vector<long long>> t(n, vector<long long>(m))` cria uma tabela de $n$ linhas, cada uma com $m$ casas; `t[i][j]` é a casa da linha $i$, coluna $j$.
+
+**Entrada:**
+
+```
+3 4
+1 4 8 6
+6 9 1 8
+3 4 1 5
+```
+
+**Saída:**
+
+```
+32
+```
+
+O programa preenche a tabela `melhor` da aula e imprime o canto de baixo: o caminho pela linha de cima.
+
+- **Tempo:** $O(n \cdot m)$: uma conta de tempo constante por casa.
+- **Memória:** $O(n \cdot m)$.
+
+Com $n$ e $m$ até 1000, é um milhão de casas: passa com folga. Com `long long`, a tabela ocupa 8 MB.
+
+### O mesmo código no formato de contest
+
+Aqui a moldura substitui os `if`: as casas reais vão de 1 a $n$ e de 1 a $m$, e a linha 0 e a coluna 0 valem menos infinito. Só a casa inicial precisa de um caso à parte.
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+typedef long long ll;
+#define rep(i,a,b) for(int i=(a);i<(b);i++)
+void fastio(){ ios::sync_with_stdio(false); cin.tie(nullptr); }
+
+int main(){
+    fastio();
+    int n, m; cin >> n >> m;
+    const ll NEG = -1e18;
+    // moldura: linha 0 e coluna 0 são "impossível", e as casas reais vão de 1 a n e de 1 a m
+    vector<vector<ll>> melhor(n + 1, vector<ll>(m + 1, NEG));
+    rep(i, 1, n + 1) rep(j, 1, m + 1) {
+        ll x; cin >> x;
+        ll antes = (i == 1 && j == 1) ? 0 : max(melhor[i - 1][j], melhor[i][j - 1]);
+        melhor[i][j] = antes + x;
+    }
+    cout << melhor[n][m] << "\n";
+}
+```
+
+`cond ? a : b` vale `a` quando a condição é verdadeira e `b` quando é falsa. Como o $\max$ de uma casa real nunca escolhe a moldura (toda casa tem pelo menos um vizinho de verdade, exceto a inicial), a soma com menos infinito nunca acontece.
+
+## Código: as duas palavras
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int main() {
+    string a, b;
+    cin >> a >> b;
+    int n = a.size(), m = b.size();
+
+    // d[i][j] = menor número de operações (apagar ou inserir uma letra)
+    //           para transformar as i primeiras letras de a nas j primeiras letras de b
+    vector<vector<int>> d(n + 1, vector<int>(m + 1));
+    for (int i = 0; i <= n; i++) d[i][0] = i;      // para virar a palavra vazia: apagar as i letras
+    for (int j = 0; j <= m; j++) d[0][j] = j;      // a partir da vazia: inserir as j letras
+    for (int i = 1; i <= n; i++) {
+        for (int j = 1; j <= m; j++) {
+            if (a[i - 1] == b[j - 1])              // a i-ésima letra de a é a[i-1]
+                d[i][j] = d[i - 1][j - 1];         // últimas letras iguais: não custam nada
+            else
+                d[i][j] = 1 + min(d[i - 1][j],     // apago a última letra de a
+                                  d[i][j - 1]);    // insiro a última letra de b
+        }
+    }
+    cout << d[n][m] << "\n";
+}
+```
+
+Com a entrada `casa saco`, a saída é `4`, e a tabela `d` é a da aula.
+
+- **Tempo e memória:** $O(n \cdot m)$, com $n$ e $m$ os tamanhos das palavras. Duas palavras de 5000 letras dão 25 milhões de casas: passa, e com `int` a tabela ocupa 100 MB, o que já pede atenção ao limite de memória (veja "Para depois").
+
+## Armadilhas comuns
+
+- **Ordem dos laços que não respeita as setas.** Desenhe de quais casas cada casa depende antes de escrever os `for`.
+- **Bordas.** Ler `melhor[-1][j]` é comportamento indefinido. Use os `if` ou a moldura.
+- **Moldura com o valor errado.** Menos infinito numa DP de máximo, mais infinito numa de mínimo, 0 numa de contagem. O 0 só é seguro em máximo se não houver valores negativos.
+- **`a[i]` em vez de `a[i - 1]`** quando o estado conta letras.
+- **Trocar linha com coluna.** Decida uma vez que `t[i][j]` é linha $i$, coluna $j$, com $i$ até $n$ e $j$ até $m$, e não misture. Num tabuleiro que não é quadrado, trocar `n` com `m` lê fora da tabela.
+- **Casos base esquecidos nas strings.** `d[i][0] = i` e `d[0][j] = j` não são zero. Deixar tudo em 0 faz a tabela inteira sair errada.
+- **Memória.** Uma tabela de 5000 × 5000 de `long long` são 200 MB. Use `int` quando os valores couberem.
+
+<details class="para-depois">
+<summary>Para depois: recuperar o caminho, economizar memória e variações</summary>
+
+**Recuperar o caminho.** Comece no canto final e ande para trás: em cada casa, vá para o vizinho (de cima ou da esquerda) com o maior `melhor`. No exemplo, isso passa por (2,3), (1,3), (0,3), (0,2), (0,1), (0,0): invertendo, é o caminho das moedas 1, 4, 8, 6, 8, 5. Nas palavras, o mesmo passeio diz quais letras foram apagadas, inseridas ou mantidas.
+
+**Duas linhas em vez da tabela inteira.** Cada linha só lê a linha anterior. Guardando só duas linhas (a anterior e a atual), a memória cai de $O(n \cdot m)$ para $O(m)$. Isso impede recuperar o caminho.
+
+**Casas proibidas.** Se algumas casas do tabuleiro não podem ser pisadas, elas recebem "impossível" e a transição as ignora, como os degraus quebrados do módulo de introdução.
+
+**Contar caminhos.** Trocando o $\max$ por uma soma, cada casa passa a guardar **quantos** caminhos chegam nela (com o caso base valendo 1 e as casas proibidas valendo 0). É a mesma troca "max vira soma" que apareceu na mochila.
+
+**A maior subsequência comum.** As letras que ficam paradas na transformação formam a maior sequência de letras que aparece, na mesma ordem, nas duas palavras. Em `casa` e `saco` é `sa`, de tamanho 2, e a conta fecha: $4 + 4 - 2 \cdot 2 = 4$ operações. Dá para calcular esse tamanho diretamente, com o mesmo estado de prefixos e a transição "letras iguais: diagonal mais 1; diferentes: o maior entre cima e esquerda".
+
+**Movimentos em outras direções.** Se também fosse permitido andar para cima ou para a esquerda, uma casa dependeria de casas que dependem dela, e não existiria ordem de preenchimento. Aí o problema deixa de ser DP e vira um caminho mínimo em grafo, assunto dos módulos de grafos.
+
+</details>
+
+## Referências
+
+- **CPH, capítulo 7 — Dynamic programming, seção 7.3 *Paths in a grid*:** o caminho de maior soma num tabuleiro, com a mesma recorrência desta aula.
+- **CPH, capítulo 7, seção 7.5 *Edit distance*:** a tabela de prefixos para transformar uma palavra em outra, com a operação de trocar uma letra.
+- [USACO Guide — Paths on Grids](https://usaco.guide/gold/paths-grids), que cobre os dois temas desta aula.
+
+## Mini-quiz
+
+<Quiz
+  client:visible
+  questions={[
+    {
+      q: 'Tabuleiro 2 × 3 com as moedas abaixo. Quanto vale a casa final da tabela `melhor`?',
+      code: '2 1 3\n4 6 1',
+      options: ['11', '12', '13', '17'],
+      answer: 2,
+      why: 'A tabela é 2, 3, 6 na primeira linha e 6, 12, 13 na segunda. O melhor caminho é 2 → 4 → 6 → 1.',
+    },
+    {
+      q: 'Transformar `ab` em `ba` só com apagar e inserir. Quanto vale `d[2][2]`?',
+      code: 'if (a[i-1] == b[j-1]) d[i][j] = d[i-1][j-1];\nelse d[i][j] = 1 + min(d[i-1][j], d[i][j-1]);',
+      options: ['0', '1', '2', '4'],
+      answer: 2,
+      why: 'A tabela é 0 1 2 / 1 2 1 / 2 1 2. Na última casa as letras (b e a) são diferentes: 1 + min(1, 1) = 2.',
+    },
+    {
+      q: 'Na tabela das palavras, por que `d[3][0]` vale 3?',
+      options: [
+        'Porque as três primeiras letras são diferentes',
+        'Porque transformar 3 letras na palavra vazia exige apagar as 3',
+        'Porque é o valor padrão da tabela',
+        'Porque a diagonal soma 1 a cada passo',
+      ],
+      answer: 1,
+      why: 'A coluna 0 é o caso base "a segunda palavra está vazia": a única saída é apagar tudo.',
+    },
+    {
+      q: 'No tabuleiro de moedas, cada casa lê a de cima e a da esquerda. Qual destas ordens de preenchimento está **errada**?',
+      options: [
+        'linhas de cima para baixo, colunas da esquerda para a direita',
+        'colunas da esquerda para a direita, linhas de cima para baixo',
+        'linhas de cima para baixo, colunas da direita para a esquerda',
+        'as duas primeiras estão erradas',
+      ],
+      answer: 2,
+      why: 'Da direita para a esquerda, a casa da esquerda ainda não foi calculada quando é lida. No exemplo da aula isso imprime 19 em vez de 32.',
+    },
+    {
+      q: 'Tabuleiro com valores negativos e moldura valendo 0. Para as casas `-5 -1 / -2 -3`, o programa responde −4 em vez de −9. Por quê?',
+      options: [
+        'Porque faltou long long',
+        'Porque as casas da borda preferem "vir" da moldura (0) a vir do caminho real (negativo)',
+        'Porque a ordem dos laços está errada',
+        'Porque o max deveria ser min',
+      ],
+      answer: 1,
+      why: 'A casa do −1 calcula max(0, −5) − 1 = −1, como se o caminho começasse ali. Numa DP de máximo, a moldura precisa ser menos infinito.',
+    },
+    {
+      q: 'Seu código das palavras compara `a[i] == b[j]` com os laços de 1 até n e de 1 até m. O que acontece?',
+      options: [
+        'Erro de compilação',
+        'Nada: é equivalente',
+        'Ele compara letras deslocadas e responde errado, sem aviso',
+        'Fica mais lento',
+      ],
+      answer: 2,
+      why: 'O estado conta letras, e a i-ésima letra é a[i-1]. Com casa → saco, o código errado responde 6 em vez de 4.',
+    },
+  ]}
+/>

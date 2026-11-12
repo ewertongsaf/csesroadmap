@@ -1,8 +1,11 @@
 # Rascunhos de aulas
 
-Aulas em preparação, fora do site: nada aqui é renderizado nem entra no build.
+Material de apoio das aulas, fora do site: nada aqui é renderizado nem entra no build.
 
-- `modules/<slug>.mdx`: o texto da aula. Quando estiver pronto, vai para `content/modules/` e o módulo
-  passa a `status: 'written'` em `data/modules.ts`.
-- `tests/<slug>/`: os programas C++ da aula e um `stress.sh` que compila com `-Wall -Wextra -Wshadow`,
-  confere o exemplo do texto e compara com força bruta. Os números das tabelas do texto saem de `demos.cpp`.
+- `tests/<slug>/`: os programas C++ de cada aula e um `stress.sh` que compila com `-Wall -Wextra -Wshadow`,
+  confere os exemplos do texto e compara com força bruta. Os números das tabelas do texto saem de `demos.cpp`.
+  Rode o script antes de mexer nos exemplos de uma aula.
+- `modules/<slug>.mdx` (quando existir): aula ainda em preparação. Pronta, ela vai para `content/modules/`
+  e o módulo passa a `status: 'written'` em `data/modules.ts`.
+
+Aulas que já saíram daqui para o site: `dp-introducao`, `dp-mochila`, `dp-grid-strings`, `lis`.

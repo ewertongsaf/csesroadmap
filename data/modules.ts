@@ -23,10 +23,10 @@ export const modules: ModuleRef[] = [
   { slug: 'sparse-table', title: 'Sparse table', cph: ['9.1'], status: 'written' },
 
   // Fase 2 — DP e grafos
-  { slug: 'dp-introducao', title: 'DP: estados, transições e ordem de cálculo', cph: ['7.1'], status: 'planned' },
-  { slug: 'dp-mochila', title: 'Mochila e subset sum', cph: ['7.4'], status: 'planned' },
-  { slug: 'dp-grid-strings', title: 'DP em grid e em strings (edit distance, LCS)', cph: ['7.3', '7.5'], status: 'planned' },
-  { slug: 'lis', title: 'LIS em O(n log n)', cph: ['7.2'], status: 'planned' },
+  { slug: 'dp-introducao', title: 'DP: estados, transições e ordem de cálculo', cph: ['7.1'], status: 'written' },
+  { slug: 'dp-mochila', title: 'Mochila e subset sum', cph: ['7.4'], status: 'written' },
+  { slug: 'dp-grid-strings', title: 'DP em grid e em strings (edit distance, LCS)', cph: ['7.3', '7.5'], status: 'written' },
+  { slug: 'lis', title: 'LIS em O(n log n)', cph: ['7.2'], status: 'written' },
   { slug: 'grafos-dfs', title: 'Representação de grafos e DFS', cph: ['11', '12.1', '12.3'], status: 'planned' },
   { slug: 'bfs', title: 'BFS, multi-fonte e grafos de estados', cph: ['12.2'], status: 'planned' },
   { slug: 'dijkstra', title: 'Dijkstra', cph: ['13.2'], status: 'planned' },

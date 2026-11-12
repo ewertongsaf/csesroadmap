@@ -1,0 +1,331 @@
+---
+title: LIS em O(n log n)
+description: A maior subsequência crescente tem uma DP direta em O(n²). Guardando, para cada tamanho, o menor final possível, a mesma resposta sai com uma busca binária por elemento.
+---
+import Callout from '../../src/components/mdx/Callout.astro';
+import Quiz from '../../src/components/mdx/Quiz.tsx';
+
+## Motivação: as notas que nunca caem
+
+O problema desta aula, do começo ao fim:
+
+> Você tem as notas de $n$ provas, na ordem em que foram feitas. Quer escolher o **maior número de provas**, mantendo a ordem, de modo que as notas escolhidas **nunca caiam** (cada uma é maior ou igual à anterior). Quantas provas dá para escolher?
+
+Um exemplo com 8 provas:
+
+| prova | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+|---|---|---|---|---|---|---|---|---|
+| nota | 5 | 2 | 2 | 7 | 3 | 3 | 8 | 3 |
+
+As provas não precisam ser vizinhas: pode-se pular quantas quiser. Escolhendo as provas 2, 3, 5, 6 e 7, as notas são 2, 2, 3, 3, 8: nunca caem. São **5** provas, e não dá para fazer melhor.
+
+Uma lista de elementos escolhidos mantendo a ordem, sem precisar serem vizinhos, é uma **subsequência**. O problema clássico pede a maior subsequência **estritamente crescente** (cada elemento maior que o anterior) e é conhecido pela sigla **LIS**, de *longest increasing subsequence*. A versão desta aula aceita empates; a diferença entre as duas acaba sendo uma única palavra no código, e vamos ver qual.
+
+Testar todas as escolhas custa $2^n$. A DP dos módulos anteriores resolve em $O(n^2)$, o que basta para $n$ até uns 5000. Mas com $n = 2 \cdot 10^5$ são $4 \cdot 10^{10}$ operações. Não passa. O objetivo desta aula é chegar em $O(n \log n)$.
+
+## Primeiro passo: a DP direta
+
+Use a receita de sempre. Qual foi a última decisão? Se uma sequência termina na prova $i$, a pergunta é: **qual era a prova anterior** nela?
+
+**Estado.** `L[i]` = tamanho da maior sequência que nunca cai e **termina exatamente na prova $i$**.
+
+**Transição.** A prova anterior é alguma $j$ antes de $i$ com nota menor ou igual. Escolha a melhor:
+
+$$
+L(i) = 1 + \max_{\substack{j < i \\ a_j \le a_i}} L(j)
+$$
+
+$a_i$ é a nota da prova $i$. O máximo percorre todas as provas $j$ anteriores cuja nota não passa de $a_i$; se não houver nenhuma, o máximo vale 0 e $L(i) = 1$ (a prova sozinha).
+
+**Resposta.** O **maior** `L[i]`, e não `L[n]`: a melhor sequência pode terminar em qualquer prova.
+
+A tabela do exemplo:
+
+| prova $i$ | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+|---|---|---|---|---|---|---|---|---|
+| nota | 5 | 2 | 2 | 7 | 3 | 3 | 8 | 3 |
+| `L[i]` | 1 | 1 | 2 | 3 | 3 | 4 | 5 | 5 |
+| veio da prova | – | – | 2 | 3 | 3 | 5 | 6 | 6 |
+
+Por exemplo, para a prova 5 (nota 3), as anteriores com nota até 3 são as provas 2 e 3, com `L` valendo 1 e 2. A melhor é a 3: $L(5) = 2 + 1 = 3$ (as notas 2, 2, 3).
+
+O maior valor é 5, que aparece nas provas 7 e 8.
+
+```cpp
+vector<int> L(n, 1);
+int resposta = 0;
+for (int i = 0; i < n; i++) {
+    for (int j = 0; j < i; j++)
+        if (a[j] <= a[i]) L[i] = max(L[i], L[j] + 1);
+    resposta = max(resposta, L[i]);
+}
+```
+
+São dois laços, um dentro do outro: $O(n^2)$. O laço de dentro gasta tempo olhando **todas** as provas anteriores para achar a melhor.
+
+<Callout type="tente">
+Se a prova 8 tivesse nota 1 em vez de 3, quanto valeria `L[8]`? E a resposta do problema mudaria?
+
+<details>
+<summary>Ver resposta</summary>
+
+Nenhuma prova anterior tem nota menor ou igual a 1, então `L[8] = 1`. A resposta continua 5, por causa da prova 7. É por isso que a resposta é o **maior** `L[i]`, e não o último.
+
+</details>
+</Callout>
+
+## A ideia: para cada tamanho, o menor final
+
+O laço de dentro procura, entre as sequências que já existem, a mais longa que a nota nova consegue estender. Dá para organizar essa procura.
+
+Pense em duas sequências de tamanho 3 que já foram encontradas: uma termina em 7 e outra termina em 3. Qual delas vale a pena guardar? A que termina em **3**. Qualquer nota que estende a que termina em 7 (ou seja, qualquer nota $\ge 7$) também estende a que termina em 3. A que termina em 3 aceita tudo isso e mais um pouco.
+
+Então, de todas as sequências de um mesmo tamanho, só interessa **a de menor final**. Guarde um vetor:
+
+**`fim[k]`** = o menor valor final entre todas as sequências de tamanho $k + 1$ encontradas até agora.
+
+(O índice começa em 0, então `fim[0]` é o melhor final para tamanho 1, `fim[1]` para tamanho 2, e assim por diante.)
+
+Para cada nota nova $x$, da esquerda para a direita:
+
+1. Ache a **primeira** posição de `fim` com valor **maior que $x$**.
+2. Se não existe (todos os valores são $\le x$), $x$ estende a maior sequência: acrescente $x$ no fim do vetor.
+3. Se existe, troque aquele valor por $x$: você acaba de achar uma sequência do mesmo tamanho com um final menor.
+
+O traço para as notas 5, 2, 2, 7, 3, 3, 8, 3:
+
+| Nota $x$ | Primeira posição com valor $> x$ | Ação | `fim` depois |
+|---|---|---|---|
+| 5 | não existe | acrescenta | 5 |
+| 2 | 0 (o 5) | troca | 2 |
+| 2 | não existe | acrescenta | 2, 2 |
+| 7 | não existe | acrescenta | 2, 2, 7 |
+| 3 | 2 (o 7) | troca | 2, 2, 3 |
+| 3 | não existe | acrescenta | 2, 2, 3, 3 |
+| 8 | não existe | acrescenta | 2, 2, 3, 3, 8 |
+| 3 | 4 (o 8) | troca | 2, 2, 3, 3, 3 |
+
+O vetor termina com 5 valores: a resposta é **5**, o tamanho de `fim`.
+
+Leia duas linhas com calma:
+
+- **Segunda linha (nota 2).** Antes, a melhor sequência de tamanho 1 terminava em 5. Agora existe uma de tamanho 1 que termina em 2, e ela é melhor: aceita mais continuações. O 5 é descartado.
+- **Quinta linha (nota 3).** Havia uma sequência de tamanho 3 terminando em 7 (2, 2, 7). O 3 não cabe depois do 7, mas cabe depois de `fim[1] = 2`, formando 2, 2, 3: também tamanho 3, com final menor. Por isso ele **troca** o 7. Na linha seguinte, o outro 3 aproveita essa troca e chega ao tamanho 4, o que seria impossível se o 7 ainda estivesse lá.
+
+### Por que a posição certa é "o primeiro maior que x"
+
+Tudo antes dessa posição tem valor $\le x$. Então $x$ pode vir **depois** da sequência representada pela posição imediatamente anterior, formando uma sequência um elemento mais longa, que termina em $x$. Esse tamanho novo é exatamente o da posição encontrada, e $x$ é menor que o valor que estava lá. Trocar só melhora.
+
+### O vetor está sempre ordenado
+
+Olhe a coluna "`fim` depois" do traço: em toda linha, os valores estão em ordem. Não é coincidência. Uma sequência de tamanho 4 contém uma de tamanho 3 (basta tirar o último elemento), e o final dessa de tamanho 3 não é maior que o da de tamanho 4. Então o melhor final para tamanho 3 nunca passa do melhor final para tamanho 4.
+
+Como `fim` está ordenado, "a primeira posição com valor maior que $x$" é uma **busca binária**: o predicado "`fim[k] > x`" é falso, …, falso, verdadeiro, …, verdadeiro. Na STL, quem faz isso é o `upper_bound`, visto no módulo de busca binária.
+
+Com isso, cada nota custa $O(\log n)$ em vez de $O(n)$, e o total cai de $O(n^2)$ para $O(n \log n)$: para $n = 2 \cdot 10^5$, cerca de 3,6 milhões de passos em vez de 40 bilhões.
+
+<Callout type="tente">
+Continue o traço com mais uma nota, 2. O que acontece com `fim`? E o tamanho da resposta?
+
+<details>
+<summary>Ver resposta</summary>
+
+`fim` é 2, 2, 3, 3, 3. A primeira posição com valor maior que 2 é a 2 (o primeiro 3). Troca: `fim` vira 2, 2, **2**, 3, 3. O tamanho continua 5. A troca registra que agora existe uma sequência de tamanho 3 terminando em 2 (as três provas de nota 2).
+
+</details>
+</Callout>
+
+## Crescente de verdade ou "nunca cai": uma palavra
+
+A versão clássica exige que cada elemento seja **estritamente maior** que o anterior. Nela, um valor igual **não** pode estender a sequência: ele tem de trocar o valor igual que já está em `fim`. Então a posição procurada passa a ser a primeira com valor **maior ou igual** a $x$, que é o `lower_bound`.
+
+| Versão | Posição procurada | Função |
+|---|---|---|
+| nunca cai (empates valem) | primeiro valor $> x$ | `upper_bound` |
+| estritamente crescente | primeiro valor $\ge x$ | `lower_bound` |
+
+O menor exemplo que separa as duas é o vetor 2, 2:
+
+| | Depois do primeiro 2 | Depois do segundo 2 | Resposta |
+|---|---|---|---|
+| com `upper_bound` | 2 | 2, 2 (acrescenta) | 2 |
+| com `lower_bound` | 2 | 2 (troca o 2 por 2) | 1 |
+
+Para "nunca cai", a resposta certa é 2. Para "estritamente crescente", é 1. Usar a função trocada dá a resposta do **outro** problema, e os exemplos do enunciado costumam não ter empates, então o erro só aparece no juiz. Nas notas do exemplo, a versão estrita responde 3 (2, 3, 8, por exemplo) em vez de 5.
+
+## `fim` não é a subsequência
+
+O **tamanho** de `fim` é a resposta. O **conteúdo** de `fim`, em geral, **não** é uma subsequência válida. Veja o vetor 3, 4, 1 na versão estrita:
+
+| Valor $x$ | Ação | `fim` depois |
+|---|---|---|
+| 3 | acrescenta | 3 |
+| 4 | acrescenta | 3, 4 |
+| 1 | troca o 3 | 1, 4 |
+
+A resposta, 2, está certa (3, 4). Mas `fim` contém 1, 4, e essa não é uma subsequência do vetor: o 1 vem **depois** do 4. Cada posição de `fim` fala de uma sequência diferente: "existe alguma de tamanho 1 que termina em 1" e "existe alguma de tamanho 2 que termina em 4". Elas não precisam ser pedaços uma da outra.
+
+Se o problema pede a subsequência em si, é preciso guardar mais informação (veja "Para depois").
+
+## Código: o problema das notas completo
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int main() {
+    int n;
+    cin >> n;
+    vector<int> a(n);
+    for (int i = 0; i < n; i++) cin >> a[i];
+
+    // fim[k] = menor valor final possível de uma sequência que nunca cai, de tamanho k + 1
+    vector<int> fim;
+    for (int i = 0; i < n; i++) {
+        // primeira posição com valor MAIOR que a[i] (a busca binária do módulo de busca binária)
+        int pos = upper_bound(fim.begin(), fim.end(), a[i]) - fim.begin();
+        if (pos == (int)fim.size()) fim.push_back(a[i]);   // a[i] estende a maior sequência
+        else fim[pos] = a[i];                              // a[i] melhora o final do tamanho pos + 1
+    }
+    cout << fim.size() << "\n";
+}
+```
+
+`upper_bound` devolve um iterador; subtrair `fim.begin()` dá o índice. Se nenhum valor é maior que `a[i]`, ele devolve `fim.end()`, e o índice é igual ao tamanho do vetor: é o caso de acrescentar.
+
+**Entrada:**
+
+```
+8
+5 2 2 7 3 3 8 3
+```
+
+**Saída:**
+
+```
+5
+```
+
+O programa passa pelas oito linhas do traço e imprime o tamanho final de `fim`.
+
+- **Tempo:** $O(n \log n)$: uma busca binária por elemento.
+- **Memória:** $O(n)$.
+
+### O mesmo código no formato de contest
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+typedef vector<int> vi;
+#define rep(i,a,b) for(int i=(a);i<(b);i++)
+#define all(x) (x).begin(),(x).end()
+#define sz(x) (int)(x).size()
+void fastio(){ ios::sync_with_stdio(false); cin.tie(nullptr); }
+
+int main(){
+    fastio();
+    int n; cin >> n;
+    vi fim;
+    rep(i, 0, n) {
+        int x; cin >> x;
+        auto it = upper_bound(all(fim), x);    // troque por lower_bound para "estritamente crescente"
+        if (it == fim.end()) fim.push_back(x);
+        else *it = x;
+    }
+    cout << sz(fim) << "\n";
+}
+```
+
+Aqui o iterador é usado direto: `*it = x` escreve na posição para onde ele aponta. `auto` deixa o compilador descobrir o tipo do iterador.
+
+## Armadilhas comuns
+
+- **`lower_bound` e `upper_bound` trocados.** Decida antes: empates valem ou não? Teste com o vetor 2, 2.
+- **Imprimir `fim` como se fosse a subsequência.** Só o tamanho é confiável.
+- **Responder `L[n]`** na versão quadrática. A resposta é o maior `L[i]`.
+- **Confundir subsequência com trecho contíguo.** Subsequência pode pular elementos. Se o problema pede elementos **vizinhos**, é outro problema, bem mais simples (um laço).
+- **Ordenar o vetor.** A ordem original é o que define "subsequência". Ordenar a entrada destrói o problema.
+- **Usar a versão $O(n^2)$ com $n$ grande.** Confira o limite de $n$: até uns 5000, a quadrática passa e é mais fácil de adaptar; com $2 \cdot 10^5$, só a de busca binária.
+
+<details class="para-depois">
+<summary>Para depois: recuperar a subsequência, a versão decrescente e onde a LIS aparece disfarçada</summary>
+
+**Recuperar a subsequência.** Guarde, além dos valores, o **índice** do elemento que está em cada posição de `fim`, e para cada elemento do vetor guarde o índice que estava na posição anterior de `fim` no momento em que ele entrou (seu "anterior"). No fim, parta do índice que está na última posição e siga os anteriores para trás. É a mesma ideia do "veio da prova" na tabela quadrática.
+
+**Maior subsequência decrescente.** Não precisa de código novo: troque o sinal de todos os valores (ou inverta o vetor) e rode o mesmo algoritmo. No vetor 9, 7, 8, 3, 5, a maior estritamente decrescente tem tamanho 3 (9, 7, 3, por exemplo), e é o que a versão estrita devolve para −9, −7, −8, −3, −5.
+
+**Tamanho da LIS terminando em cada posição.** A posição em que cada elemento entra em `fim`, mais 1, é exatamente o `L[i]` da versão quadrática. Então o algoritmo rápido também calcula a tabela inteira, se você anotar `pos + 1` a cada passo.
+
+**LIS disfarçada.** Muitos problemas viram LIS depois de uma ordenação. O mais comum: pares (largura, altura) em que um só pode vir depois de outro se for maior nas duas medidas. Ordene por uma medida e calcule a LIS da outra; os empates na primeira medida exigem cuidado na ordenação para não serem encadeados.
+
+**Por que a versão quadrática ainda importa.** Quando a condição para estender não é só "maior que" (por exemplo, "diferença de no máximo $d$", ou pesos a somar em vez de contar), o truque de `fim` deixa de valer, e a DP direta é o ponto de partida. Ela pode ser acelerada com uma estrutura de consulta de máximo num intervalo, assunto dos módulos de range queries.
+
+</details>
+
+## Referências
+
+- **CPH, capítulo 7 — Dynamic programming, seção 7.2 *Longest increasing subsequence*:** a DP em $O(n^2)$, com a observação de que existe uma solução em $O(n \log n)$.
+- [USACO Guide — Longest Increasing Subsequence](https://usaco.guide/gold/lis)
+- [cp-algorithms — Longest increasing subsequence](https://cp-algorithms.com/sequences/longest_increasing_subsequence.html), com a versão de busca binária e a recuperação da subsequência.
+
+## Mini-quiz
+
+<Quiz
+  client:visible
+  questions={[
+    {
+      q: 'Versão estrita (`lower_bound`) no vetor 4, 1, 6, 2, 3. Como fica `fim` no final?',
+      code: 'for (int x : a) {\n    auto it = lower_bound(fim.begin(), fim.end(), x);\n    if (it == fim.end()) fim.push_back(x);\n    else *it = x;\n}',
+      options: ['4, 6', '1, 6', '1, 2, 3', '1, 2, 6'],
+      answer: 2,
+      why: 'Passo a passo: 4 → 1 → 1, 6 → 1, 2 → 1, 2, 3. A resposta é 3 (a subsequência 1, 2, 3).',
+    },
+    {
+      q: 'Vetor 1, 3, 3, 2, 3. Qual o tamanho de `fim` com `upper_bound` (nunca cai) e com `lower_bound` (estrita)?',
+      code: 'auto it = upper_bound(fim.begin(), fim.end(), x);   // ou lower_bound',
+      options: ['4 e 4', '4 e 3', '3 e 3', '5 e 3'],
+      answer: 1,
+      why: 'Com upper_bound: 1 → 1,3 → 1,3,3 → 1,2,3 → 1,2,3,3 (tamanho 4: as notas 1, 3, 3, 3). Com lower_bound os empates não estendem: tamanho 3 (1, 2, 3).',
+    },
+    {
+      q: 'Na DP quadrática, as notas são 5, 2, 2, 7, 3, 3, 8, 3. Quanto vale `L` para a sexta prova (a segunda nota 3)?',
+      code: 'for (int j = 0; j < i; j++)\n    if (a[j] <= a[i]) L[i] = max(L[i], L[j] + 1);',
+      options: ['2', '3', '4', '5'],
+      answer: 2,
+      why: 'A melhor anterior com nota até 3 é a quinta prova (L = 3, pelas notas 2, 2, 3). Então L = 4: as notas 2, 2, 3, 3.',
+    },
+    {
+      q: 'Por que, entre duas sequências de mesmo tamanho, basta guardar a de menor valor final?',
+      options: [
+        'Porque ela foi encontrada primeiro',
+        'Porque tudo que estende a de final maior também estende a de final menor',
+        'Porque ocupa menos memória',
+        'Porque a de final maior está sempre errada',
+      ],
+      answer: 1,
+      why: 'Um final menor aceita todas as continuações do final maior, e mais algumas. A outra nunca leva a uma resposta melhor.',
+    },
+    {
+      q: 'Depois de processar 3, 4, 1 na versão estrita, `fim` contém 1, 4. O que isso quer dizer?',
+      options: [
+        'Que 1, 4 é a maior subsequência crescente',
+        'Que o algoritmo errou',
+        'Que existe alguma subsequência de tamanho 1 terminando em 1 e alguma de tamanho 2 terminando em 4',
+        'Que o vetor precisa ser ordenado antes',
+      ],
+      answer: 2,
+      why: 'Cada posição de fim fala de uma sequência diferente. 1, 4 não é subsequência (o 1 vem depois do 4); a de tamanho 2 é 3, 4.',
+    },
+    {
+      q: 'Um problema pede a maior subsequência estritamente crescente com n = 200 000. Você usou `upper_bound`. O que acontece?',
+      options: [
+        'TLE',
+        'Passa: as duas funções são equivalentes',
+        'Resposta errada sempre que houver valores repetidos que o upper_bound encadeia',
+        'Erro de compilação',
+      ],
+      answer: 2,
+      why: 'upper_bound deixa um valor igual estender a sequência, o que resolve "nunca cai". Com o vetor 2, 2 ele responde 2, e a resposta estrita é 1.',
+    },
+  ]}
+/>
