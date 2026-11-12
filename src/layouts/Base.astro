@@ -3,6 +3,8 @@ import '../styles/global.css';
 import ThemeToggle from '../components/islands/ThemeToggle.tsx';
 import CommandK from '../components/islands/CommandK.tsx';
 import StorageWarning from '../components/islands/StorageWarning.tsx';
+import LevelUp from '../components/islands/LevelUp.tsx';
+import { xpTable } from '../lib/data.ts';
 
 interface Props {
   title: string;
@@ -61,6 +63,7 @@ const active = (href: string) => path === href || path.startsWith(`${href}/`);
       </div>
     </header>
     <StorageWarning client:load />
+    <LevelUp client:idle table={xpTable} />
     <main class:list={['mx-auto w-full flex-1 px-4 py-8', wide ? 'max-w-6xl' : 'max-w-3xl']}>
       <slot />
     </main>

@@ -9,6 +9,8 @@ import { checkpointPath, milestonePath, problemPath, slotsOf, type TrailData } f
 import { HeroFigure, HeroPortrait } from '../journey/Hero.tsx';
 import { H, Scene, posX, sceneWidth, terrainY, type NodeView } from '../journey/scene.tsx';
 import { ProgressBar, Skeleton } from '../ui.tsx';
+import { playLevelUp, setSoundOn, soundOn } from '../../lib/sound.ts';
+import { LEVEL_UP_EVENT } from './LevelUp.tsx';
 import type { MilestoneDetail } from './RoadmapTrail.tsx';
 
 const SEEN_KEY = 'cses-roadmap:jornada';
@@ -110,6 +112,30 @@ export default function JourneyMap({ trail, details }: { trail: TrailData; detai
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, sum.position, sum.xp]);
+
+  // Subiu de nível (ilha LevelUp, no layout): a personagem pula no mapa.
+  useEffect(() => {
+    let id: ReturnType<typeof setTimeout>;
+    const cheer = () => {
+      flipRef.current?.classList.add('jr-cheer');
+      clearTimeout(id);
+      id = setTimeout(() => flipRef.current?.classList.remove('jr-cheer'), 1600);
+    };
+    window.addEventListener(LEVEL_UP_EVENT, cheer);
+    return () => {
+      window.removeEventListener(LEVEL_UP_EVENT, cheer);
+      clearTimeout(id);
+    };
+  }, []);
+
+  const [sound, setSound] = useState(true);
+  useEffect(() => setSound(soundOn()), []);
+  const toggleSound = () => {
+    const on = !sound;
+    setSound(on);
+    setSoundOn(on);
+    if (on) void playLevelUp();
+  };
 
   useEffect(() => {
     if (!toast) return;
@@ -268,9 +294,14 @@ export default function JourneyMap({ trail, details }: { trail: TrailData; detai
         )}
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-muted">
           <span>Clique num milestone ou use ← → para andar. A linha dourada é o seu progresso real.</span>
-          <button type="button" onClick={goHome} className="rounded-md border border-line px-2.5 py-1 hover:bg-surface-2 hover:text-fg">
-            Voltar para onde parei
-          </button>
+          <span className="flex gap-2">
+            <button type="button" onClick={toggleSound} aria-pressed={sound} className="rounded-md border border-line px-2.5 py-1 hover:bg-surface-2 hover:text-fg">
+              Som: {sound ? 'ligado' : 'desligado'}
+            </button>
+            <button type="button" onClick={goHome} className="rounded-md border border-line px-2.5 py-1 hover:bg-surface-2 hover:text-fg">
+              Voltar para onde parei
+            </button>
+          </span>
         </div>
       </section>
 

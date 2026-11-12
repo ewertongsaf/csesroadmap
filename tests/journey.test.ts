@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { achievements, gearAt, levelInfo, maxXp, milestoneStars, titleFor, totalXp, trailPosition, worldProgress, xpForLevel } from '../src/lib/journey.ts';
+import { achievements, gearAt, levelInfo, maxXp, milestoneStars, titleFor, totalXp, totalXpFromTable, trailPosition, worldProgress, xpForLevel, xpTableOf } from '../src/lib/journey.ts';
 import { emptyProblem, emptyProgress, type Status } from '../src/lib/progress/types.ts';
 import type { TrailData } from '../src/lib/trail.ts';
 
@@ -29,6 +29,8 @@ test('XP: 10 por ponto de dificuldade, 70% com dica, bônus ao fechar o mileston
   assert.equal(totalXp(trail, withStatus([[1, 'solved'], [2, 'solved_with_hint'], [4, 'trying']])), 10 + 21);
   assert.equal(totalXp(trail, withStatus([[1, 'solved'], [2, 'solved'], [3, 'solved']])), 10 + 30 + 20 + 50);
   assert.equal(maxXp(trail), 110 + 2 * 50);
+  for (const s of [emptyProgress(), withStatus([[1, 'solved'], [2, 'solved_with_hint']]), withStatus([[1, 'solved'], [2, 'solved'], [3, 'solved'], [4, 'solved_with_hint']])])
+    assert.equal(totalXpFromTable(xpTableOf(trail), s), totalXp(trail, s));
 });
 
 test('níveis: limites exatos e progresso dentro do nível', () => {

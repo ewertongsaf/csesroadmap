@@ -5,6 +5,7 @@ import { modules } from '../../data/modules.ts';
 import { concepts, type ConceptSlug } from '../../data/concepts.ts';
 import type { CsesProblem, Milestone, ModuleRef, RoadmapEntry } from '../../data/schema.ts';
 import { modulePath, type TrailData } from './trail.ts';
+import { xpTableOf } from './journey.ts';
 
 export const csesProblems = (csesJson as { problems: CsesProblem[] }).problems;
 const csesById = new Map(csesProblems.map((p) => [p.id, p]));
@@ -76,3 +77,6 @@ export const milestoneDetails: Record<string, { goal: string; modules: { title: 
     { goal: m.goal, modules: m.modules.map((slug) => ({ title: moduleBySlug.get(slug)!.title, href: modulePath(slug) })) },
   ]),
 );
+
+/** Tabela compacta de XP para a ilha de subida de nível (presente em todas as páginas). */
+export const xpTable = xpTableOf(trailData);

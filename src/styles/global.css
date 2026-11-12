@@ -256,6 +256,61 @@ textarea,
 .jr-toast {
   animation: jr-toast 0.45s ease-out both;
 }
+/* Subida de nível (ilha LevelUp, em todas as páginas) e comemoração da personagem no mapa. */
+.lv-overlay {
+  animation: lv-fade 0.25s ease-out both;
+}
+.lv-overlay.lv-out {
+  animation: lv-fade 0.3s ease-in reverse both;
+}
+.lv-card {
+  animation: lv-pop 0.55s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+.lv-rays {
+  background: repeating-conic-gradient(from 0deg, color-mix(in oklab, var(--c-accent) 38%, transparent) 0deg 12deg, transparent 12deg 30deg);
+  mask-image: radial-gradient(circle, #000 30%, transparent 70%);
+  animation: lv-spin 14s linear infinite;
+}
+.lv-number {
+  animation: lv-number 0.7s 0.15s cubic-bezier(0.2, 1.6, 0.4, 1) both;
+}
+.lv-particle {
+  animation: lv-burst 1.5s cubic-bezier(0.1, 0.7, 0.3, 1) var(--delay, 0s) both;
+}
+.lv-gear {
+  animation: lv-rise 0.5s 0.7s ease-out both;
+}
+.jr-cheer .jr-bob {
+  animation: jr-cheer 0.5s ease-in-out 3 !important;
+}
+@keyframes lv-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes lv-pop {
+  from { opacity: 0; transform: scale(0.7) translateY(12px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes lv-spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes lv-number {
+  from { opacity: 0; transform: scale(2.2); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes lv-burst {
+  0% { opacity: 0; transform: translate(0, 0) rotate(0deg) scale(0.4); }
+  12% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--dx), var(--dy)) rotate(var(--rot)) scale(1); }
+}
+@keyframes lv-rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes jr-cheer {
+  0%, 100% { transform: translateY(0); }
+  45% { transform: translateY(-13px); }
+}
 @keyframes jr-step {
   from { transform: rotate(-26deg); }
   to { transform: rotate(26deg); }
@@ -283,8 +338,16 @@ textarea,
   .jr-pulse,
   .jr-aura,
   .jr-gate,
-  .jr-toast {
+  .jr-toast,
+  .lv-card,
+  .lv-rays,
+  .lv-number,
+  .lv-gear,
+  .jr-cheer .jr-bob {
     animation: none !important;
+  }
+  .lv-particle {
+    display: none;
   }
   .jr-toast {
     transform: translate(-50%, 0);

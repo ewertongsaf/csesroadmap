@@ -22,6 +22,28 @@ export function totalXp(trail: TrailData, s: ProgressState) {
   return xp;
 }
 
+/** Só o necessário para calcular XP, compacto: vai em toda página (ilha de subida de nível no layout). */
+export interface XpTable {
+  /** [id, dificuldade] de cada problema. */
+  p: [number, number][];
+  /** Slots (lista + inéditos) de cada milestone. */
+  m: number[][];
+}
+export const xpTableOf = (trail: TrailData): XpTable => ({
+  p: trail.problems.map((x) => [x.id, x.difficulty]),
+  m: trail.milestones.map(slotsOf),
+});
+/** Mesmo resultado de totalXp, a partir da tabela compacta. */
+export function totalXpFromTable(t: XpTable, s: ProgressState) {
+  let xp = 0;
+  for (const [id, difficulty] of t.p) {
+    const st = statusOf(s, id);
+    if (isSolved(st)) xp += problemXp(difficulty, st === 'solved_with_hint');
+  }
+  for (const slots of t.m) if (slots.every((id) => isSolved(statusOf(s, id)))) xp += MILESTONE_BONUS;
+  return xp;
+}
+
 /** XP máximo da trilha (tudo resolvido sem dica). */
 export function maxXp(trail: TrailData) {
   return trail.problems.reduce((acc, p) => acc + problemXp(p.difficulty, false), 0) + trail.milestones.length * MILESTONE_BONUS;
