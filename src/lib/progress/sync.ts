@@ -1,13 +1,16 @@
-// Sincronização com o Supabase (opcional). Sem as variáveis PUBLIC_SUPABASE_* ou sem login,
-// o site funciona exatamente como antes, só com localStorage.
+// Sincronização com o Supabase. Sem login, o site funciona só com localStorage, como antes.
 // Tabela e políticas: supabase/schema.sql. Passo a passo: README.
 import { atom } from 'nanostores';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { parseProgress } from './schema.ts';
 import type { ProgressState } from './types.ts';
 
-const URL_ = import.meta.env.PUBLIC_SUPABASE_URL as string | undefined;
-const KEY = import.meta.env.PUBLIC_SUPABASE_ANON_KEY as string | undefined;
+// Projeto do site. A chave "publishable" é pública por desenho (vai para o navegador): quem protege
+// os dados são as políticas de supabase/schema.sql. As variáveis de ambiente, se existirem, têm prioridade.
+const DEFAULT_URL = 'https://ecggvmsiyqguhmvulhcp.supabase.co';
+const DEFAULT_KEY = 'sb_publishable_pasvhehJyMpUVrBT2BGV_A_iaZyrnTe';
+const URL_ = (import.meta.env.PUBLIC_SUPABASE_URL as string | undefined) || DEFAULT_URL;
+const KEY = (import.meta.env.PUBLIC_SUPABASE_ANON_KEY as string | undefined) || DEFAULT_KEY;
 export const SYNC_CONFIGURED = Boolean(URL_ && KEY);
 const TABLE = 'progress';
 

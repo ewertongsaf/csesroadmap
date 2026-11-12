@@ -62,12 +62,14 @@ O progresso fica no `localStorage` do navegador. Em **Progresso** dá para expor
 
 ## Sincronização entre dispositivos (Supabase)
 
-Opcional. Sem configurar, o progresso fica só no `localStorage` de cada navegador.
+O site já aponta para o projeto Supabase `csesroadmap` (URL e chave pública em `src/lib/progress/sync.ts`).
+Sem login, o progresso fica só no `localStorage` de cada navegador. Os passos abaixo servem para refazer a
+configuração ou trocar de projeto.
 
 1. Crie um projeto em https://supabase.com e rode `supabase/schema.sql` no **SQL Editor**.
 2. Em **Authentication → URL Configuration**, ponha o endereço do site em *Site URL* e adicione
    `https://SEU-DOMINIO/config` (e `http://localhost:4321/config`, para desenvolvimento) em *Redirect URLs*.
-3. Copie de **Project Settings → API** a *Project URL* e a chave *anon/publishable* para as variáveis
+3. Só para usar outro projeto: copie de **Project Settings → API** a *Project URL* e a chave *publishable* para as variáveis
    `PUBLIC_SUPABASE_URL` e `PUBLIC_SUPABASE_ANON_KEY`: na Vercel (Settings → Environment Variables, depois um novo deploy)
    e, localmente, num arquivo `.env` (modelo em `.env.example`).
 4. No site, abra **Progresso**, informe o e-mail e clique no link recebido. Repita em cada dispositivo.
