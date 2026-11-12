@@ -1,0 +1,17 @@
+---
+import Base from '../layouts/Base.astro';
+import JourneyMap from '../components/islands/JourneyMap.tsx';
+import { milestoneDetails, trailData } from '../lib/data.ts';
+---
+<Base title="Jornada" description="O roadmap como um mapa: cinco mundos, 33 milestones e uma personagem que evolui com o seu progresso." wide>
+  <div class="mx-auto max-w-5xl">
+    <h1 class="text-3xl font-semibold tracking-tight">Jornada</h1>
+    <p class="mt-2 max-w-2xl text-muted">
+      A mesma trilha do <a href="/roadmap" class="text-accent underline underline-offset-4">roadmap</a>, vista como um mapa. Cada fase é um mundo;
+      cada problema resolvido rende XP, e a personagem ganha equipamentos conforme sobe de nível.
+    </p>
+    <div class="mt-8">
+      <JourneyMap client:load trail={trailData} details={milestoneDetails} />
+    </div>
+  </div>
+</Base>

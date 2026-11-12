@@ -213,3 +213,80 @@ textarea,
   font-variant-ligatures: none;
   font-feature-settings: "liga" 0, "calt" 0;
 }
+
+/* Jornada (/jornada): animações da personagem e do mapa. */
+.jr-leg,
+.jr-arm,
+.jr-pulse,
+.jr-aura {
+  transform-box: fill-box;
+}
+.jr-leg,
+.jr-arm {
+  transform-origin: 50% 0%;
+}
+.jr-walk .jr-leg-a,
+.jr-walk .jr-arm {
+  animation: jr-step 0.34s ease-in-out infinite alternate;
+}
+.jr-walk .jr-leg-b {
+  animation: jr-step 0.34s ease-in-out infinite alternate-reverse;
+}
+.jr-idle:not(.jr-walk) .jr-bob {
+  animation: jr-bob 2.6s ease-in-out infinite;
+}
+.jr-pulse {
+  transform-origin: center;
+  animation: jr-pulse 1.8s ease-out infinite;
+}
+.jr-aura {
+  transform-origin: center;
+  animation: jr-glow 2.4s ease-in-out infinite alternate;
+}
+.jr-gate {
+  animation: jr-glow 3s ease-in-out infinite alternate;
+}
+.jr-node:focus-visible {
+  outline: none;
+}
+.jr-node:focus-visible circle:last-of-type {
+  stroke: #fff;
+  stroke-width: 4;
+}
+.jr-toast {
+  animation: jr-toast 0.45s ease-out both;
+}
+@keyframes jr-step {
+  from { transform: rotate(-26deg); }
+  to { transform: rotate(26deg); }
+}
+@keyframes jr-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-1.2px); }
+}
+@keyframes jr-pulse {
+  from { transform: scale(0.9); opacity: 0.9; }
+  to { transform: scale(1.5); opacity: 0; }
+}
+@keyframes jr-glow {
+  from { opacity: 0.12; }
+  to { opacity: 0.34; }
+}
+@keyframes jr-toast {
+  from { opacity: 0; transform: translate(-50%, -8px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .jr-walk .jr-leg,
+  .jr-walk .jr-arm,
+  .jr-bob,
+  .jr-pulse,
+  .jr-aura,
+  .jr-gate,
+  .jr-toast {
+    animation: none !important;
+  }
+  .jr-toast {
+    transform: translate(-50%, 0);
+  }
+}

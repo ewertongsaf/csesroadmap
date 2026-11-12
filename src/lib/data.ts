@@ -4,7 +4,7 @@ import { roadmap } from '../../data/roadmap.ts';
 import { modules } from '../../data/modules.ts';
 import { concepts, type ConceptSlug } from '../../data/concepts.ts';
 import type { CsesProblem, Milestone, ModuleRef, RoadmapEntry } from '../../data/schema.ts';
-import type { TrailData } from './trail.ts';
+import { modulePath, type TrailData } from './trail.ts';
 
 export const csesProblems = (csesJson as { problems: CsesProblem[] }).problems;
 const csesById = new Map(csesProblems.map((p) => [p.id, p]));
@@ -68,3 +68,11 @@ export const trailData: TrailData = {
     reserved: p.reserved,
   })),
 };
+
+/** Objetivo e módulos de cada milestone, no formato que as ilhas da trilha (/roadmap, /jornada) recebem. */
+export const milestoneDetails: Record<string, { goal: string; modules: { title: string; href: string | null }[] }> = Object.fromEntries(
+  milestones.map((m) => [
+    m.slug,
+    { goal: m.goal, modules: m.modules.map((slug) => ({ title: moduleBySlug.get(slug)!.title, href: modulePath(slug) })) },
+  ]),
+);
