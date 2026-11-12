@@ -1,0 +1,460 @@
+---
+title: Representação de grafos e DFS
+description: Um grafo é uma lista de coisas e de ligações entre elas. A busca em profundidade percorre tudo o que dá para alcançar a partir de um ponto, e com isso conta grupos, acha ciclos e pinta com duas cores.
+---
+import Callout from '../../src/components/mdx/Callout.astro';
+import Quiz from '../../src/components/mdx/Quiz.tsx';
+import GraphDfsViz from '../../src/components/mdx/viz/GraphDfsViz.tsx';
+
+## Motivação: os grupos de amigos
+
+O problema desta aula, do começo ao fim:
+
+> Uma rede tem $n$ pessoas, numeradas de 1 a $n$, e $m$ amizades. Cada amizade liga duas pessoas. Duas pessoas estão no mesmo **grupo** se dá para ir de uma até a outra passando por amizades (amigo de amigo de amigo…). Quantos grupos existem, e quantas pessoas tem o maior?
+
+Um exemplo com 8 pessoas e 6 amizades:
+
+| amizade | 1–2 | 1–3 | 2–4 | 3–4 | 5–6 | 6–7 |
+|---|---|---|---|---|---|---|
+
+Seguindo as amizades à mão: de 1 chega-se a 2 e a 3, e deles a 4. Então 1, 2, 3 e 4 formam um grupo. As pessoas 5, 6 e 7 formam outro (5 e 7 não são amigos diretos, mas os dois são amigos de 6). A pessoa 8 não tem amizade nenhuma e é um grupo sozinha. São **3 grupos**, e o maior tem **4 pessoas**.
+
+Com 8 pessoas dá para fazer de cabeça. Com $n = 10^5$ pessoas e $2 \cdot 10^5$ amizades, é preciso um método. Uma ideia direta seria testar, para cada par de pessoas, se existe um caminho entre elas, mas são cerca de $5 \cdot 10^9$ pares, e cada teste ainda teria de procurar o caminho. Não passa.
+
+Esta aula mostra como percorrer um grupo inteiro passando por cada pessoa e por cada amizade **uma vez só**.
+
+## O que é um grafo
+
+Um **grafo** é formado por **vértices** (as coisas: aqui, pessoas) e **arestas** (as ligações entre duas coisas: aqui, amizades). Cidades e estradas, páginas e links, casas de um tabuleiro e movimentos permitidos: tudo isso é grafo.
+
+No exemplo, a amizade vale nos dois sentidos: se 1 é amigo de 2, então 2 é amigo de 1. Um grafo assim é **não direcionado**. (Nos direcionados, cada aresta tem um sentido, como uma rua de mão única. Eles aparecem no próximo milestone.)
+
+Dois vértices ligados por uma aresta são **vizinhos**. Um **caminho** é uma sequência de vértices em que cada um é vizinho do seguinte. Um grupo de vértices em que todo mundo alcança todo mundo, e que não alcança ninguém de fora, é uma **componente conexa**. O problema dos amigos pede o número de componentes e o tamanho da maior.
+
+## Como guardar um grafo no programa
+
+A entrada costuma vir como uma lista de arestas. Para percorrer o grafo, a pergunta que o programa faz o tempo todo é: **quem são os vizinhos de $u$?** A lista de arestas responde isso devagar (é preciso varrer tudo). A estrutura que responde na hora é a **lista de adjacência**: para cada vértice, um vetor com os vizinhos dele.
+
+Para o exemplo:
+
+| vértice | vizinhos |
+|---|---|
+| 1 | 2, 3 |
+| 2 | 1, 4 |
+| 3 | 1, 4 |
+| 4 | 2, 3 |
+| 5 | 6 |
+| 6 | 5, 7 |
+| 7 | 6 |
+| 8 | (nenhum) |
+
+Cada aresta aparece **duas vezes**: a amizade 1–2 põe o 2 na lista do 1 e o 1 na lista do 2.
+
+Em C++, é um vetor de vetores:
+
+```cpp
+vector<vector<int>> viz(n + 1);               // viz[u] = lista dos vizinhos de u
+for (int i = 0; i < m; i++) {
+    int a, b;
+    cin >> a >> b;
+    viz[a].push_back(b);                      // b é vizinho de a
+    viz[b].push_back(a);                      // e a é vizinho de b
+}
+```
+
+O tamanho `n + 1` é porque os vértices vêm numerados de 1 a $n$: a posição 0 fica sem uso, e não é preciso subtrair 1 de nada.
+
+Percorrer os vizinhos de `u` é um laço: `for (int v : viz[u])`. Essa forma de `for` passa por todos os elementos do vetor, chamando cada um de `v`.
+
+<Callout type="nota" title="Por que não uma matriz?">
+Outra forma de guardar o grafo é uma tabela $n \times n$ em que a casa $(a, b)$ diz se existe a aresta. É boa para perguntar "a e b são vizinhos?", mas ocupa $n^2$ casas: com $n = 10^5$ são $10^{10}$ casas, muito além da memória. A lista de adjacência ocupa uma entrada por vértice mais duas por aresta: com $2 \cdot 10^5$ arestas, 400 mil entradas.
+</Callout>
+
+## A ideia: andar até não dar mais, e voltar
+
+Imagine explorar um labirinto com um giz na mão. A regra é simples:
+
+1. Ao entrar numa sala, faça uma marca no chão.
+2. Olhe as portas, uma por uma. Se a sala do outro lado **não tem marca**, entre nela e repita tudo a partir de lá.
+3. Quando todas as portas da sala atual já foram olhadas, **volte** pela porta por onde você entrou e continue de onde tinha parado.
+
+Você vai sempre o mais fundo possível antes de voltar. Por isso o nome: **busca em profundidade**, ou **DFS** (de *depth-first search*).
+
+No grafo dos amigos, começando pela pessoa 1 e olhando os vizinhos na ordem da lista:
+
+| Passo | Onde estou | O que acontece |
+|---|---|---|
+| 1 | 1 | marco o 1; primeiro vizinho é o 2, sem marca: vou para ele |
+| 2 | 2 | marco o 2; vizinho 1 já tem marca; vizinho 4 não tem: vou para ele |
+| 3 | 4 | marco o 4; vizinho 2 já tem marca; vizinho 3 não tem: vou para ele |
+| 4 | 3 | marco o 3; vizinhos 1 e 4 já têm marca; acabaram as portas: volto |
+| 5 | 4 | acabaram as portas do 4: volto |
+| 6 | 2 | acabaram as portas do 2: volto |
+| 7 | 1 | próximo vizinho é o 3, já com marca; acabaram as portas: fim |
+
+A ordem das marcas foi 1, 2, 4, 3. As quatro pessoas do grupo foram visitadas, e mais ninguém: a DFS nunca chegou a 5, 6, 7 ou 8, porque não há aresta que leve até lá.
+
+O "voltar pela porta por onde entrou" é exatamente o que uma **função recursiva** faz quando termina: ela devolve o controle para quem a chamou, que continua de onde parou.
+
+```cpp
+vector<bool> visitado;                        // a marca de giz
+
+void dfs(int u) {
+    visitado[u] = true;                       // 1. marco a sala
+    for (int v : viz[u])                      // 2. olho cada porta
+        if (!visitado[v]) dfs(v);             //    sem marca do outro lado: entro
+}                                             // 3. acabou o laço: a função termina e "volta"
+```
+
+<Callout type="tente">
+Se a lista de vizinhos do 1 estivesse na ordem 3, 2 (em vez de 2, 3), qual seria a ordem das marcas? O conjunto de pessoas visitadas mudaria?
+
+<details>
+<summary>Ver resposta</summary>
+
+A DFS iria primeiro ao 3, dele ao 4 (o 1 já tem marca), do 4 ao 2. A ordem seria 1, 3, 4, 2. O **conjunto** visitado é o mesmo: as quatro pessoas do grupo. A ordem dos vizinhos muda o trajeto, nunca o que é alcançado.
+
+</details>
+</Callout>
+
+### O que acontece sem a marca
+
+A marca não é opcional. Veja a mesma função sem ela:
+
+```cpp
+void dfs(int u) {                             // ERRADO: sem visitado
+    for (int v : viz[u]) dfs(v);
+}
+```
+
+`dfs(1)` chama `dfs(2)`. O primeiro vizinho do 2 é o 1, então `dfs(2)` chama `dfs(1)`, que chama `dfs(2)`, que chama `dfs(1)`… O programa nunca sai dessas duas salas, e termina com erro de execução quando a pilha de chamadas estoura. Com a marca, cada vértice é visitado **no máximo uma vez**, e é isso que faz a DFS terminar.
+
+## Contando os grupos
+
+Uma DFS que começa na pessoa 1 marca o grupo dela inteiro, e só ele. Para achar os outros grupos, basta tentar começar uma DFS em **cada** pessoa:
+
+- se a pessoa já tem marca, ela pertence a um grupo já contado: siga adiante;
+- se não tem, ela é de um grupo novo: some 1 ao contador e rode a DFS a partir dela.
+
+Para o exemplo:
+
+| Pessoa do laço | Já marcada? | Ação | Marcadas depois | Grupos |
+|---|---|---|---|---|
+| 1 | não | DFS: marca 1, 2, 4, 3 | 1, 2, 3, 4 | 1 |
+| 2, 3, 4 | sim | nada | | 1 |
+| 5 | não | DFS: marca 5, 6, 7 | 1 a 7 | 2 |
+| 6, 7 | sim | nada | | 2 |
+| 8 | não | DFS: marca só o 8 | 1 a 8 | 3 |
+
+Para saber o **tamanho** de cada grupo, a DFS devolve quantos vértices marcou: 1 (ela mesma) mais o que cada chamada feita por ela devolveu.
+
+Acompanhe tudo junto, com a pilha de chamadas aparecendo e sumindo:
+
+<GraphDfsViz client:visible />
+
+### Quanto custa
+
+Cada vértice é marcado uma vez. Em cada vértice, o laço olha todos os vizinhos, e a soma dos tamanhos de todas as listas é $2m$ (cada aresta aparece em duas listas). O laço principal passa por cada vértice uma vez. No total:
+
+$$
+O(n + m)
+$$
+
+$n$ é o número de vértices e $m$ o de arestas. Para $n = 10^5$ e $m = 2 \cdot 10^5$, são algumas centenas de milhares de passos.
+
+## Um tabuleiro também é um grafo
+
+Muitos problemas dão um mapa em vez de uma lista de arestas. Por exemplo, um mapa em que `#` é terra e `.` é água:
+
+```
+##..#
+#...#
+..#..
+##..#
+```
+
+Quantas **ilhas** há? Duas casas de terra estão na mesma ilha se dá para ir de uma à outra andando para cima, baixo, esquerda ou direita, só por terra.
+
+Isso é o problema dos grupos, com outro disfarce: cada casa de terra é um vértice, e duas casas de terra vizinhas têm uma aresta. Não é preciso montar a lista de adjacência: os vizinhos de uma casa são sempre as quatro casas ao lado, e dá para calculá-los na hora.
+
+```cpp
+int R, C;                                     // linhas e colunas
+vector<string> mapa;
+vector<vector<bool>> visitado;
+const int dl[] = {-1, 1, 0, 0};               // variação da linha: cima, baixo, esquerda, direita
+const int dc[] = {0, 0, -1, 1};               // variação da coluna
+
+void dfs(int l, int c) {
+    visitado[l][c] = true;
+    for (int d = 0; d < 4; d++) {
+        int nl = l + dl[d], nc = c + dc[d];   // o vizinho na direção d
+        if (nl < 0 || nl >= R || nc < 0 || nc >= C) continue;   // fora do mapa
+        if (mapa[nl][nc] != '#' || visitado[nl][nc]) continue;  // água, ou já visitado
+        dfs(nl, nc);
+    }
+}
+```
+
+Os vetores `dl` e `dc` evitam escrever quatro blocos quase iguais: a direção $d$ soma `dl[d]` à linha e `dc[d]` à coluna. O laço principal é o mesmo de antes: para cada casa de terra sem marca, some 1 e rode a DFS.
+
+No mapa acima a resposta é **5**: o bloco do canto de cima à esquerda (3 casas), a coluna de cima à direita (2 casas), a casa sozinha do meio, o par de baixo à esquerda e a casa de baixo à direita. Casas que só se tocam pela **diagonal** não são vizinhas.
+
+<Callout type="tente">
+Contando linhas e colunas a partir de 0, troque a casa da linha 2, coluna 1 (a segunda casa da terceira linha) de `.` para `#`. Quantas ilhas passam a existir?
+
+<details>
+<summary>Ver resposta</summary>
+
+A casa nova fica vizinha da casa de terra da linha 3, coluna 1 (logo abaixo) e da casa da linha 2, coluna 2 (à direita, a que estava sozinha). Ela junta essas duas ilhas numa só. As outras ficam como estavam: são **4** ilhas. Ela não se liga ao bloco de cima, porque a casa acima dela (linha 1, coluna 1) é água.
+
+</details>
+</Callout>
+
+## Duas perguntas que a DFS responde de passagem
+
+A cada vizinho, a DFS encontra uma de duas situações: vizinho sem marca (vai até ele) ou vizinho já marcado (não faz nada). Esse segundo caso carrega informação.
+
+### O grafo tem um ciclo?
+
+Um **ciclo** é um caminho que sai de um vértice e volta a ele sem repetir aresta. No exemplo, 1 → 2 → 4 → 3 → 1 é um ciclo.
+
+Durante a DFS, o vértice de onde você veio (o "pai") está sempre marcado: isso é normal. Mas se você encontra um vizinho já marcado que **não é o pai**, então existem dois caminhos diferentes até ele: o que você acabou de percorrer e o que o marcou antes. Dois caminhos entre os mesmos vértices formam um ciclo.
+
+No traço da DFS, isso acontece no passo 4: o 3 (que veio do 4) olha o vizinho 1, que já tem marca e não é o pai dele. Para detectar, a função recebe o pai como segundo parâmetro e ignora só ele:
+
+```cpp
+bool temCiclo = false;
+
+void dfs(int u, int pai) {
+    visitado[u] = true;
+    for (int v : viz[u]) {
+        if (!visitado[v]) dfs(v, u);          // u passa a ser o pai de v
+        else if (v != pai) temCiclo = true;   // marcado e não é de onde vim: ciclo
+    }
+}
+```
+
+A primeira chamada é `dfs(1, 0)`: o 0 não é vértice de ninguém, então serve de "sem pai". No caminho 1–2–3 (sem a aresta 1–3), o código não acusa nada. No triângulo 1–2, 2–3, 1–3, acusa.
+
+### Dá para pintar com duas cores?
+
+Outra pergunta clássica: dá para dividir os vértices em **dois times** de modo que toda aresta ligue times diferentes (nenhuma amizade dentro do mesmo time)? Um grafo assim é chamado **bipartido**.
+
+A DFS decide isso pintando: o vértice inicial recebe a cor 0, e todo vizinho sem cor recebe a cor **oposta** à de quem o descobriu. Se algum dia você olhar um vizinho já pintado e ele tiver a **mesma** cor que você, não dá.
+
+```cpp
+vector<int> cor;                              // -1 = sem cor; 0 e 1 = os dois times
+bool possivel = true;
+
+void dfs(int u) {
+    for (int v : viz[u]) {
+        if (cor[v] == -1) { cor[v] = 1 - cor[u]; dfs(v); }   // cor oposta
+        else if (cor[v] == cor[u]) possivel = false;         // vizinhos com a mesma cor
+    }
+}
+```
+
+Aqui `cor` faz também o papel de `visitado`: sem cor quer dizer não visitado. Antes de chamar `dfs(u)` para um vértice sem cor, faça `cor[u] = 0`. A expressão `1 - cor[u]` troca 0 por 1 e 1 por 0.
+
+No grafo dos amigos, as cores ficam assim:
+
+| pessoa | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+|---|---|---|---|---|---|---|---|---|
+| time | 0 | 1 | 1 | 0 | 0 | 1 | 0 | 0 |
+
+Confira: toda amizade liga um 0 a um 1. No triângulo não há saída: pintando 1 com cor 0 e 2 com cor 1, o 3 seria vizinho dos dois e não tem cor que sirva. O código detecta isso quando o 3 (cor 0, herdada do 2) olha o 1 (cor 0).
+
+A regra geral: um grafo é bipartido exatamente quando **não tem ciclo de tamanho ímpar**. O ciclo de tamanho 4 do exemplo não atrapalha; o triângulo, de tamanho 3, impede.
+
+## Código: o problema dos amigos completo
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int n, m;
+vector<vector<int>> viz;        // viz[u] = lista dos vizinhos de u
+vector<bool> visitado;
+
+// Visita u e tudo o que dá para alcançar a partir dele. Devolve quantos vértices visitou.
+int dfs(int u) {
+    visitado[u] = true;
+    int tamanho = 1;                           // o próprio u
+    for (int v : viz[u])                       // para cada vizinho v de u
+        if (!visitado[v]) tamanho += dfs(v);   // se ainda não fui lá, vou
+    return tamanho;
+}
+
+int main() {
+    cin >> n >> m;
+    viz.assign(n + 1, {});                     // vértices de 1 a n; a posição 0 fica sem uso
+    visitado.assign(n + 1, false);
+    for (int i = 0; i < m; i++) {
+        int a, b;
+        cin >> a >> b;
+        viz[a].push_back(b);                   // a amizade vale nos dois sentidos
+        viz[b].push_back(a);
+    }
+
+    int grupos = 0, maior = 0;
+    for (int u = 1; u <= n; u++) {
+        if (!visitado[u]) {                    // u ainda não pertence a nenhum grupo
+            grupos++;
+            maior = max(maior, dfs(u));        // a DFS marca o grupo inteiro
+        }
+    }
+    cout << grupos << " " << maior << "\n";
+}
+```
+
+`viz.assign(n + 1, {})` deixa o vetor com $n + 1$ listas vazias.
+
+**Entrada:**
+
+```
+8 6
+1 2
+1 3
+2 4
+3 4
+5 6
+6 7
+```
+
+**Saída:**
+
+```
+3 4
+```
+
+O programa faz as três DFS da tabela (a partir de 1, de 5 e de 8), que devolvem 4, 3 e 1.
+
+- **Tempo:** $O(n + m)$.
+- **Memória:** $O(n + m)$: a lista de adjacência e o vetor de marcas.
+
+### O mesmo código no formato de contest
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+typedef vector<int> vi;
+typedef vector<vi> vvi;
+#define rep(i,a,b) for(int i=(a);i<(b);i++)
+#define pb push_back
+void fastio(){ ios::sync_with_stdio(false); cin.tie(nullptr); }
+
+int main(){
+    fastio();
+    int n, m; cin >> n >> m;
+    vvi viz(n + 1);
+    rep(i, 0, m) { int a, b; cin >> a >> b; viz[a].pb(b); viz[b].pb(a); }
+
+    vector<bool> vis(n + 1, false);
+    // lambda recursiva: recebe a si mesma como parâmetro para poder se chamar
+    auto dfs = [&](auto&& self, int u) -> int {
+        vis[u] = true;
+        int t = 1;
+        for (int v : viz[u]) if (!vis[v]) t += self(self, v);
+        return t;
+    };
+    int grupos = 0, maior = 0;
+    rep(u, 1, n + 1) if (!vis[u]) { grupos++; maior = max(maior, dfs(dfs, u)); }
+    cout << grupos << " " << maior << "\n";
+}
+```
+
+A novidade é a **lambda recursiva**. Uma lambda não tem nome dentro de si mesma, então não consegue se chamar diretamente. O truque é passá-la como primeiro parâmetro (`self`) e chamar `self(self, v)`. O `-> int` diz o tipo de retorno, que o compilador não consegue deduzir sozinho numa função recursiva. A vantagem é que `viz` e `vis` ficam como variáveis locais de `main`, sem precisar de variáveis globais.
+
+## Armadilhas comuns
+
+- **Esquecer a aresta de volta.** Em grafo não direcionado, cada aresta entra nas **duas** listas. Com só uma, a DFS não consegue "voltar" por ela e os grupos saem errados.
+- **Esquecer a marca**, ou marcar tarde demais. Marque o vértice na **primeira linha** da função.
+- **Tamanho `n` em vez de `n + 1`** com vértices numerados a partir de 1: `viz[n]` lê fora do vetor.
+- **Rodar a DFS só a partir do vértice 1.** Se o grafo tem mais de uma componente, o resto nunca é visitado. O laço principal sobre todos os vértices é parte do algoritmo.
+- **No tabuleiro: testar os limites depois de acessar a casa.** `mapa[nl][nc]` com `nl = -1` lê fora do vetor. O teste de limites vem **antes**.
+- **No tabuleiro: trocar linha com coluna.** Decida que `mapa[l][c]` é linha `l`, coluna `c`, e mantenha em tudo, inclusive em `dl` e `dc`.
+- **Ciclo: esquecer de ignorar o pai.** Sem o `v != pai`, toda aresta parece um ciclo (você sempre "enxerga" de volta o vértice de onde veio).
+- **Recursão muito funda.** Num grafo em linha com $10^5$ vértices, a DFS empilha $10^5$ chamadas. No CSES isso passa; em juízes com pilha pequena, não (veja "Para depois").
+
+<details class="para-depois">
+<summary>Para depois: DFS sem recursão, arestas repetidas e o que mais a DFS faz</summary>
+
+**DFS com pilha explícita.** Dá para trocar a recursão por um `vector<int>` usado como pilha: empilhe o vértice inicial; enquanto a pilha não estiver vazia, retire o topo e, se ele ainda não foi marcado, marque-o e empilhe os vizinhos sem marca. O conjunto visitado é o mesmo, e não há risco de estourar a pilha de chamadas. A ordem de visita pode ser diferente da recursiva.
+
+**Arestas repetidas e ciclo.** O teste `v != pai` supõe que não há duas arestas entre o mesmo par de vértices. Se houver (e o enunciado disser que elas contam como ciclo), é preciso ignorar a **aresta** por onde você veio, e não o vértice: guarde em cada lista o número da aresta junto com o vizinho.
+
+**Recuperar o ciclo.** Guardando o pai de cada vértice num vetor, quando a DFS encontra um vizinho marcado que não é o pai, o ciclo é o caminho de volta pelos pais, do vértice atual até esse vizinho.
+
+**BFS.** A busca em largura, do próximo módulo, visita os mesmos vértices em outra ordem: primeiro os vizinhos, depois os vizinhos dos vizinhos. Para contar grupos ou pintar com duas cores, qualquer uma serve. Para **menor número de passos**, só a BFS.
+
+**Grafos direcionados.** Com arestas de mão única, "visitado" deixa de bastar para achar ciclos: é preciso distinguir "ainda na pilha de chamadas" de "já terminou". Isso aparece junto com ordenação topológica.
+
+**Componentes sem DFS.** A estrutura *union-find* (DSU), de um milestone mais adiante, também conta componentes, e ainda permite acrescentar arestas aos poucos.
+
+</details>
+
+## Referências
+
+- **CPH, capítulo 11 — Basics of graphs:** terminologia (seção 11.1) e as três representações: lista de adjacência, matriz e lista de arestas (seção 11.2).
+- **CPH, capítulo 12 — Graph traversal, seção 12.1 *Depth-first search*** e **seção 12.3 *Applications***: componentes, ciclos e teste de bipartição.
+- [USACO Guide — Introduction to Graphs](https://usaco.guide/bronze/intro-graphs)
+- [USACO Guide — Graph Traversal](https://usaco.guide/silver/graph-traversal), com componentes e duas cores.
+- [USACO Guide — Flood Fill](https://usaco.guide/silver/flood-fill), a DFS em tabuleiros.
+- [cp-algorithms — Depth First Search](https://cp-algorithms.com/graph/depth-first-search.html)
+
+## Mini-quiz
+
+<Quiz
+  client:visible
+  questions={[
+    {
+      q: 'Grafo com arestas 1–2, 2–3, 2–4 e 4–5 (listas na ordem em que as arestas foram dadas). Em que ordem `dfs(1)` marca os vértices?',
+      code: 'void dfs(int u) {\n    visitado[u] = true;\n    for (int v : viz[u])\n        if (!visitado[v]) dfs(v);\n}',
+      options: ['1, 2, 3, 4, 5', '1, 2, 4, 5, 3', '1, 2, 4, 3, 5', '1, 3, 2, 4, 5'],
+      answer: 0,
+      why: 'viz[2] = {1, 3, 4}. De 1 vai ao 2; do 2, o 1 já tem marca, então vai ao 3 (que não tem mais para onde ir e volta); depois ao 4, e dele ao 5.',
+    },
+    {
+      q: 'Um grafo tem 7 vértices e as arestas 1–2, 3–4, 4–5 e 5–3. Quantas vezes o laço principal inicia uma DFS, e qual o maior tamanho devolvido?',
+      code: 'for (int u = 1; u <= n; u++)\n    if (!visitado[u]) { grupos++; maior = max(maior, dfs(u)); }',
+      options: ['2 vezes; maior 3', '3 vezes; maior 3', '4 vezes; maior 3', '4 vezes; maior 4'],
+      answer: 2,
+      why: 'Os grupos são {1, 2}, {3, 4, 5}, {6} e {7}: quatro DFS, devolvendo 2, 3, 1 e 1.',
+    },
+    {
+      q: 'No mapa abaixo (`#` é terra), quantas ilhas a DFS em quatro direções conta?',
+      code: '#.#\n.#.\n#.#',
+      options: ['1', '3', '4', '5'],
+      answer: 3,
+      why: 'As cinco casas de terra só se tocam pelas diagonais, e diagonal não é vizinhança. Cada uma é uma ilha.',
+    },
+    {
+      q: 'Por que cada aresta de um grafo não direcionado entra em duas listas de adjacência?',
+      options: [
+        'Para o programa ficar mais rápido',
+        'Porque a ligação vale nos dois sentidos: de a chega-se a b, e de b chega-se a a',
+        'Porque a entrada repete cada aresta',
+        'Não entra: basta uma',
+      ],
+      answer: 1,
+      why: 'Com a aresta só na lista de a, uma DFS que começa em b não sabe que pode ir para a.',
+    },
+    {
+      q: 'Na detecção de ciclo, você esqueceu o teste `v != pai`. O que o código responde para o grafo de uma única aresta 1–2?',
+      options: ['Que não há ciclo, corretamente', 'Que há ciclo: o 2 vê o 1 já marcado', 'Entra em laço infinito', 'Erro de compilação'],
+      answer: 1,
+      why: 'dfs(2) olha o vizinho 1, que está marcado. Sem ignorar o pai, isso é tratado como ciclo, embora seja só a aresta por onde você veio.',
+    },
+    {
+      q: 'Quais destes grafos dão para pintar com duas cores (sem aresta entre vértices da mesma cor)?',
+      options: [
+        'Só o quadrado (ciclo de 4 vértices)',
+        'Só o triângulo (ciclo de 3 vértices)',
+        'Os dois',
+        'Nenhum dos dois',
+      ],
+      answer: 0,
+      why: 'No quadrado as cores alternam: 0, 1, 0, 1. No triângulo, o terceiro vértice é vizinho de um 0 e de um 1. Ciclo de tamanho ímpar impede a pintura.',
+    },
+  ]}
+/>

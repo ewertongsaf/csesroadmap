@@ -27,7 +27,7 @@ export const modules: ModuleRef[] = [
   { slug: 'dp-mochila', title: 'Mochila e subset sum', cph: ['7.4'], status: 'written' },
   { slug: 'dp-grid-strings', title: 'DP em grid e em strings (edit distance, LCS)', cph: ['7.3', '7.5'], status: 'written' },
   { slug: 'lis', title: 'LIS em O(n log n)', cph: ['7.2'], status: 'written' },
-  { slug: 'grafos-dfs', title: 'Representação de grafos e DFS', cph: ['11', '12.1', '12.3'], status: 'planned' },
+  { slug: 'grafos-dfs', title: 'Representação de grafos e DFS', cph: ['11', '12.1', '12.3'], status: 'written' },
   { slug: 'bfs', title: 'BFS, multi-fonte e grafos de estados', cph: ['12.2'], status: 'planned' },
   { slug: 'dijkstra', title: 'Dijkstra', cph: ['13.2'], status: 'planned' },
   { slug: 'bellman-ford-floyd', title: 'Bellman-Ford, ciclos negativos e Floyd-Warshall', cph: ['13.1', '13.3'], status: 'planned' },
