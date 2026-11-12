@@ -1,0 +1,471 @@
+---
+title: BFS, multi-fonte e grafos de estados
+description: A busca em largura visita o grafo em ondas, primeiro o que está a 1 passo, depois a 2, depois a 3. Por isso ela encontra o menor número de passos, em grafos, em tabuleiros e em problemas que nem parecem grafo.
+---
+import Callout from '../../src/components/mdx/Callout.astro';
+import Quiz from '../../src/components/mdx/Quiz.tsx';
+import BfsGridViz from '../../src/components/mdx/viz/BfsGridViz.tsx';
+
+## Motivação: a notícia que se espalha
+
+O problema desta aula, do começo ao fim:
+
+> Uma rede tem $n$ pessoas e $m$ amizades. No minuto 0, só a pessoa 1 sabe de uma notícia. A cada minuto, todo mundo que já sabe conta para **todos** os seus amigos. Em que minuto cada pessoa fica sabendo? (Se nunca ficar, responda −1.)
+
+Um exemplo com 7 pessoas e 6 amizades:
+
+| amizade | 1–2 | 1–3 | 2–4 | 3–4 | 4–5 | 5–6 |
+|---|---|---|---|---|---|---|
+
+Simulando à mão, minuto a minuto:
+
+| Minuto | Quem fica sabendo | Por quê |
+|---|---|---|
+| 0 | 1 | é quem começa |
+| 1 | 2, 3 | amigos de 1 |
+| 2 | 4 | amigo de 2 (e de 3) |
+| 3 | 5 | amigo de 4 |
+| 4 | 6 | amigo de 5 |
+
+A pessoa 7 não tem amigos e nunca fica sabendo. A resposta é 0, 1, 1, 2, 3, 4, −1.
+
+O minuto em que alguém fica sabendo é o **menor número de amizades** num caminho da pessoa 1 até ela: a **distância** entre as duas no grafo.
+
+A simulação direta (a cada minuto, olhar todas as amizades procurando quem conta para quem) funciona, mas pode levar até $n$ minutos, cada um varrendo $m$ amizades: $n \cdot m$ operações, ou $2 \cdot 10^{10}$ com $n = 10^5$ e $m = 2 \cdot 10^5$. Não passa.
+
+### A DFS não serve para isso
+
+O módulo anterior percorre o grafo com a DFS. Seria natural contar a profundidade da recursão e chamar isso de distância. Veja o que acontece no exemplo, com a DFS saindo de 1 e indo primeiro ao 2:
+
+| pessoa | 1 | 2 | 3 | 4 | 5 | 6 |
+|---|---|---|---|---|---|---|
+| profundidade na DFS | 0 | 1 | **3** | 2 | 3 | 4 |
+| distância de verdade | 0 | 1 | **1** | 2 | 3 | 4 |
+
+A DFS chegou ao 3 pelo caminho 1 → 2 → 4 → 3, com três passos, embora o 3 seja **amigo direto** do 1. Ela vai fundo pelo primeiro caminho que encontra, e não pelo mais curto.
+
+## A ideia: visitar em ondas, com uma fila
+
+A simulação à mão sugere o caminho certo: tratar primeiro **todos** os que estão a distância 0, depois todos a distância 1, depois todos a distância 2. É uma onda que se espalha, como a de uma pedra na água.
+
+Para respeitar essa ordem, as pessoas que ficaram sabendo entram numa **fila**, como a de um banco: quem chega vai para o fim, e quem é atendido sai do começo. Atender uma pessoa significa fazê-la contar a notícia para os amigos que ainda não sabem, que então entram no fim da fila.
+
+Quem ficou sabendo antes é atendido antes. Por isso todo mundo do minuto 1 é atendido antes de qualquer um do minuto 2. Essa é a **busca em largura**, ou **BFS** (de *breadth-first search*).
+
+O traço para o exemplo:
+
+| Quem sai da fila | Minuto dele | Quem ele avisa | Fila depois |
+|---|---|---|---|
+| (início) | | | 1 |
+| 1 | 0 | 2 e 3 (minuto 1) | 2, 3 |
+| 2 | 1 | 4 (minuto 2) | 3, 4 |
+| 3 | 1 | ninguém (1 e 4 já sabem) | 4 |
+| 4 | 2 | 5 (minuto 3) | 5 |
+| 5 | 3 | 6 (minuto 4) | 6 |
+| 6 | 4 | ninguém | (vazia) |
+
+Quando a fila esvazia, quem não foi avisado nunca será: é o caso do 7.
+
+Em C++, a fila é o `queue`:
+
+| Operação | O que faz |
+|---|---|
+| `fila.push(x)` | põe `x` no fim |
+| `fila.front()` | olha quem está no começo, sem tirar |
+| `fila.pop()` | tira quem está no começo |
+| `fila.empty()` | diz se a fila está vazia |
+
+O algoritmo inteiro:
+
+```cpp
+vector<int> minuto(n + 1, -1);                // -1 = ainda não sabe
+queue<int> fila;
+minuto[1] = 0;
+fila.push(1);
+while (!fila.empty()) {
+    int u = fila.front();                     // quem está esperando há mais tempo
+    fila.pop();
+    for (int v : viz[u]) {
+        if (minuto[v] == -1) {                // v ainda não sabia
+            minuto[v] = minuto[u] + 1;        // fica sabendo um minuto depois de u
+            fila.push(v);
+        }
+    }
+}
+```
+
+O vetor `minuto` faz dois papéis: guarda a resposta e serve de marca de "visitado" (−1 quer dizer que ninguém chegou ali ainda).
+
+<Callout type="tente">
+Acrescente a amizade 1–5 ao exemplo. Sem refazer tudo: quais minutos mudam?
+
+<details>
+<summary>Ver resposta</summary>
+
+O 5 passa a ser amigo direto do 1: fica sabendo no minuto 1 (antes era 3). O 6, amigo do 5, fica sabendo no minuto 2 (antes era 4). O 4 continua no minuto 2: os caminhos por 2, por 3 e agora por 5 têm todos tamanho 2. A resposta vira 0, 1, 1, 2, 1, 2, −1.
+
+</details>
+</Callout>
+
+### Por que a primeira vez é a melhor
+
+A fila sempre contém as pessoas em ordem de minuto: primeiro algumas do minuto $d$, depois algumas do minuto $d + 1$, e nada além disso. Quando alguém do minuto $d$ é atendido, os novos avisados recebem $d + 1$ e vão para o fim, mantendo a ordem.
+
+Então, quando uma pessoa é avisada **pela primeira vez**, quem a avisou é a pessoa de menor minuto que poderia tê-lo feito. Nenhum caminho mais curto existe, porque ele teria de passar por alguém atendido ainda antes, que já a teria avisado. É por isso que basta a marca: a primeira distância atribuída é a definitiva, e ninguém precisa ser atualizado depois.
+
+Isso vale porque **todo passo custa o mesmo** (1 minuto). Se as amizades tivessem tempos diferentes, a ordem de chegada deixaria de ser a ordem de distância, e a BFS daria respostas erradas. Esse caso é do algoritmo de Dijkstra, no próximo milestone.
+
+### Marcar ao entrar na fila, não ao sair
+
+No código acima, `minuto[v]` recebe valor no momento em que `v` **entra** na fila. Uma variação tentadora é marcar só quando o vértice **sai**:
+
+```cpp
+while (!fila.empty()) {                       // ERRADO: marca tarde demais
+    int u = fila.front(); fila.pop();
+    if (visitado[u]) continue;
+    visitado[u] = true;
+    for (int v : viz[u]) if (!visitado[v]) fila.push(v);
+}
+```
+
+No exemplo, o 2 põe o 4 na fila. Logo depois sai o 3, que também é vizinho do 4. Como o 4 ainda não **saiu**, ele não está marcado, e entra na fila de novo. Aqui é só uma cópia a mais (7 entradas para 6 pessoas alcançáveis), mas num grafo com muitas arestas cada vértice pode entrar uma vez por vizinho: a fila chega a ter $m$ elementos em vez de $n$, e num tabuleiro grande isso vira estouro de memória ou de tempo. Marque **ao empurrar**.
+
+### Quanto custa
+
+Cada vértice entra na fila uma vez e sai uma vez. Ao sair, olha todos os vizinhos. Como na DFS:
+
+$$
+O(n + m)
+$$
+
+$n$ é o número de vértices e $m$ o de arestas.
+
+## Recuperar o caminho
+
+Muitos problemas pedem o caminho, não só o tamanho dele. Para isso, guarde **quem avisou** cada pessoa:
+
+```cpp
+if (minuto[v] == -1) {
+    minuto[v] = minuto[u] + 1;
+    pai[v] = u;                               // v ficou sabendo por u
+    fila.push(v);
+}
+```
+
+No exemplo:
+
+| pessoa | 1 | 2 | 3 | 4 | 5 | 6 |
+|---|---|---|---|---|---|---|
+| `pai` | – | 1 | 1 | 2 | 4 | 5 |
+
+Para achar o caminho de 1 até 6, ande **para trás** a partir do 6: o pai do 6 é o 5, o do 5 é o 4, o do 4 é o 2, o do 2 é o 1. Isso dá 6, 5, 4, 2, 1. Invertendo: **1 → 2 → 4 → 5 → 6**.
+
+```cpp
+vector<int> caminho;
+for (int u = destino; u != 0; u = pai[u]) caminho.push_back(u);   // pai da origem vale 0
+reverse(caminho.begin(), caminho.end());
+```
+
+Antes de reconstruir, confira se `minuto[destino]` é diferente de −1: se o destino nunca foi alcançado, não há caminho.
+
+## BFS num tabuleiro
+
+Num tabuleiro, como no módulo anterior, cada casa livre é um vértice e as vizinhas são as quatro ao lado. A fila guarda pares (linha, coluna). Para o mapa abaixo, com `S` como origem e `#` como parede:
+
+```
+S..#.
+.#...
+.#.#.
+...#.
+```
+
+as distâncias ficam:
+
+| | col. 0 | col. 1 | col. 2 | col. 3 | col. 4 |
+|---|---|---|---|---|---|
+| **linha 0** | 0 | 1 | 2 | # | 6 |
+| **linha 1** | 1 | # | 3 | 4 | 5 |
+| **linha 2** | 2 | # | 4 | # | 6 |
+| **linha 3** | 3 | 4 | 5 | # | 7 |
+
+A casa da linha 0, coluna 4 fica a só 4 colunas da origem, mas a parede obriga a dar a volta: 6 passos.
+
+```cpp
+const int dl[] = {-1, 1, 0, 0}, dc[] = {0, 0, -1, 1};
+vector<vector<int>> dist(R, vector<int>(C, -1));
+queue<pair<int,int>> fila;
+dist[l0][c0] = 0;                             // (l0, c0) é a origem
+fila.push({l0, c0});
+while (!fila.empty()) {
+    auto [l, c] = fila.front();               // desmonta o par em duas variáveis
+    fila.pop();
+    for (int d = 0; d < 4; d++) {
+        int nl = l + dl[d], nc = c + dc[d];
+        if (nl < 0 || nl >= R || nc < 0 || nc >= C) continue;      // fora do mapa
+        if (mapa[nl][nc] == '#' || dist[nl][nc] != -1) continue;   // parede, ou já visitada
+        dist[nl][nc] = dist[l][c] + 1;
+        fila.push({nl, nc});
+    }
+}
+```
+
+`pair<int,int>` guarda dois inteiros juntos; `{l0, c0}` monta um par e `auto [l, c] = ...` o desmonta.
+
+Veja a onda avançar, com a fila ao lado:
+
+<BfsGridViz client:visible fontes="uma" />
+
+## Várias origens ao mesmo tempo
+
+Uma variação: em vez de uma origem, há **várias**, e você quer, para cada casa, a distância até a origem **mais próxima**. Por exemplo, dois postos de bombeiros num mapa: em quanto tempo o socorro chega a cada casa?
+
+Rodar uma BFS por origem e ficar com o menor valor funciona, mas custa uma BFS inteira para cada origem. A solução é bem mais simples: **ponha todas as origens na fila no começo**, todas com distância 0, e rode uma BFS só.
+
+```cpp
+for (auto [l, c] : origens) {                  // origens: vetor com os pares (linha, coluna)
+    dist[l][c] = 0;
+    fila.push({l, c});
+}
+// daqui em diante, o laço da BFS é exatamente o mesmo
+```
+
+Com origens nos dois cantos do mapa anterior:
+
+| | col. 0 | col. 1 | col. 2 | col. 3 | col. 4 |
+|---|---|---|---|---|---|
+| **linha 0** | 0 | 1 | 2 | # | 3 |
+| **linha 1** | 1 | # | 3 | 3 | 2 |
+| **linha 2** | 2 | # | 4 | # | 1 |
+| **linha 3** | 3 | 4 | 5 | # | 0 |
+
+Funciona pelo mesmo motivo de antes: a fila começa com todo mundo de distância 0, e a ordem por distância se mantém. Cada casa é alcançada primeiro pela onda da origem mais próxima. É como se existisse uma origem imaginária ligada a todas as origens reais.
+
+<BfsGridViz client:visible fontes="duas" />
+
+<Callout type="tente">
+Na tabela de duas origens, a casa da linha 1, coluna 3 vale 3. De qual das duas origens veio essa distância? E a da linha 1, coluna 2?
+
+<details>
+<summary>Ver resposta</summary>
+
+A casa (1, 3) está a 4 passos da origem de cima (era o valor na tabela de uma origem só) e a 3 da origem de baixo (sobe pela coluna 4 e vira à esquerda): vale 3, pela origem de baixo. A casa (1, 2) está a 3 da origem de cima e a 4 da de baixo: vale 3, pela de cima. As duas ondas se encontram entre essas casas.
+
+</details>
+</Callout>
+
+## Quando o grafo não está no enunciado
+
+A BFS encontra o menor número de passos entre **situações**, não só entre lugares. Um exemplo sem mapa e sem amizades:
+
+> Uma calculadora mostra um número e tem dois botões: **+1** e **×2**. Qual o menor número de apertos para transformar 2 em 11?
+
+Cada número que pode aparecer no visor é um vértice. De um número $x$ saem duas arestas: para $x + 1$ e para $2x$. A pergunta é a distância de 2 até 11 nesse grafo, e a BFS responde sem que você precise construir lista de adjacência nenhuma: os vizinhos são calculados na hora.
+
+```cpp
+vector<int> dist(LIMITE + 1, -1);
+queue<int> fila;
+dist[a] = 0;
+fila.push(a);
+while (!fila.empty()) {
+    int x = fila.front();
+    fila.pop();
+    for (int y : {x + 1, x * 2}) {            // os dois botões
+        if (y > LIMITE || dist[y] != -1) continue;
+        dist[y] = dist[x] + 1;
+        fila.push(y);
+    }
+}
+```
+
+A resposta é **4**: 2 → 4 → 5 → 10 → 11. O `LIMITE` existe porque os números não podem crescer para sempre; aqui, passar de 11 nunca ajuda (não há botão que diminua), então qualquer limite a partir de 11 serve.
+
+Um grafo assim, em que os vértices são situações possíveis e as arestas são jogadas, chama-se **grafo de estados**. A receita:
+
+1. **O que descreve completamente a situação?** Esse é o estado (aqui, o número no visor; num jogo, as posições das peças; num tabuleiro com uma chave, a casa **e** se você já pegou a chave).
+2. **Quais jogadas existem a partir de um estado?** São as arestas.
+3. **Quantos estados existem?** Esse número precisa caber na memória e no tempo, porque é o $n$ da BFS.
+
+O passo 1 é onde se erra. Se o estado deixa de fora algo que muda o que você pode fazer depois, a BFS trata como iguais situações que são diferentes, e a resposta sai errada.
+
+## Código: o problema da notícia completo
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int main() {
+    int n, m;
+    cin >> n >> m;
+    vector<vector<int>> viz(n + 1);
+    for (int i = 0; i < m; i++) {
+        int a, b;
+        cin >> a >> b;
+        viz[a].push_back(b);
+        viz[b].push_back(a);
+    }
+
+    // minuto[u] = em que minuto u fica sabendo; -1 = ainda não sabe
+    vector<int> minuto(n + 1, -1);
+    queue<int> fila;
+    minuto[1] = 0;                             // a pessoa 1 sabe desde o minuto 0
+    fila.push(1);
+    while (!fila.empty()) {
+        int u = fila.front();                  // quem está esperando há mais tempo
+        fila.pop();
+        for (int v : viz[u]) {
+            if (minuto[v] == -1) {             // v ainda não sabia
+                minuto[v] = minuto[u] + 1;     // fica sabendo um minuto depois de u
+                fila.push(v);                  // e entra na fila para contar aos amigos
+            }
+        }
+    }
+    for (int u = 1; u <= n; u++) cout << minuto[u] << " \n"[u == n];
+}
+```
+
+A última linha usa um truque de impressão: `" \n"` é um texto de dois caracteres, um espaço e uma quebra de linha. `[u == n]` escolhe o primeiro (espaço) quando a comparação é falsa e o segundo (quebra de linha) quando é verdadeira, ou seja, no último número.
+
+**Entrada:**
+
+```
+7 6
+1 2
+1 3
+2 4
+3 4
+4 5
+5 6
+```
+
+**Saída:**
+
+```
+0 1 1 2 3 4 -1
+```
+
+O programa passa pelas linhas do traço da fila e imprime a tabela `minuto`.
+
+- **Tempo:** $O(n + m)$.
+- **Memória:** $O(n + m)$.
+
+### O mesmo código no formato de contest
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+typedef vector<int> vi;
+typedef vector<vi> vvi;
+#define rep(i,a,b) for(int i=(a);i<(b);i++)
+#define pb push_back
+void fastio(){ ios::sync_with_stdio(false); cin.tie(nullptr); }
+
+int main(){
+    fastio();
+    int n, m; cin >> n >> m;
+    vvi viz(n + 1);
+    rep(i, 0, m) { int a, b; cin >> a >> b; viz[a].pb(b); viz[b].pb(a); }
+
+    vi dist(n + 1, -1);
+    queue<int> q;
+    dist[1] = 0; q.push(1);
+    while (!q.empty()) {
+        int u = q.front(); q.pop();
+        for (int v : viz[u]) if (dist[v] == -1) { dist[v] = dist[u] + 1; q.push(v); }
+    }
+    rep(u, 1, n + 1) cout << dist[u] << " \n"[u == n];
+}
+```
+
+## Armadilhas comuns
+
+- **Usar DFS para menor caminho.** A DFS acha *um* caminho, não o mais curto.
+- **Marcar ao tirar da fila** em vez de ao empurrar: vértices repetidos na fila.
+- **`front()` sem `pop()`** (laço infinito) ou `pop()` antes de guardar o `front()` (perde o elemento).
+- **Não tratar o inalcançável.** Se a distância ficou −1, não há caminho. Reconstruir o caminho mesmo assim anda por pais que não existem.
+- **Esquecer de inverter o caminho.** Andar pelos pais dá o caminho do destino para a origem.
+- **Várias origens: rodar uma BFS por origem.** Com muitas origens, estoura o tempo. Todas entram na fila no início.
+- **Estado incompleto** num grafo de estados (por exemplo, guardar só a posição quando também importa o que você carrega).
+- **Arestas com pesos diferentes.** A BFS só vale quando todo passo custa o mesmo.
+- **Tabuleiro grande com `vector<vector<int>>` de distâncias e outra de pais.** Com 1000 × 1000 casas cabe sem problema; só não guarde o caminho inteiro em cada casa.
+
+<details class="para-depois">
+<summary>Para depois: duas cores com BFS, pesos 0 e 1, e buscas mais espertas</summary>
+
+**Duas cores e componentes com BFS.** Tudo o que a DFS do módulo anterior fazia com a marca de visitado, a BFS também faz. Para pintar com duas cores, a cor de um vértice é a paridade da distância (par ou ímpar) até a origem da componente; se dois vizinhos têm a mesma paridade, o grafo não é bipartido. A vantagem da BFS é não usar recursão.
+
+**O menor ciclo.** Rodando uma BFS a partir de cada vértice e observando quando ela encontra um vértice já visitado que não é o pai, dá para achar o tamanho do menor ciclo em $O(n \cdot (n + m))$. Só serve para grafos pequenos.
+
+**Pesos 0 e 1.** Se algumas arestas custam 0 e outras custam 1, uma fila de duas pontas (`deque`) resolve: vizinho por aresta de custo 0 entra na **frente**, por aresta de custo 1 entra no **fim**. É a *0-1 BFS*.
+
+**Do destino para trás.** Às vezes é mais fácil rodar a BFS a partir do destino (com as arestas invertidas, se o grafo for direcionado), por exemplo quando há muitas origens possíveis e um destino só.
+
+**Dois personagens ao mesmo tempo.** Quando algo se move junto com você (um perigo que se espalha, por exemplo), duas BFS resolvem: uma com várias origens para o perigo e outra para você, que só pode entrar numa casa se chegar **antes** dele.
+
+</details>
+
+## Referências
+
+- **CPH, capítulo 12 — Graph traversal, seção 12.2 *Breadth-first search*:** a BFS com fila e o cálculo das distâncias.
+- [USACO Guide — Shortest Paths with Unweighted Edges](https://usaco.guide/gold/unweighted-shortest-paths), com BFS em tabuleiros e a 0-1 BFS.
+- [cp-algorithms — Breadth First Search](https://cp-algorithms.com/graph/breadth-first-search.html), com a lista de aplicações clássicas.
+
+## Mini-quiz
+
+<Quiz
+  client:visible
+  questions={[
+    {
+      q: 'Grafo com arestas 1–2, 1–3, 3–4, 2–5 e 4–5. A BFS sai do 1. Em que ordem os vértices saem da fila?',
+      code: 'fila.push(1);\nwhile (!fila.empty()) {\n    int u = fila.front(); fila.pop();\n    for (int v : viz[u])\n        if (dist[v] == -1) { dist[v] = dist[u] + 1; fila.push(v); }\n}',
+      options: ['1, 2, 3, 4, 5', '1, 2, 3, 5, 4', '1, 2, 5, 4, 3', '1, 3, 2, 4, 5'],
+      answer: 1,
+      why: 'Sai o 1 e entram 2 e 3. Sai o 2 e entra o 5. Sai o 3 e entra o 4. A fila fica 5, 4. A ordem de saída é 1, 2, 3, 5, 4.',
+    },
+    {
+      q: 'No mesmo grafo (1–2, 1–3, 3–4, 2–5, 4–5), qual a distância do 1 ao 4 e qual o pai do 4?',
+      options: ['distância 2, pai 3', 'distância 3, pai 5', 'distância 2, pai 5', 'distância 3, pai 3'],
+      answer: 0,
+      why: 'O 4 é descoberto quando o 3 sai da fila: dist = dist[3] + 1 = 2 e pai = 3. O caminho por 2 e 5 teria 3 passos.',
+    },
+    {
+      q: 'Calculadora com os botões +1 e ×2. Qual o menor número de apertos para ir de 3 a 10?',
+      code: 'for (int y : {x + 1, x * 2})\n    if (y <= LIMITE && dist[y] == -1) { dist[y] = dist[x] + 1; fila.push(y); }',
+      options: ['2', '3', '4', '7'],
+      answer: 1,
+      why: '3 → 4 → 5 → 10: três apertos. Só com +1 seriam sete; 3 → 6 → 7 → 8 → 9 → 10 seriam cinco.',
+    },
+    {
+      q: 'Por que a BFS garante a menor distância e a DFS não?',
+      options: [
+        'Porque a fila é mais rápida que a recursão',
+        'Porque a BFS atende os vértices em ordem de distância: quando alguém é descoberto, foi pelo caminho mais curto possível',
+        'Porque a DFS não visita todos os vértices',
+        'Porque a BFS olha cada aresta duas vezes',
+      ],
+      answer: 1,
+      why: 'A fila mantém os vértices ordenados por distância. A DFS segue o primeiro caminho que encontra, que pode dar uma volta enorme.',
+    },
+    {
+      q: 'Há 500 origens num tabuleiro de 1000 × 1000 e você quer a distância de cada casa até a origem mais próxima. O que fazer?',
+      options: [
+        'Uma BFS por origem, guardando o mínimo',
+        'Colocar as 500 origens na fila com distância 0 e rodar uma BFS só',
+        'Uma DFS a partir de cada casa',
+        'Ordenar as origens e usar busca binária',
+      ],
+      answer: 1,
+      why: '500 BFS num tabuleiro de um milhão de casas são 500 milhões de visitas. Com todas as origens na fila desde o início, é uma BFS só.',
+    },
+    {
+      q: 'Um labirinto tem uma porta que só abre se você já passou pela casa da chave. Qual é o estado da BFS?',
+      options: [
+        'Só a posição (linha, coluna)',
+        'A posição e se a chave já foi pega',
+        'Só se a chave já foi pega',
+        'O número de passos dados',
+      ],
+      answer: 1,
+      why: 'Estar numa casa com a chave é diferente de estar na mesma casa sem ela: as jogadas possíveis mudam. O estado precisa das duas informações, o que dobra o número de vértices.',
+    },
+  ]}
+/>

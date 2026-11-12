@@ -18,7 +18,7 @@ Site **pessoal** de estudos de programação competitiva do Ewerton (ITA, prepar
 
 1. Motivação: problema concreto em que a força bruta não passa, com a complexidade explicada.
 2. Ideia central em linguagem simples, depois formalizada. Fórmulas em KaTeX, cada uma seguida de uma linha explicando os símbolos.
-3. Visualização interativa quando ajudar (componente React com "próximo passo").
+3. Visualização interativa quando ajudar (componente React com "próximo passo", em `src/components/mdx/viz/`, usando `VizFrame` e `StepControls`; as aulas a partir do milestone 8 têm pelo menos uma).
 4. Código C++ da técnica **genérica** (nunca a solução do problema do CSES), comentado, usando o template de `data/template.cpp`, com complexidade de tempo e memória.
 5. Armadilhas comuns.
 6. Referências: CPH (número e nome do capítulo) + links verificados (USACO Guide, cp-algorithms, Codeforces EDU, vídeos bons).
@@ -40,11 +40,11 @@ O leitor está vendo a técnica **pela primeira vez**: sabe C++ básico (laços,
 
 Cuidado com MDX: `{` e `<` em texto corrido são interpretados como JSX. Use `$\{1, 2\}$` ou crase.
 
-Os 15 módulos dos milestones 1–7 e os 4 dos milestones 8–9 (DP) seguem esses princípios; `busca-completa` e `busca-binaria` são as referências de estilo mais completas. Os programas e os números das tabelas das aulas de DP ficam em `drafts/tests/<slug>/` (`stress.sh` roda tudo). Ao escrever um módulo, mude `status` para `'written'` em `data/modules.ts`.
+Os 15 módulos dos milestones 1–7, os 4 dos milestones 8–9 (DP) e os 2 do milestone 10 (grafos: DFS e BFS) seguem esses princípios; `busca-completa` e `busca-binaria` são as referências de estilo mais completas. Os programas e os números das tabelas das aulas a partir do milestone 8 ficam em `drafts/tests/<slug>/` (`stress.sh` roda tudo). Ao escrever um módulo, mude `status` para `'written'` em `data/modules.ts`.
 
 Os milestones 1–9 têm dicas em `data/hints/`; as ideias das dicas dos milestones 8–9 foram conferidas contra os exemplos dos enunciados.
 
-**Módulos só com referências.** Por decisão do usuário (créditos limitados), os módulos ainda `'planned'` (milestones 10–33) têm página em `/modulos/<slug>` só com o capítulo do CPH e links verificados de `data/module-refs.ts`. O validador exige referências para todo módulo planejado e `check-links` verifica esse arquivo. Quando uma aula for escrita, o MDX passa a ser renderizado no lugar; a entrada em `module-refs.ts` pode ficar ou sair.
+**Módulos só com referências.** Por decisão do usuário (créditos limitados), os módulos ainda `'planned'` (milestones 11–33) têm página em `/modulos/<slug>` só com o capítulo do CPH e links verificados de `data/module-refs.ts`. O validador exige referências para todo módulo planejado e `check-links` verifica esse arquivo. Quando uma aula for escrita, o MDX passa a ser renderizado no lugar; a entrada em `module-refs.ts` pode ficar ou sair.
 
 ## Dicas (data/hints/<milestone>.yaml)
 
