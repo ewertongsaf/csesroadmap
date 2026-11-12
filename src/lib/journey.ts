@@ -113,15 +113,17 @@ export interface World {
   key: 'vale' | 'canions' | 'floresta' | 'picos' | 'cidadela';
   name: string;
   blurb: string;
+  /** Cor de identidade do mundo: só para enfeite (barras, pontos, fundos tingidos), nunca para texto. */
+  color: string;
 }
 
 /** Na ordem das fases de data/roadmap.ts. */
 export const WORLDS: World[] = [
-  { key: 'vale', name: 'Vale dos Fundamentos', blurb: 'Campos abertos para aprender a andar: listas, ordenação e as primeiras ferramentas.' },
-  { key: 'canions', name: 'Cânions da Memória', blurb: 'Tabelas de DP empilhadas na rocha e rotas de grafos entre os platôs.' },
-  { key: 'floresta', name: 'Floresta das Árvores', blurb: 'Segment trees, LCA e raízes por toda parte.' },
-  { key: 'picos', name: 'Picos dos Números', blurb: 'Ar rarefeito: matemática, bits e DP avançada entre cristais.' },
-  { key: 'cidadela', name: 'Cidadela das Estrelas', blurb: 'Strings, fluxo, geometria e o boss final no topo da torre.' },
+  { key: 'vale', color: '#5fbf6a', name: 'Vale dos Fundamentos', blurb: 'Campos abertos para aprender a andar: listas, ordenação e as primeiras ferramentas.' },
+  { key: 'canions', color: '#e2894f', name: 'Cânions da Memória', blurb: 'Tabelas de DP empilhadas na rocha e rotas de grafos entre os platôs.' },
+  { key: 'floresta', color: '#2fa98a', name: 'Floresta das Árvores', blurb: 'Segment trees, LCA e raízes por toda parte.' },
+  { key: 'picos', color: '#7f9be8', name: 'Picos dos Números', blurb: 'Ar rarefeito: matemática, bits e DP avançada entre cristais.' },
+  { key: 'cidadela', color: '#a98bf0', name: 'Cidadela das Estrelas', blurb: 'Strings, fluxo, geometria e o boss final no topo da torre.' },
 ];
 export const worldOf = (phase: number) => WORLDS[Math.min(phase, WORLDS.length - 1)];
 

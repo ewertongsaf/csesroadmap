@@ -1,19 +1,16 @@
 ---
 import Base from '../layouts/Base.astro';
 import HomeDashboard from '../components/islands/HomeDashboard.tsx';
-import { trailData } from '../lib/data.ts';
+import { milestoneDetails, trailData } from '../lib/data.ts';
 ---
 <Base title="CSES Roadmap" wide>
-  <div class="mx-auto max-w-4xl">
-    <p class="text-sm text-muted">
+  <div class="mx-auto max-w-5xl">
+    <h1 class="text-2xl font-semibold tracking-tight sm:text-3xl">Bora treinar.</h1>
+    <p class="mt-1.5 text-sm text-muted">
       {trailData.problems.length} problemas do CSES em {trailData.milestones.length} milestones, na ordem dos pré-requisitos.
     </p>
     <div class="mt-6">
-      <HomeDashboard client:load trail={trailData} />
-    </div>
-    <div class="mt-8 flex flex-wrap gap-4 text-sm">
-      <a href="/roadmap" class="text-accent hover:underline underline-offset-4">Ver a trilha completa →</a>
-      <a href="/checklist" class="text-muted hover:text-fg">Checklist antes de submeter</a>
+      <HomeDashboard client:load trail={trailData} details={milestoneDetails} />
     </div>
   </div>
 </Base>

@@ -4,6 +4,7 @@ import ThemeToggle from '../components/islands/ThemeToggle.tsx';
 import CommandK from '../components/islands/CommandK.tsx';
 import StorageWarning from '../components/islands/StorageWarning.tsx';
 import LevelUp from '../components/islands/LevelUp.tsx';
+import { Icon, type IconName } from '../components/ui.tsx';
 import { xpTable } from '../lib/data.ts';
 
 interface Props {
@@ -14,21 +15,24 @@ interface Props {
 }
 const { title, description = 'Roadmap pessoal para resolver o CSES Problem Set inteiro.', wide = false } = Astro.props;
 const path = Astro.url.pathname;
-const nav = [
-  { href: '/roadmap', label: 'Roadmap' },
-  { href: '/jornada', label: 'Jornada' },
-  { href: '/stats', label: 'Estatísticas' },
-  { href: '/checklist', label: 'Checklist' },
-  { href: '/template', label: 'Template' },
-  { href: '/config', label: 'Progresso' },
+const nav: { href: string; label: string; icon: IconName; mobile?: boolean; desktop?: boolean }[] = [
+  { href: '/', label: 'Início', icon: 'home', mobile: true },
+  { href: '/roadmap', label: 'Roadmap', icon: 'list', mobile: true, desktop: true },
+  { href: '/jornada', label: 'Jornada', icon: 'map', mobile: true, desktop: true },
+  { href: '/stats', label: 'Estatísticas', icon: 'chart', mobile: true, desktop: true },
+  { href: '/checklist', label: 'Checklist', icon: 'check', desktop: true },
+  { href: '/template', label: 'Template', icon: 'code', desktop: true },
+  { href: '/config', label: 'Progresso', icon: 'gear', mobile: true, desktop: true },
 ];
-const active = (href: string) => path === href || path.startsWith(`${href}/`);
+// Páginas de milestone, problema, módulo e checkpoint pertencem ao roadmap.
+const inRoadmap = /^\/(m|p|modulos|checkpoint)\//.test(path);
+const active = (href: string) => (href === '/' ? path === '/' : path === href || path.startsWith(`${href}/`) || (href === '/roadmap' && inRoadmap));
 ---
 <!doctype html>
 <html lang="pt-BR" class="dark">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="description" content={description} />
     <meta name="robots" content="noindex" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
@@ -41,35 +45,55 @@ const active = (href: string) => path === href || path.startsWith(`${href}/`);
     </script>
   </head>
   <body class="min-h-screen flex flex-col">
-    <header class="sticky top-0 z-30 border-b border-line bg-bg/85 backdrop-blur">
-      <div class="mx-auto flex h-14 max-w-6xl items-center gap-3 px-4">
-        <a href="/" class="flex items-center gap-2 font-semibold tracking-tight shrink-0">
-          <span class="grid size-7 place-items-center rounded-md bg-accent text-accent-fg text-xs font-bold">CS</span>
-          <span class="hidden sm:inline">CSES Roadmap</span>
+    <a href="#conteudo" class="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-md focus:bg-accent focus:px-3 focus:py-2 focus:text-sm focus:font-semibold focus:text-accent-fg">Pular para o conteúdo</a>
+    <header class="sticky top-0 z-30 border-b border-line bg-bg/80 backdrop-blur-md">
+      <div class="mx-auto flex h-14 max-w-6xl items-center gap-2 px-4">
+        <a href="/" class="mr-2 flex shrink-0 items-center gap-2.5 font-semibold tracking-tight">
+          <img src="/favicon.svg" alt="" width="28" height="28" class="size-7" />
+          <span>CSES Roadmap</span>
         </a>
-        <nav class="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto text-sm">
-          {nav.map((n) => (
+        <nav aria-label="Principal" class="hidden min-w-0 flex-1 items-center gap-0.5 text-sm md:flex">
+          {nav.filter((n) => n.desktop).map((n) => (
             <a
               href={n.href}
+              aria-current={active(n.href) ? 'page' : undefined}
               class:list={[
-                'rounded-md px-2.5 py-1.5 whitespace-nowrap transition-colors',
-                active(n.href) ? 'bg-surface-2 text-fg' : 'text-muted hover:text-fg',
+                'rounded-lg px-2.5 py-1.5 whitespace-nowrap transition-colors',
+                active(n.href) ? 'bg-surface-2 font-medium text-fg' : 'text-muted hover:bg-surface-2/60 hover:text-fg',
               ]}
             >{n.label}</a>
           ))}
         </nav>
-        <CommandK client:idle />
-        <ThemeToggle client:load />
+        <div class="ml-auto flex items-center gap-2">
+          <LevelUp client:load table={xpTable} />
+          <CommandK client:idle />
+          <ThemeToggle client:load />
+        </div>
       </div>
     </header>
     <StorageWarning client:load />
-    <LevelUp client:idle table={xpTable} />
-    <main class:list={['mx-auto w-full flex-1 px-4 py-8', wide ? 'max-w-6xl' : 'max-w-3xl']}>
+    <main id="conteudo" class:list={['page-enter mx-auto w-full flex-1 px-4 pt-8 pb-28 md:pb-12', wide ? 'max-w-6xl' : 'max-w-3xl']}>
       <slot />
     </main>
-    <footer class="border-t border-line py-6 text-center text-xs text-faint">
+    <footer class="hidden border-t border-line py-6 text-center text-xs text-faint md:block">
       Problemas do <a class="underline" href="https://cses.fi/problemset/">CSES Problem Set</a> (CC BY-NC-SA). Este site só linka os
       enunciados, não os copia. Teoria: <a class="underline" href="https://cses.fi/book/book.pdf">Competitive Programmer's Handbook</a>.
     </footer>
+    <nav aria-label="Principal" class="tabbar fixed inset-x-0 bottom-0 z-30 border-t border-line bg-bg/90 backdrop-blur-md md:hidden">
+      <ul class="mx-auto grid max-w-md grid-cols-5">
+        {nav.filter((n) => n.mobile).map((n) => (
+          <li>
+            <a
+              href={n.href}
+              aria-current={active(n.href) ? 'page' : undefined}
+              class:list={['flex flex-col items-center gap-1 px-1 pt-2.5 pb-2 text-[11px]', active(n.href) ? 'font-semibold text-accent' : 'text-muted']}
+            >
+              <Icon name={n.icon} size={20} />
+              {n.label}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </nav>
   </body>
 </html>

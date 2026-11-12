@@ -60,10 +60,44 @@
 }
 
 body {
-  background: var(--c-bg);
+  background:
+    radial-gradient(60rem 28rem at 50% -14rem, color-mix(in oklab, var(--c-accent) 9%, transparent), transparent 70%),
+    var(--c-bg);
+  background-repeat: no-repeat;
   color: var(--c-fg);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+}
+
+/* Entrada suave do conteúdo a cada navegação. */
+.page-enter {
+  animation: page-enter 0.35s ease-out both;
+}
+@keyframes page-enter {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.tabbar {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+/* Cartão clicável: levanta de leve no hover. */
+.lift {
+  transition: transform 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+}
+.lift:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in oklab, var(--c-accent) 55%, var(--c-line));
+}
+/* "+N XP" ao marcar um problema como resolvido. */
+.xp-pop {
+  animation: xp-pop 1.6s ease-out both;
+}
+@keyframes xp-pop {
+  0% { opacity: 0; transform: translateY(6px) scale(0.9); }
+  15% { opacity: 1; transform: translateY(0) scale(1.08); }
+  30% { transform: scale(1); }
+  80% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-10px); }
 }
 
 /* Shiki com dois temas: as cores vêm em variáveis --shiki-light / --shiki-dark. */
@@ -135,6 +169,9 @@ body {
   color: var(--c-muted);
 }
 .prose-cp table:not(.not-prose *) {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
   width: 100%;
   border-collapse: collapse;
   font-size: 0.92rem;
@@ -339,6 +376,8 @@ textarea,
   .jr-aura,
   .jr-gate,
   .jr-toast,
+  .page-enter,
+  .xp-pop,
   .lv-card,
   .lv-rays,
   .lv-number,

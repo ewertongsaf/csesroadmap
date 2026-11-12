@@ -1,9 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Marked } from 'marked';
 import { useProgress } from '../../lib/progress/react.ts';
 import { statusOf } from '../../lib/progress/selectors.ts';
 import { setCode, setNotes, setStatus } from '../../lib/progress/store.ts';
-import { STATUS_LABEL, type Status } from '../../lib/progress/types.ts';
+import { STATUS_LABEL, isSolved, type Status } from '../../lib/progress/types.ts';
+import { problemXp } from '../../lib/journey.ts';
+import { problemPath } from '../../lib/trail.ts';
 import { StatusDot } from '../ui.tsx';
 
 // Notas podem vir de um JSON importado: HTML cru vira texto, nunca é interpretado.
@@ -13,21 +15,49 @@ notesMd.use({ renderer: { html: ({ text }) => escapeHtml(text) } });
 
 const ORDER: Status[] = ['not_started', 'trying', 'solved', 'solved_with_hint'];
 
-export function StatusPicker({ id }: { id: number }) {
+const ACTIVE: Record<Status, string> = {
+  not_started: 'border-fg/40 bg-surface-2 text-fg',
+  trying: 'border-try bg-try/15 text-fg',
+  solved: 'border-ok bg-ok/15 text-fg',
+  solved_with_hint: 'border-hint bg-hint/15 text-fg',
+};
+
+export function StatusPicker({ id, difficulty, nextHref, nextTitle }: { id: number; difficulty: number; nextHref?: string; nextTitle?: string }) {
   const { state, ready } = useProgress();
   const status = statusOf(state, id);
   const hints = state.problems[id]?.hintsRevealed ?? 0;
   const [forced, setForced] = useState(false);
+  const [gain, setGain] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (gain === null) return;
+    const t = setTimeout(() => setGain(null), 1700);
+    return () => clearTimeout(t);
+  }, [gain]);
 
   const choose = (s: Status) => {
     // Revelou dica? "Resolvido" vira "resolvido com dica", a menos que você corrija explicitamente.
     setForced(false);
-    setStatus(id, s === 'solved' && hints > 0 ? 'solved_with_hint' : s);
+    const final = s === 'solved' && hints > 0 ? 'solved_with_hint' : s;
+    if (isSolved(final) && !isSolved(status)) setGain(problemXp(difficulty, final === 'solved_with_hint'));
+    setStatus(id, final);
   };
 
   return (
-    <div>
-      <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Status">
+    <div className="rounded-2xl border border-line bg-surface p-4 sm:p-5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted">Como está este problema?</p>
+        <p className="relative text-xs tabular-nums text-muted">
+          vale <span className="font-semibold text-accent">+{problemXp(difficulty, false)} XP</span>
+          <span className="text-faint"> ({problemXp(difficulty, true)} com dica)</span>
+          {gain !== null && (
+            <span role="status" className="xp-pop pointer-events-none absolute -top-8 right-0 rounded-full bg-accent px-3 py-1 text-sm font-semibold whitespace-nowrap text-accent-fg shadow-lg">
+              +{gain} XP
+            </span>
+          )}
+        </p>
+      </div>
+      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4" role="radiogroup" aria-label="Status">
         {ORDER.map((s) => (
           <button
             key={s}
@@ -36,8 +66,8 @@ export function StatusPicker({ id }: { id: number }) {
             aria-checked={ready && status === s}
             disabled={!ready}
             onClick={() => choose(s)}
-            className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition-colors ${
-              ready && status === s ? 'border-fg/40 bg-surface-2 text-fg' : 'border-line text-muted hover:text-fg'
+            className={`flex items-center justify-center gap-1.5 rounded-lg border px-2 py-2.5 text-sm whitespace-nowrap transition-colors sm:text-[13px] ${
+              ready && status === s ? `${ACTIVE[s]} font-medium` : 'border-line text-muted hover:bg-surface-2 hover:text-fg'
             }`}
           >
             <StatusDot status={s} decorative />
@@ -46,7 +76,7 @@ export function StatusPicker({ id }: { id: number }) {
         ))}
       </div>
       {ready && status === 'solved_with_hint' && hints > 0 && !forced && (
-        <p className="mt-2 text-xs text-muted">
+        <p className="mt-3 text-xs text-muted">
           Marcado como "com dica" porque você revelou {hints} {hints === 1 ? 'dica' : 'dicas'}.{' '}
           <button
             type="button"
@@ -60,7 +90,38 @@ export function StatusPicker({ id }: { id: number }) {
           </button>
         </p>
       )}
+      {ready && isSolved(status) && nextHref && (
+        <a href={nextHref} className="mt-3 flex items-center justify-between gap-3 rounded-lg bg-ok/10 px-3.5 py-2.5 text-sm hover:bg-ok/15">
+          <span className="min-w-0 truncate">Resolvido. Próximo da trilha: <span className="font-medium">{nextTitle}</span></span>
+          <span aria-hidden="true">→</span>
+        </a>
+      )}
     </div>
+  );
+}
+
+/** Tirinha com todos os problemas do milestone: mostra onde este está e o status dos vizinhos. */
+export function MilestoneStrip({ current, items }: { current: number; items: { id: number; title: string }[] }) {
+  const { state, ready } = useProgress();
+  const color: Record<Status, string> = { not_started: 'bg-line', trying: 'bg-try', solved: 'bg-ok', solved_with_hint: 'bg-hint' };
+  return (
+    <ol className="flex flex-wrap gap-1" aria-label="Problemas deste milestone">
+      {items.map((it, i) => {
+        const st = ready ? statusOf(state, it.id) : 'not_started';
+        const here = it.id === current;
+        return (
+          <li key={it.id}>
+            <a
+              href={problemPath(it.id)}
+              title={`${i + 1}. ${it.title} (${STATUS_LABEL[st]})`}
+              aria-label={`${i + 1}. ${it.title}: ${STATUS_LABEL[st]}`}
+              aria-current={here ? 'page' : undefined}
+              className={`block h-2.5 rounded-full transition-all hover:opacity-80 ${color[st]} ${here ? 'w-7 ring-2 ring-fg/70 ring-offset-2 ring-offset-bg' : 'w-4'}`}
+            />
+          </li>
+        );
+      })}
+    </ol>
   );
 }
 

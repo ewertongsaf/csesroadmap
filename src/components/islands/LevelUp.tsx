@@ -1,4 +1,4 @@
-// Comemoração de subida de nível. Fica no layout: o nível sobe onde o problema é marcado como
+// Chip de nível no cabeçalho + comemoração de subida de nível. Fica no layout: o nível sobe onde o problema é marcado como
 // resolvido (página do problema, milestone, checkpoint), não só na /jornada.
 // O último nível comemorado fica em localStorage; a primeira visita só registra, sem comemorar.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -6,6 +6,7 @@ import { useProgress } from '../../lib/progress/react.ts';
 import { GEAR, gearAt, levelInfo, titleFor, totalXpFromTable, type XpTable } from '../../lib/journey.ts';
 import { playLevelUp } from '../../lib/sound.ts';
 import { HeroPortrait } from '../journey/Hero.tsx';
+import { Ring } from '../ui.tsx';
 
 const KEY = 'cses-roadmap:level';
 /** Disparado na janela quando a comemoração fecha; a /jornada usa para a personagem pular no mapa. */
@@ -41,7 +42,8 @@ const PARTICLES = Array.from({ length: 28 }, (_, i) => {
 
 export default function LevelUp({ table }: { table: XpTable }) {
   const { state, ready } = useProgress();
-  const level = useMemo(() => levelInfo(totalXpFromTable(table, state)).level, [table, state]);
+  const info = useMemo(() => levelInfo(totalXpFromTable(table, state)), [table, state]);
+  const level = info.level;
   const [shown, setShown] = useState<{ level: number; gear: string | null } | null>(null);
   const [leaving, setLeaving] = useState(false);
   const known = useRef<number | null>(null);
@@ -77,8 +79,23 @@ export default function LevelUp({ table }: { table: XpTable }) {
     };
   }, [shown, close]);
 
-  if (!shown) return null;
+  const chip = (
+    <a
+      href="/jornada"
+      title={ready ? `Nível ${level} · ${info.into}/${info.span} XP para o próximo` : 'Jornada'}
+      aria-label={ready ? `Nível ${level}, ${titleFor(level)}. Abrir a jornada.` : 'Abrir a jornada'}
+      className="flex shrink-0 items-center gap-2 rounded-full border border-line bg-surface p-1 text-xs sm:pr-3 hover:border-accent/60"
+    >
+      <Ring value={ready ? info.into : 0} total={info.span} size={26} stroke={3} color="var(--c-accent)">
+        <span className="text-[11px] font-semibold tabular-nums">{ready ? level : '·'}</span>
+      </Ring>
+      <span className="hidden font-medium text-muted sm:inline">{ready ? titleFor(level) : 'Nível'}</span>
+    </a>
+  );
+  if (!shown) return chip;
   return (
+    <>
+    {chip}
     <div
       role="status"
       onClick={close}
@@ -109,5 +126,6 @@ export default function LevelUp({ table }: { table: XpTable }) {
         <p className="mt-5 text-xs text-faint">Clique ou Esc para continuar</p>
       </div>
     </div>
+    </>
   );
 }

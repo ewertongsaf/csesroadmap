@@ -1,4 +1,5 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { playLevelUp, setSoundOn, soundOn } from '../../lib/sound.ts';
 import { useProgress, useStorageError } from '../../lib/progress/react.ts';
 import { isMastered, totalSolved } from '../../lib/progress/selectors.ts';
 import { replaceProgress, toggleMastered } from '../../lib/progress/store.ts';
@@ -11,6 +12,9 @@ export default function ConfigPanel({ trail }: { trail: TrailData }) {
   const storageError = useStorageError();
   const file = useRef<HTMLInputElement>(null);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  const [sound, setSound] = useState(true);
+  useEffect(() => setSound(soundOn()), []);
 
   const onImport = async (f: File | undefined) => {
     if (!f) return;
@@ -57,6 +61,28 @@ export default function ConfigPanel({ trail }: { trail: TrailData }) {
         {msg && <p className={`mt-3 text-sm ${msg.ok ? 'text-ok' : 'text-danger'}`}>{msg.text}</p>}
       </section>
 
+      <section className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-line bg-surface p-6">
+        <div>
+          <h2 className="text-lg font-semibold">Som</h2>
+          <p className="mt-1 text-sm text-muted">Fanfarra curta ao subir de nível.</p>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={sound}
+          onClick={() => {
+            const on = !sound;
+            setSound(on);
+            setSoundOn(on);
+            if (on) void playLevelUp();
+          }}
+          className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${sound ? 'bg-accent' : 'bg-surface-2'}`}
+        >
+          <span className="sr-only">Som ao subir de nível</span>
+          <span className={`absolute top-1 left-1 size-5 rounded-full bg-fg transition-transform ${sound ? 'translate-x-5' : ''}`} />
+        </button>
+      </section>
+
       <section>
         <h2 className="text-lg font-semibold">Milestones que você já domina</h2>
         <p className="mt-1 text-sm text-muted">
@@ -64,11 +90,11 @@ export default function ConfigPanel({ trail }: { trail: TrailData }) {
         </p>
         <ul className="mt-4 grid gap-2 sm:grid-cols-2">
           {trail.milestones.map((m) => (
-            <li key={m.slug}>
+            <li key={m.slug} className="min-w-0">
               <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-line bg-surface px-3 py-2 text-sm select-none hover:bg-surface-2">
                 <input type="checkbox" className="accent-[var(--c-accent)]" disabled={!ready} checked={isMastered(state, m.slug)} onChange={() => toggleMastered(m.slug)} />
                 <span className="tabular-nums text-faint">{m.num}.</span>
-                <span className="truncate">{m.name}</span>
+                <span className="min-w-0 truncate">{m.name}</span>
               </label>
             </li>
           ))}
