@@ -4,6 +4,7 @@ description: A maior subsequência crescente tem uma DP direta em O(n²). Guarda
 ---
 import Callout from '../../src/components/mdx/Callout.astro';
 import Quiz from '../../src/components/mdx/Quiz.tsx';
+import LisViz from '../../src/components/mdx/viz/LisViz.tsx';
 
 ## Motivação: as notas que nunca caem
 
@@ -106,6 +107,10 @@ O traço para as notas 5, 2, 2, 7, 3, 3, 8, 3:
 | 3 | 4 (o 8) | troca | 2, 2, 3, 3, 3 |
 
 O vetor termina com 5 valores: a resposta é **5**, o tamanho de `fim`.
+
+O mesmo traço, passo a passo. O botão de versão fica para a seção sobre empates, mais abaixo:
+
+<LisViz client:visible />
 
 Leia duas linhas com calma:
 

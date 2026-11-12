@@ -4,6 +4,7 @@ description: Programação dinâmica é resolver um problema grande a partir de 
 ---
 import Callout from '../../src/components/mdx/Callout.astro';
 import Quiz from '../../src/components/mdx/Quiz.tsx';
+import DpStairsViz from '../../src/components/mdx/viz/DpStairsViz.tsx';
 
 ## Motivação: a escada com pedágio
 
@@ -163,6 +164,10 @@ Para $n = 8$, a tabela fica:
 
 Cada casa é a soma das duas à esquerda. Quando o laço chega em $i$, as casas $i - 1$ e $i - 2$ já estão prontas: é isso que "ordem certa" quer dizer. Um laço de $n$ voltas, uma soma por volta.
 
+Acompanhe o preenchimento, uma casa por vez:
+
+<DpStairsViz client:visible mode="formas" />
+
 Isso é **programação dinâmica** (DP, de *dynamic programming*): resolver um problema a partir de respostas de problemas menores, **guardando cada resposta para não calcular duas vezes**. A memoização e a tabela são dois jeitos de fazer a mesma coisa. Nesta trilha vamos usar quase sempre a tabela.
 
 ## A ideia geral: quatro perguntas
@@ -215,6 +220,10 @@ A tabela para o exemplo:
 | 6 | 8 | 12 | 10 | 10 | $10 + 8 = 18$ |
 
 A resposta é `custo[6] = 18`, o caminho 0 → 1 → 3 → 4 → 6 que o guloso perdeu.
+
+A mesma tabela, passo a passo. Em cada degrau, veja qual das duas origens o $\min$ escolhe:
+
+<DpStairsViz client:visible mode="custo" />
 
 Repare na linha $i = 6$: o degrau 5 tem custo acumulado 12 e o degrau 4 tem 10. A DP **não decide** se vale a pena pisar no 5 quando está no 4. Ela calcula o melhor jeito de chegar a **cada** degrau, e só na hora de chegar ao 6 compara as duas origens. Nenhuma escolha é feita cedo demais.
 

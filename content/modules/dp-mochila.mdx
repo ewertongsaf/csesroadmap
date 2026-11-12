@@ -4,6 +4,7 @@ description: Escolher itens com um limite de tamanho. O estado é "quanto já us
 ---
 import Callout from '../../src/components/mdx/Callout.astro';
 import Quiz from '../../src/components/mdx/Quiz.tsx';
+import KnapsackViz from '../../src/components/mdx/viz/KnapsackViz.tsx';
 
 ## Motivação: o que cabe no pendrive
 
@@ -155,6 +156,10 @@ A tabela, uma linha por arquivo processado:
 | depois de Livros (2 GB, nota 6) | 0 | 0 | 6 | 6 | 10 | 10 | 16 | 16 | 16 | 17 | 18 |
 
 A resposta é `melhor[10] = 18`.
+
+Na visualização, cada passo é uma execução da linha `melhor[c] = max(...)`. Depois de ver o laço certo até o fim, troque o sentido para "para a frente" e observe os Livros entrarem várias vezes:
+
+<KnapsackViz client:visible />
 
 Acompanhe o 18 nascer, na linha das Músicas. Para $c = 10$, o código compara "não levar as Músicas" (a casa vale 8, só as Fotos) com "levar as Músicas": `melhor[10 - 4] + 10 = melhor[6] + 10 = 8 + 10 = 18`. A casa 6 ainda guardava o valor **sem as Músicas**, porque o laço vem de trás e ainda não tinha chegado nela.
 

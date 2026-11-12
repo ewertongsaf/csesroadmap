@@ -4,6 +4,7 @@ description: Quando o estado precisa de duas coordenadas. Num tabuleiro, são a 
 ---
 import Callout from '../../src/components/mdx/Callout.astro';
 import Quiz from '../../src/components/mdx/Quiz.tsx';
+import GridDpViz from '../../src/components/mdx/viz/GridDpViz.tsx';
 
 ## Motivação: o tabuleiro de moedas
 
@@ -74,6 +75,10 @@ Algumas casas, com a conta:
 | linha 1, col. 2 | 13 | 16 | 16 | 1 | 17 |
 | linha 1, col. 3 | 19 | 17 | 19 | 8 | 27 |
 | linha 2, col. 3 | 27 | 21 | 27 | 5 | 32 |
+
+Preencha a tabela inteira, uma casa por vez:
+
+<GridDpViz client:visible mode="moedas" />
 
 A resposta é **32**. Veja a casa da linha 1, coluna 3: o caminho que passou pelo 9 chega ali com 17, e o que veio pela linha de cima chega com 19. A DP guarda os dois valores nas casas vizinhas e só compara na hora certa.
 
@@ -167,6 +172,10 @@ A tabela para `casa` → `saco`. A linha 0 e a coluna 0 são os casos base (a pa
 | **a** | 4 | 3 | 2 | 3 | **4** |
 
 A resposta é **4**: apagar `c`, apagar o primeiro `a` (sobra `sa`), inserir `c`, inserir `o`.
+
+A mesma tabela, uma casa por vez. Repare quando o valor vem da diagonal (letras iguais) e quando vem de cima ou da esquerda:
+
+<GridDpViz client:visible mode="palavras" />
 
 Três casas para conferir:
 
