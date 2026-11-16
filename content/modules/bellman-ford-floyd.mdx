@@ -1,0 +1,441 @@
+---
+title: Bellman-Ford, ciclos negativos e Floyd-Warshall
+description: Dois algoritmos de caminho mínimo que o Dijkstra não substitui. Bellman-Ford aceita pesos negativos e avisa quando existe um ciclo negativo. Floyd-Warshall calcula a distância entre todos os pares de uma vez.
+---
+import Callout from '../../src/components/mdx/Callout.astro';
+import Quiz from '../../src/components/mdx/Quiz.tsx';
+import BellmanFordViz from '../../src/components/mdx/viz/BellmanFordViz.tsx';
+
+## Motivação: estradas que pagam
+
+O problema desta aula, do começo ao fim:
+
+> Há $n$ cidades e $m$ estradas de **mão única**. Passar por uma estrada tem um custo, que pode ser **negativo**: algumas estradas pagam você (um patrocinador, um desconto). Saindo da cidade 1, qual o menor custo total para chegar a cada cidade? Se existir um jeito de rodar em círculos ganhando dinheiro sem parar, avise.
+
+Um exemplo com 5 cidades e 5 estradas:
+
+| estrada | 1 → 2 | 1 → 3 | 3 → 2 | 2 → 4 | 4 → 5 |
+|---|---|---|---|---|---|
+| custo | 4 | 5 | −3 | 2 | 1 |
+
+À mão: para a cidade 2, a estrada direta custa 4, mas ir pela 3 custa $5 - 3 = 2$. Daí a cidade 4 fica em $2 + 2 = 4$ e a 5 em $4 + 1 = 5$. A resposta é 0, 2, 5, 4, 5.
+
+O Dijkstra erra aqui. Ele fecha a cidade 2 com custo 4 (a menor oferta em aberto, contra 5 da cidade 3) e só depois descobre que pela 3 sairia por 2. Como o módulo anterior mostrou, o argumento "a mais próxima já está resolvida" depende de nenhum custo ser negativo.
+
+## A ideia: relaxar tudo, várias vezes
+
+O Dijkstra é cuidadoso com a **ordem**: só usa uma cidade depois de ter certeza do custo dela. Sem essa certeza, resta uma estratégia mais simples: tentar melhorar por **todas** as estradas, e repetir.
+
+Uma **rodada** olha cada estrada uma vez e faz o teste de sempre: ir até a origem da estrada e atravessá-la é melhor do que o custo que eu conheço para o destino?
+
+Olhando as estradas na ordem 4 → 5, 2 → 4, 3 → 2, 1 → 2, 1 → 3 (uma ordem ruim, de propósito):
+
+| Rodada | O que melhora | Custos de 1, 2, 3, 4, 5 depois |
+|---|---|---|
+| início | | 0, ∞, ∞, ∞, ∞ |
+| 1 | 2: ∞ → 4; 3: ∞ → 5 | 0, 4, 5, ∞, ∞ |
+| 2 | 4: ∞ → 6; 2: 4 → 2 | 0, 2, 5, 6, ∞ |
+| 3 | 5: ∞ → 7; 4: 6 → 4 | 0, 2, 5, 4, 7 |
+| 4 | 5: 7 → 5 | 0, 2, 5, 4, 5 |
+| 5 | nada | 0, 2, 5, 4, 5 |
+
+Na rodada 1, as três primeiras estradas saem de cidades que ainda valem ∞, e não fazem nada. A informação avança devagar: a cada rodada, o custo certo "anda" pelo menos uma estrada adiante.
+
+Com as estradas em outra ordem (1 → 2, 1 → 3, 3 → 2, 2 → 4, 4 → 5), tudo se resolve em **uma** rodada. A ordem muda a velocidade, nunca a resposta.
+
+Esse é o algoritmo de **Bellman-Ford**.
+
+### Por que $n - 1$ rodadas bastam
+
+Pense no melhor caminho da cidade 1 até a 5: 1 → 3 → 2 → 4 → 5, com quatro estradas.
+
+- Depois da rodada 1, o custo da cidade 3 está certo (a primeira estrada do caminho foi relaxada).
+- Depois da rodada 2, o da cidade 2 está certo (a segunda estrada foi relaxada depois da primeira).
+- Depois da rodada 3, o da cidade 4. Depois da rodada 4, o da cidade 5.
+
+Em geral: depois de $k$ rodadas, está certo o custo de toda cidade cujo melhor caminho usa **no máximo $k$ estradas**. E um melhor caminho nunca repete cidade (repetir seria dar uma volta à toa), então ele passa por no máximo $n$ cidades e usa no máximo $n - 1$ estradas:
+
+$$
+\text{rodadas necessárias} \le n - 1
+$$
+
+$n$ é o número de cidades. No exemplo, $n - 1 = 4$, e foram exatamente quatro rodadas com melhora.
+
+<Callout type="tente">
+Com as estradas na ordem ruim da tabela, quantas rodadas com melhora seriam necessárias se o grafo fosse uma linha de 100 cidades (1 → 2 → 3 → … → 100), com as estradas listadas de trás para a frente?
+
+<details>
+<summary>Ver resposta</summary>
+
+99. Na rodada 1 só a estrada 1 → 2 faz efeito (as outras saem de cidades com ∞). Na rodada 2, só a 2 → 3. O custo certo avança uma cidade por rodada. É o pior caso: $n - 1$ rodadas. Com as estradas listadas na ordem 1 → 2, 2 → 3, …, uma rodada bastaria.
+
+</details>
+</Callout>
+
+### Quanto custa
+
+São até $n - 1$ rodadas, cada uma olhando as $m$ estradas:
+
+$$
+O(n \cdot m)
+$$
+
+Com $n = 2500$ e $m = 5000$, são 12,5 milhões de operações: tranquilo. Com $n = 10^5$ e $m = 2 \cdot 10^5$, seriam $2 \cdot 10^{10}$: não passa. Bellman-Ford é bem mais lento que Dijkstra, e só vale a pena quando há custo negativo.
+
+## Ciclos negativos
+
+Acrescente ao exemplo a estrada 5 → 3, com custo −1. Agora existe um círculo: 3 → 2 → 4 → 5 → 3, cuja soma é $-3 + 2 + 1 - 1 = -1$.
+
+Cada volta nesse círculo deixa você com 1 a menos de custo. Dando voltas suficientes, o custo fica tão baixo quanto se queira: **não existe menor custo**. Um círculo assim é um **ciclo negativo**.
+
+O Bellman-Ford detecta isso de graça. Sem ciclo negativo, $n - 1$ rodadas bastam e uma rodada a mais não melhora nada. Então rode **uma rodada extra**, a de número $n$: se ela ainda melhorar alguém, a única explicação é um ciclo negativo.
+
+| Rodada | O que melhora | Custos de 1, 2, 3, 4, 5 depois |
+|---|---|---|
+| 1 | 2: ∞ → 4; 3: ∞ → 5 | 0, 4, 5, ∞, ∞ |
+| 2 | 4: ∞ → 6; 2: 4 → 2 | 0, 2, 5, 6, ∞ |
+| 3 | 5: ∞ → 7; 4: 6 → 4 | 0, 2, 5, 4, 7 |
+| 4 | 5: 7 → 5; 3: 5 → 4 | 0, 2, 4, 4, 5 |
+| **5** | 2: 2 → 1 | 0, 1, 4, 4, 5 |
+
+A rodada 5 (a $n$-ésima) ainda melhorou a cidade 2. Os custos nunca vão parar de cair: há um ciclo negativo.
+
+Veja as duas situações estrada por estrada:
+
+<BellmanFordViz client:visible />
+
+Um ciclo de soma **zero** não é problema: dar a volta não melhora nada, e o algoritmo para normalmente.
+
+## Um cuidado com o infinito
+
+Numa rodada, a estrada pode sair de uma cidade que ainda vale infinito. Com custos positivos, "infinito mais alguma coisa" nunca ganha uma comparação, e não há perigo. Com custo **negativo**, há:
+
+```cpp
+if (dist[a] + w < dist[b]) dist[b] = dist[a] + w;   // ERRADO sem testar dist[a]
+```
+
+Com as estradas 1 → 2 (custo 7) e 3 → 4 (custo −5), as cidades 3 e 4 são inalcançáveis. Mas `INF - 5` é menor que `INF`, e a cidade 4 "melhora" para 999 999 999 999 999 995. Na hora de imprimir, ela não é mais igual a `INF`, e o programa mostra esse número enorme em vez de dizer que não há caminho.
+
+O conserto é pular a estrada quando a origem ainda não foi alcançada:
+
+```cpp
+if (dist[a] == INF) continue;                 // não sei chegar em a: a estrada não ajuda
+```
+
+## Todos os pares: Floyd-Warshall
+
+Outra pergunta: e se você precisa do menor custo entre **quaisquer** duas cidades, para responder muitas consultas do tipo "de $a$ até $b$"?
+
+Rodar um algoritmo a partir de cada cidade funciona. Mas quando há poucas cidades (até umas 500), existe algo muito mais curto: três laços.
+
+A ideia é liberar as cidades como **pontos de parada**, uma de cada vez. Guarde uma tabela `d[i][j]` com o menor custo conhecido de $i$ até $j$. No começo, só valem as estradas diretas. Quando a cidade $k$ é liberada, todo par $(i, j)$ pergunta: **ir de $i$ até $k$ e de $k$ até $j$ é melhor do que o que eu tenho?**
+
+$$
+d(i, j) \leftarrow \min\bigl(d(i, j),\ d(i, k) + d(k, j)\bigr)
+$$
+
+$d(i, k)$ e $d(k, j)$ são os melhores custos conhecidos dos dois trechos, usando como paradas só as cidades já liberadas.
+
+Um exemplo com 4 cidades e as estradas 1 → 2 (3), 2 → 3 (1), 1 → 3 (7), 3 → 4 (2), 4 → 1 (4). A tabela inicial (linha = origem, coluna = destino):
+
+| de \ até | 1 | 2 | 3 | 4 |
+|---|---|---|---|---|
+| **1** | 0 | 3 | 7 | ∞ |
+| **2** | ∞ | 0 | 1 | ∞ |
+| **3** | ∞ | ∞ | 0 | 2 |
+| **4** | 4 | ∞ | ∞ | 0 |
+
+O que muda a cada cidade liberada:
+
+| Libera | Casas que melhoram |
+|---|---|
+| 1 | 4 → 2: ∞ vira 7 (4 → 1 → 2); 4 → 3: ∞ vira 11 (4 → 1 → 3) |
+| 2 | 1 → 3: 7 vira 4 (1 → 2 → 3); 4 → 3: 11 vira 8 |
+| 3 | 1 → 4: ∞ vira 6; 2 → 4: ∞ vira 3 |
+| 4 | 2 → 1: ∞ vira 7; 3 → 1: ∞ vira 6; 3 → 2: ∞ vira 9 |
+
+A tabela final:
+
+| de \ até | 1 | 2 | 3 | 4 |
+|---|---|---|---|---|
+| **1** | 0 | 3 | 4 | 6 |
+| **2** | 7 | 0 | 1 | 3 |
+| **3** | 6 | 9 | 0 | 2 |
+| **4** | 4 | 7 | 8 | 0 |
+
+Repare na casa 4 → 3: ela valia 11 depois de liberar a cidade 1 (4 → 1 → 3) e caiu para 8 ao liberar a 2, porque o trecho 1 → 3 **já tinha melhorado** para 4. Os trechos são combinados usando os melhores valores até o momento, e é por isso que caminhos com várias paradas aparecem sem nenhum esforço extra.
+
+```cpp
+for (int k = 1; k <= n; k++)                  // k POR FORA: a cidade liberada como parada
+    for (int i = 1; i <= n; i++)
+        for (int j = 1; j <= n; j++)
+            if (d[i][k] != INF && d[k][j] != INF)
+                d[i][j] = min(d[i][j], d[i][k] + d[k][j]);
+```
+
+Esse é o algoritmo de **Floyd-Warshall**. Ele custa $O(n^3)$ de tempo e $O(n^2)$ de memória: com $n = 500$, são 125 milhões de operações simples, o que passa. Com $n = 5000$, não. Ele aceita custos negativos (desde que não haja ciclo negativo).
+
+### O laço de `k` tem de ser o de fora
+
+A ordem dos três laços não é livre. Com `k` por dentro, o código fica assim:
+
+```cpp
+for (int i = 1; i <= n; i++)                  // ERRADO: k por dentro
+    for (int j = 1; j <= n; j++)
+        for (int k = 1; k <= n; k++)
+            d[i][j] = min(d[i][j], d[i][k] + d[k][j]);
+```
+
+Num grafo com as estradas 1 → 4 (7), 4 → 3 (3) e 3 → 2 (6), o menor custo de 1 até 2 é $7 + 3 + 6 = 16$. O código errado responde **∞**. Ele calcula a casa (1, 2) logo no começo, quando os trechos 1 → 3 e 4 → 2 ainda não foram descobertos, e **nunca mais volta** a ela. Com `k` por fora, cada par é revisitado a cada cidade liberada.
+
+<Callout type="tente">
+Na tabela final do exemplo, de onde vem o 9 da casa 3 → 2? Escreva o caminho e diga em qual liberação ele apareceu.
+
+<details>
+<summary>Ver resposta</summary>
+
+O caminho é 3 → 4 → 1 → 2, com custo $2 + 4 + 3 = 9$. Ele apareceu ao liberar a cidade 4: a casa (3, 2) comparou ∞ com `d[3][4] + d[4][2]` = $2 + 7$. O trecho 4 → 2 já valia 7 desde a liberação da cidade 1 (4 → 1 → 2).
+
+</details>
+</Callout>
+
+## Qual algoritmo usar
+
+| Situação | Algoritmo | Custo |
+|---|---|---|
+| todo passo custa o mesmo | BFS | $O(n + m)$ |
+| custos diferentes, nenhum negativo | Dijkstra | $O((n + m) \log m)$ |
+| há custo negativo, ou é preciso detectar ciclo negativo | Bellman-Ford | $O(n \cdot m)$ |
+| distância entre todos os pares, com $n$ pequeno | Floyd-Warshall | $O(n^3)$ |
+
+Olhe primeiro os **limites** do enunciado: $n$ até 500 com muitas consultas entre pares aponta para Floyd-Warshall; $n$ e $m$ na casa dos milhares com custo negativo, para Bellman-Ford; $n$ e $m$ na casa de $10^5$, para Dijkstra ou BFS.
+
+## Código: o problema das estradas completo
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int main() {
+    int n, m;
+    cin >> n >> m;
+    vector<int> de(m), para(m);
+    vector<long long> custo(m);
+    for (int i = 0; i < m; i++) cin >> de[i] >> para[i] >> custo[i];   // estrada de mão única
+
+    const long long INF = 1e18;
+    vector<long long> dist(n + 1, INF);
+    dist[1] = 0;
+    bool mudou = false;
+    for (int rodada = 1; rodada <= n; rodada++) {          // n rodadas: a última só serve de teste
+        mudou = false;
+        for (int i = 0; i < m; i++) {
+            if (dist[de[i]] == INF) continue;              // ainda não sei chegar à origem da estrada
+            if (dist[de[i]] + custo[i] < dist[para[i]]) {  // relaxa a estrada i
+                dist[para[i]] = dist[de[i]] + custo[i];
+                mudou = true;
+            }
+        }
+        if (!mudou) break;                                 // rodada sem melhora: terminou
+    }
+
+    if (mudou) {                                           // a rodada n ainda melhorou alguém
+        cout << "CICLO NEGATIVO\n";
+        return 0;
+    }
+    for (int u = 1; u <= n; u++) {
+        if (dist[u] == INF) cout << "x";
+        else cout << dist[u];
+        cout << " \n"[u == n];
+    }
+}
+```
+
+O Bellman-Ford não precisa de lista de adjacência: basta a **lista de estradas**, guardada aqui em três vetores. O programa imprime `x` para cidades sem caminho.
+
+A variável `mudou` faz dois trabalhos. Se uma rodada passa sem melhora, o laço para cedo (em grafos comuns, isso acontece muito antes de $n$ rodadas). Se o laço chega ao fim da rodada $n$ ainda com `mudou` verdadeiro, há ciclo negativo.
+
+**Entrada** (o exemplo, com as estradas na ordem ruim):
+
+```
+5 5
+4 5 1
+2 4 2
+3 2 -3
+1 2 4
+1 3 5
+```
+
+**Saída:**
+
+```
+0 2 5 4 5
+```
+
+Acrescentando a linha `5 3 -1` (e trocando o 5 de estradas por 6), a saída é `CICLO NEGATIVO`.
+
+- **Tempo:** $O(n \cdot m)$.
+- **Memória:** $O(n + m)$.
+
+### O mesmo código no formato de contest
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+typedef long long ll;
+#define rep(i,a,b) for(int i=(a);i<(b);i++)
+void fastio(){ ios::sync_with_stdio(false); cin.tie(nullptr); }
+
+int main(){
+    fastio();
+    int n, m; cin >> n >> m;
+    vector<array<ll, 3>> es(m);                // {de, para, custo}
+    for (auto& e : es) cin >> e[0] >> e[1] >> e[2];
+
+    const ll INF = 1e18;
+    vector<ll> dist(n + 1, INF);
+    dist[1] = 0;
+    bool mudou = false;
+    rep(rodada, 0, n) {
+        mudou = false;
+        for (auto& [a, b, w] : es) if (dist[a] != INF && dist[a] + w < dist[b]) { dist[b] = dist[a] + w; mudou = true; }
+        if (!mudou) break;
+    }
+    if (mudou) { cout << "CICLO NEGATIVO\n"; return 0; }
+    rep(u, 1, n + 1) { if (dist[u] == INF) cout << "x"; else cout << dist[u]; cout << " \n"[u == n]; }
+}
+```
+
+`array<ll, 3>` é um vetor de tamanho fixo 3, usado para guardar uma estrada inteira num elemento só; `auto& [a, b, w]` o desmonta em três nomes.
+
+## Código: todos os pares
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int main() {
+    int n, m, q;
+    cin >> n >> m >> q;
+    const long long INF = 1e18;
+    // d[i][j] = menor custo conhecido de i até j
+    vector<vector<long long>> d(n + 1, vector<long long>(n + 1, INF));
+    for (int i = 1; i <= n; i++) d[i][i] = 0;              // de uma cidade até ela mesma: 0
+    for (int e = 0; e < m; e++) {
+        int a, b;
+        long long w;
+        cin >> a >> b >> w;
+        d[a][b] = min(d[a][b], w);                         // pode haver mais de uma estrada no par
+    }
+
+    for (int k = 1; k <= n; k++)                           // k POR FORA: a cidade liberada como parada
+        for (int i = 1; i <= n; i++)
+            for (int j = 1; j <= n; j++)
+                if (d[i][k] != INF && d[k][j] != INF)      // só combina trechos que existem
+                    d[i][j] = min(d[i][j], d[i][k] + d[k][j]);
+
+    while (q--) {
+        int a, b;
+        cin >> a >> b;
+        if (d[a][b] == INF) cout << "x\n";
+        else cout << d[a][b] << "\n";
+    }
+}
+```
+
+A entrada tem as estradas e depois $q$ consultas "de $a$ até $b$". Para o exemplo das 4 cidades, as consultas (1, 3), (3, 2) e (4, 4) recebem 4, 9 e 0.
+
+Se as estradas fossem de mão dupla, a leitura preencheria as duas casas: `d[a][b]` e `d[b][a]`.
+
+## Armadilhas comuns
+
+- **Somar com infinito** quando há custo negativo: pule a estrada cuja origem ainda vale `INF`.
+- **Rodar só $n - 1$ rodadas e esquecer a de teste**, quando o problema pede para detectar ciclo negativo.
+- **Ciclo negativo que não interessa.** Um ciclo negativo que não dá para alcançar a partir da origem não afeta nada (e, por causa do teste do infinito, nem é detectado). E se a pergunta é sobre um destino específico, só importa o ciclo de onde **dá para chegar ao destino**. Confira o que o enunciado pede.
+- **Usar Bellman-Ford com $n$ e $m$ grandes** sem necessidade: se não há custo negativo, é Dijkstra.
+- **Floyd-Warshall com `k` por dentro.**
+- **Floyd-Warshall: esquecer `d[i][i] = 0`**, ou sobrescrever uma estrada por outra pior quando há estradas repetidas (use `min` na leitura).
+- **Floyd-Warshall com $n$ grande.** $n^3$ com $n = 5000$ são $1{,}25 \cdot 10^{11}$ operações.
+- **`int` na tabela.** A soma de dois trechos pode estourar; use `long long`.
+
+<details class="para-depois">
+<summary>Para depois: achar o ciclo, o maior caminho e outras utilidades</summary>
+
+**Imprimir o ciclo negativo.** Guarde o pai de cada cidade (a origem da estrada que a melhorou por último). Se a rodada $n$ melhorou a cidade $x$, ande $n$ vezes pelos pais a partir de $x$: você com certeza cai dentro do ciclo. A partir daí, siga os pais até voltar à mesma cidade, anotando o percurso.
+
+**Maior caminho.** Trocar o sinal de todos os custos transforma "maior" em "menor". Um ciclo **positivo** no grafo original vira um ciclo negativo, e passa a significar "dá para ganhar sem limite".
+
+**Quais cidades o ciclo estraga.** Ter um ciclo negativo não torna todas as respostas inválidas: só as das cidades alcançáveis a partir dele. Para saber quais são, marque as cidades melhoradas na rodada $n$ e rode uma busca a partir delas.
+
+**Ciclo negativo com Floyd-Warshall.** Depois dos três laços, existe ciclo negativo passando pela cidade $i$ exatamente quando `d[i][i]` ficou negativo.
+
+**Só saber se dá para chegar.** Trocando o $\min$ e a soma por "ou" e "e", o Floyd-Warshall calcula, para todo par, se existe caminho de um ao outro.
+
+**Bellman-Ford com fila.** Uma variação só relaxa as estradas que saem de cidades cujo custo acabou de mudar. Na prática costuma ser bem mais rápida, mas o pior caso continua $O(n \cdot m)$, e há testes feitos para forçá-lo.
+
+</details>
+
+## Referências
+
+- **CPH, capítulo 13 — Shortest paths, seção 13.1 *Bellman–Ford algorithm*:** as rodadas de relaxação e a detecção de ciclo negativo.
+- **CPH, capítulo 13, seção 13.3 *Floyd–Warshall algorithm*:** a tabela de todos os pares e os três laços.
+- [cp-algorithms — Bellman-Ford](https://cp-algorithms.com/graph/bellman_ford.html), com a prova das $n - 1$ rodadas.
+- [cp-algorithms — Finding a Negative Cycle](https://cp-algorithms.com/graph/finding-negative-cycle-in-graph.html)
+- [cp-algorithms — Floyd-Warshall](https://cp-algorithms.com/graph/all-pair-shortest-path-floyd-warshall.html)
+- [USACO Guide — Shortest Paths with Non-Negative Edge Weights](https://usaco.guide/gold/shortest-paths), que também cobre Floyd-Warshall.
+
+## Mini-quiz
+
+<Quiz
+  client:visible
+  questions={[
+    {
+      q: 'Estradas olhadas nesta ordem: 1→2 (5), 2→3 (−2), 1→3 (4), 3→4 (1). Quais são os custos de 1, 2, 3, 4 depois da **primeira** rodada?',
+      code: 'for (cada estrada (a, b, w), na ordem dada)\n    if (dist[a] != INF && dist[a] + w < dist[b]) dist[b] = dist[a] + w;',
+      options: ['0, 5, 4, 5', '0, 5, 3, 4', '0, 5, 3, ∞', '0, 5, 4, ∞'],
+      answer: 1,
+      why: '1→2 dá 5 à cidade 2. 2→3 dá 5 − 2 = 3 à cidade 3. 1→3 ofereceria 4, que não melhora. 3→4 dá 3 + 1 = 4. Nesta ordem, uma rodada resolve tudo.',
+    },
+    {
+      q: 'Floyd-Warshall com as estradas 1→2 (2), 2→3 (2), 1→3 (5) e 3→1 (1). Quanto valem `d[1][3]`, `d[3][2]` e `d[2][1]` no final?',
+      code: 'for (k) for (i) for (j)\n    d[i][j] = min(d[i][j], d[i][k] + d[k][j]);',
+      options: ['5, ∞, ∞', '4, 3, 3', '4, 3, ∞', '5, 3, 3'],
+      answer: 1,
+      why: '1→3 por 2 custa 4, melhor que a direta (5). 3→2 é 3→1→2 = 1 + 2 = 3. 2→1 é 2→3→1 = 2 + 1 = 3.',
+    },
+    {
+      q: 'Um grafo de 3 cidades tem as estradas 1→2 (1), 2→3 (−2) e 3→2 (1). O que o programa da aula imprime?',
+      options: ['0 1 -1', 'CICLO NEGATIVO', '0 1 x', '0 -1 -2'],
+      answer: 1,
+      why: 'O círculo 2→3→2 soma −2 + 1 = −1 e é alcançável a partir de 1: cada volta reduz o custo. Se a estrada 2→3 custasse −1, a soma seria 0 e a resposta seria 0 1 0.',
+    },
+    {
+      q: 'Por que n − 1 rodadas bastam quando não há ciclo negativo?',
+      options: [
+        'Porque cada rodada acerta uma cidade a mais, em ordem de número',
+        'Porque um caminho mínimo não repete cidade, então usa no máximo n − 1 estradas, e cada rodada acerta mais uma estrada dele',
+        'Porque existem n − 1 estradas',
+        'Porque a fila de prioridade esvazia',
+      ],
+      answer: 1,
+      why: 'Depois de k rodadas, todo caminho mínimo com até k estradas está certo. O mais longo possível tem n − 1 estradas.',
+    },
+    {
+      q: 'n = 400 cidades, custos não negativos, e 100 000 consultas "menor custo de a até b". Qual a melhor escolha?',
+      options: ['Um Dijkstra por consulta', 'Floyd-Warshall uma vez e responder da tabela', 'Bellman-Ford por consulta', 'BFS'],
+      answer: 1,
+      why: '400³ = 64 milhões de operações, feitas uma vez; depois cada consulta é uma leitura. Cem mil Dijkstras não passariam.',
+    },
+    {
+      q: 'No Floyd-Warshall, o que acontece se o laço de k ficar por dentro dos de i e j?',
+      options: [
+        'Nada: a ordem dos laços não importa',
+        'Fica mais lento, mas certo',
+        'Alguns pares são calculados antes de os trechos necessários estarem prontos, e nunca são revisitados',
+        'Erro de compilação',
+      ],
+      answer: 2,
+      why: 'Com 1→4 (7), 4→3 (3), 3→2 (6), a casa (1, 2) é calculada quando 1→3 ainda vale infinito, e fica infinito para sempre. O certo é 16.',
+    },
+  ]}
+/>
