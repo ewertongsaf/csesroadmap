@@ -1,0 +1,407 @@
+---
+title: DSU (union-find)
+description: Uma estrutura que mantém grupos enquanto eles vão se juntando. Duas operações quase instantâneas - descobrir o representante de um grupo e unir dois grupos - resolvem conectividade sem refazer nenhuma busca.
+---
+import Callout from '../../src/components/mdx/Callout.astro';
+import Quiz from '../../src/components/mdx/Quiz.tsx';
+import DsuViz from '../../src/components/mdx/viz/DsuViz.tsx';
+
+## Motivação: a rede que vai sendo montada
+
+O problema desta aula, do começo ao fim:
+
+> Um laboratório tem $n$ computadores, sem nenhum cabo. Chegam $q$ eventos, um de cada vez. Um evento `L a b` **liga** os computadores $a$ e $b$ com um cabo. Um evento `P a b` **pergunta**: neste momento, $a$ e $b$ estão conectados (direto ou passando por outros)?
+
+Um exemplo com 6 computadores:
+
+| Evento | O que acontece | Grupos depois |
+|---|---|---|
+| `L 1 2` | cabo entre 1 e 2 | \{1, 2\}, \{3\}, \{4\}, \{5\}, \{6\} |
+| `L 3 4` | cabo entre 3 e 4 | \{1, 2\}, \{3, 4\}, \{5\}, \{6\} |
+| `P 1 3` | **não** | |
+| `L 2 3` | junta os dois grupos | \{1, 2, 3, 4\}, \{5\}, \{6\} |
+| `P 1 4` | **sim** (1 – 2 – 3 – 4) | |
+| `L 5 6` | cabo entre 5 e 6 | \{1, 2, 3, 4\}, \{5, 6\} |
+| `P 4 6` | **não** | |
+| `L 6 1` | junta tudo | \{1, 2, 3, 4, 5, 6\} |
+| `P 4 6` | **sim** | |
+| `L 2 5` | já estavam conectados | \{1, 2, 3, 4, 5, 6\} |
+
+A solução que você já conhece é rodar uma DFS ou BFS a cada pergunta, o que custa uma busca inteira por pergunta. Com $2 \cdot 10^5$ computadores e $2 \cdot 10^5$ perguntas, são $4 \cdot 10^{10}$ operações. Não passa.
+
+O que atrapalha é que o grafo **muda** entre uma pergunta e outra. Mas repare na coluna da direita: os grupos só fazem uma coisa, que é **se juntar**. Eles nunca se dividem. Para esse caso existe uma estrutura feita sob medida.
+
+## A ideia: cada grupo tem um representante
+
+Escolha, em cada grupo, um membro para ser o **representante**. Dois computadores estão conectados exatamente quando têm o **mesmo** representante.
+
+Para guardar isso, cada computador aponta para um "chefe" dentro do grupo. O representante é quem não tem chefe acima: aponta para si mesmo. Guarde num vetor:
+
+**`pai[x]`** = o chefe de $x$; se `pai[x]` é o próprio $x$, ele é o representante (a **raiz**) do grupo.
+
+Duas operações bastam:
+
+- **`acha(x)`**: suba de chefe em chefe a partir de $x$ até chegar em alguém que é o próprio chefe. Esse é o representante.
+- **`une(a, b)`**: ache os representantes dos dois. Se são diferentes, faça um deles virar chefe do outro. Os dois grupos passam a ter um representante só.
+
+Depois de `L 1 2`, `L 3 4` e `L 2 3`, o vetor poderia estar assim:
+
+| $x$ | 1 | 2 | 3 | 4 | 5 | 6 |
+|---|---|---|---|---|---|---|
+| `pai[x]` | 1 | 1 | 1 | 3 | 5 | 6 |
+
+Para responder `P 1 4`: o 1 é a própria raiz. O 4 aponta para o 3, que aponta para o 1, que é raiz. Mesma raiz: conectados.
+
+Os grupos formam árvores de cabeça para baixo, em que cada um conhece só quem está **acima**. Por isso o nome em inglês da estrutura, *disjoint set union* (**DSU**), também conhecida como **union-find**.
+
+Uma primeira versão:
+
+```cpp
+int acha(int x) {
+    while (pai[x] != x) x = pai[x];           // sobe até a raiz
+    return x;
+}
+
+void une(int a, int b) {
+    a = acha(a);
+    b = acha(b);
+    if (a != b) pai[a] = b;                   // a raiz de um grupo passa a apontar para a do outro
+}
+```
+
+O detalhe que mais derruba gente: `une` liga as **raízes**, não os próprios $a$ e $b$. Escrever `pai[a] = b` sem antes achar as raízes arranca $a$ do grupo em que ele estava e o cola no de $b$, deixando o resto do grupo antigo para trás.
+
+## O problema: árvores altas
+
+A versão acima está correta, mas pode ficar lenta. Veja o que acontece com as ligações `L 1 2`, `L 1 3`, `L 1 4`, …, `L 1 8`, usando a regra "a raiz do primeiro passa a apontar para a raiz do segundo":
+
+| $x$ | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+|---|---|---|---|---|---|---|---|---|
+| `pai[x]` | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 8 |
+
+Formou-se uma fila indiana: 1 → 2 → 3 → … → 8. Para achar a raiz do 1, é preciso dar 7 passos. Com $10^5$ computadores ligados assim, cada `acha(1)` daria $10^5$ passos, e $10^5$ perguntas custariam $10^{10}$. Voltamos ao ponto de partida.
+
+Duas melhorias simples resolvem isso.
+
+### Melhoria 1: o grupo menor entra debaixo do maior
+
+Quando dois grupos se juntam, quem vira chefe de quem? Se o grupo **grande** for pendurado debaixo do pequeno, todos os membros do grande ficam um passo mais longe da raiz. Se for o contrário, só os poucos membros do pequeno ficam.
+
+Guarde o tamanho de cada grupo na raiz dele (`tam[r]`) e pendure sempre **a raiz do menor debaixo da raiz do maior**. Com a mesma sequência de ligações de antes:
+
+| $x$ | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+|---|---|---|---|---|---|---|---|---|
+| `pai[x]` | 1 | 1 | 1 | 1 | 1 | 1 | 1 | 1 |
+
+Todo mundo a um passo da raiz, em vez de sete.
+
+Com essa regra, a altura de uma árvore nunca passa de $\log_2 n$. O motivo: cada vez que um computador fica um passo mais longe da raiz, é porque o grupo dele foi o **menor** de uma união, então o grupo novo tem pelo menos o **dobro** do tamanho do antigo. Um grupo só pode dobrar $\log_2 n$ vezes antes de conter todo mundo. Com 8 computadores, o pior caso (juntar sempre grupos de tamanhos iguais) dá altura 3; com $10^5$, no máximo 16.
+
+### Melhoria 2: encurtar o caminho ao subir
+
+Quando `acha(x)` sobe até a raiz, ela passa por vários computadores. Todos eles têm a mesma raiz. Então, depois de descobri-la, aponte **cada um deles direto para ela**. A próxima consulta a qualquer um será de um passo só.
+
+Uma fila indiana de cinco, antes e depois de `acha(5)`:
+
+| $x$ | 1 | 2 | 3 | 4 | 5 |
+|---|---|---|---|---|---|
+| `pai[x]` antes | 1 | 1 | 2 | 3 | 4 |
+| `pai[x]` depois | 1 | 1 | 1 | 1 | 1 |
+
+Isso se chama **compressão de caminho**, e em código é uma função recursiva de três linhas:
+
+```cpp
+int acha(int x) {
+    if (pai[x] == x) return x;                // x é a raiz
+    return pai[x] = acha(pai[x]);             // acha a raiz e já pendura x direto nela
+}
+```
+
+A última linha faz duas coisas: `acha(pai[x])` descobre a raiz, a atribuição `pai[x] = ...` grava essa raiz como novo pai de $x$, e o valor atribuído é devolvido.
+
+Com as duas melhorias juntas, cada operação custa, na prática, tempo constante. (O custo exato é uma função que cresce tão devagar que não passa de 4 para qualquer entrada que caiba no universo.)
+
+<Callout type="tente">
+Com a regra do menor debaixo do maior, existem dois grupos: um de tamanho 5 e raiz 2, outro de tamanho 3 e raiz 7. Chega `L 7 2`. Qual vira `pai` de qual? E se a ligação fosse escrita `L 2 7`?
+
+<details>
+<summary>Ver resposta</summary>
+
+Nos dois casos, `pai[7] = 2` e `tam[2]` vira 8. A ordem em que os dois aparecem no evento não importa: quem decide é o **tamanho** dos grupos. É por isso que o código compara os tamanhos e, se preciso, troca os dois de lugar antes de ligar.
+
+</details>
+</Callout>
+
+## O exemplo completo, passo a passo
+
+Os dez eventos da motivação, com as duas melhorias:
+
+| Evento | `pai` de 1 a 6 | Raízes (tamanho) | Resposta |
+|---|---|---|---|
+| início | 1, 2, 3, 4, 5, 6 | todas, tamanho 1 | |
+| `L 1 2` | 1, 1, 3, 4, 5, 6 | 1 (2), 3, 4, 5, 6 | |
+| `L 3 4` | 1, 1, 3, 3, 5, 6 | 1 (2), 3 (2), 5, 6 | |
+| `P 1 3` | 1, 1, 3, 3, 5, 6 | | não |
+| `L 2 3` | 1, 1, 1, 3, 5, 6 | 1 (4), 5, 6 | |
+| `P 1 4` | 1, 1, 1, **1**, 5, 6 | | sim |
+| `L 5 6` | 1, 1, 1, 1, 5, 5 | 1 (4), 5 (2) | |
+| `P 4 6` | 1, 1, 1, 1, 5, 5 | | não |
+| `L 6 1` | 1, 1, 1, 1, 1, 5 | 1 (6) | |
+| `P 4 6` | 1, 1, 1, 1, 1, **1** | | sim |
+| `L 2 5` | 1, 1, 1, 1, 1, 1 | 1 (6) | (já juntos) |
+
+Duas linhas merecem atenção:
+
+- **`L 2 3`.** O evento fala em 2 e 3, mas quem é ligado são as **raízes**: 1 (raiz do 2) e 3. Os dois grupos têm tamanho 2; no empate, tanto faz, e aqui a raiz 3 entrou debaixo da 1.
+- **`P 1 4`.** Uma pergunta também muda o vetor: ao subir do 4 até a raiz, a compressão trocou o pai dele de 3 para 1. O mesmo acontece com o 6 na segunda pergunta `P 4 6`.
+
+<DsuViz client:visible />
+
+## Mais do que "estão conectados?"
+
+Como cada raiz já guarda o tamanho do grupo, a estrutura responde de graça:
+
+- **Quantos computadores há no grupo de $x$?** `tam[acha(x)]`.
+- **Quantos grupos existem?** Comece um contador em $n$ e diminua 1 toda vez que `une` juntar dois grupos **diferentes**.
+- **Qual o tamanho do maior grupo?** Um máximo atualizado a cada união.
+
+Por isso vale fazer `une` devolver se a união aconteceu de verdade: o chamador decide o que contar. Qualquer informação que possa ser **combinada** ao juntar dois grupos (soma, mínimo, máximo) pode morar na raiz, do mesmo jeito que o tamanho.
+
+<Callout type="tente">
+No exemplo, quantos grupos existem depois de cada um dos cinco eventos `L` que juntam alguém? E depois do último evento, `L 2 5`?
+
+<details>
+<summary>Ver resposta</summary>
+
+O contador começa em 6 e cai uma unidade a cada união efetiva: 5 (`L 1 2`), 4 (`L 3 4`), 3 (`L 2 3`), 2 (`L 5 6`), 1 (`L 6 1`). O evento `L 2 5` não muda nada, porque 2 e 5 já estavam no mesmo grupo: continua 1. Se o código diminuísse o contador sem conferir, chegaria a 0, o que não faz sentido.
+
+</details>
+</Callout>
+
+## O que a estrutura não faz: separar
+
+O union-find só sabe **juntar**. Não existe operação para cortar um cabo: as árvores perderam a informação de quem estava ligado a quem.
+
+Quando um problema só **remove** ligações, há um truque: ler tudo primeiro e processar **de trás para a frente**. Visto ao contrário, cada remoção vira uma ligação.
+
+Um exemplo. Existem os cabos 1–2, 2–3 e 3–4, e os eventos são:
+
+| # | Evento | Resposta |
+|---|---|---|
+| 1 | pergunta: 1 e 4 conectados? | sim |
+| 2 | corta o cabo 2–3 | |
+| 3 | pergunta: 1 e 4 conectados? | não |
+| 4 | corta o cabo 1–2 | |
+| 5 | pergunta: 1 e 2 conectados? | não |
+
+De trás para a frente: comece pelo estado **final** (só o cabo 3–4, que nunca foi cortado). Responda a pergunta 5: não. O evento 4, lido ao contrário, **liga** 1–2. Responda a pergunta 3: não. O evento 2, ao contrário, liga 2–3. Responda a pergunta 1: sim. As respostas saíram na ordem inversa (não, não, sim); invertendo, dá sim, não, não.
+
+Isso só funciona quando todas as perguntas são conhecidas de antemão, o que é o caso normal em competição.
+
+## Código: o problema da rede completo
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<int> pai, tam;                          // pai[x] = quem está acima de x; tam[r] = tamanho do grupo da raiz r
+
+// Devolve o representante (a raiz) do grupo de x, encurtando o caminho na volta.
+int acha(int x) {
+    if (pai[x] == x) return x;                 // x é a raiz do próprio grupo
+    return pai[x] = acha(pai[x]);              // pendura x direto na raiz
+}
+
+// Junta os grupos de a e b. Devolve false se já eram o mesmo grupo.
+bool une(int a, int b) {
+    a = acha(a);
+    b = acha(b);
+    if (a == b) return false;
+    if (tam[a] < tam[b]) swap(a, b);           // a passa a ser a raiz do grupo maior
+    pai[b] = a;                                // o menor entra debaixo do maior
+    tam[a] += tam[b];
+    return true;
+}
+
+int main() {
+    int n, q;
+    cin >> n >> q;
+    pai.resize(n + 1);
+    tam.assign(n + 1, 1);
+    for (int x = 1; x <= n; x++) pai[x] = x;   // no começo, cada computador é um grupo sozinho
+
+    while (q--) {
+        char tipo;
+        int a, b;
+        cin >> tipo >> a >> b;
+        if (tipo == 'L') une(a, b);                                       // liga a e b com um cabo
+        else cout << (acha(a) == acha(b) ? "SIM" : "NAO") << "\n";        // P: a e b estão conectados?
+    }
+}
+```
+
+`swap(a, b)` troca os valores das duas variáveis. Depois dela, `a` é com certeza a raiz do grupo maior (ou de um dos dois, no empate).
+
+**Entrada:**
+
+```
+6 10
+L 1 2
+L 3 4
+P 1 3
+L 2 3
+P 1 4
+L 5 6
+P 4 6
+L 6 1
+P 4 6
+L 2 5
+```
+
+**Saída:**
+
+```
+NAO
+SIM
+NAO
+SIM
+```
+
+São as quatro perguntas da tabela, na ordem.
+
+- **Tempo:** praticamente $O(n + q)$: cada evento custa tempo quase constante.
+- **Memória:** $O(n)$: dois vetores.
+
+Repare que os cabos não são guardados em lugar nenhum. A estrutura não precisa do grafo, só dos grupos.
+
+### O mesmo código no formato de contest
+
+Em contest, o DSU costuma virar uma `struct`: um pacote com os vetores e as funções juntos, que você copia de um problema para o outro.
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+typedef vector<int> vi;
+void fastio(){ ios::sync_with_stdio(false); cin.tie(nullptr); }
+
+struct DSU {
+    vi pai, tam;
+    int grupos;
+    DSU(int n) : pai(n + 1), tam(n + 1, 1), grupos(n) { iota(pai.begin(), pai.end(), 0); }
+    int acha(int x) { return pai[x] == x ? x : pai[x] = acha(pai[x]); }
+    bool une(int a, int b) {
+        a = acha(a); b = acha(b);
+        if (a == b) return false;
+        if (tam[a] < tam[b]) swap(a, b);
+        pai[b] = a; tam[a] += tam[b]; grupos--;
+        return true;
+    }
+};
+
+int main(){
+    fastio();
+    int n, q; cin >> n >> q;
+    DSU d(n);
+    while (q--) {
+        char t; int a, b; cin >> t >> a >> b;
+        if (t == 'L') d.une(a, b);
+        else cout << (d.acha(a) == d.acha(b) ? "SIM" : "NAO") << "\n";
+    }
+}
+```
+
+A linha `DSU(int n) : ...` é o **construtor**: roda quando você escreve `DSU d(n)` e deixa os vetores no tamanho certo. `iota(pai.begin(), pai.end(), 0)` preenche o vetor com 0, 1, 2, …, ou seja, `pai[x] = x`. As funções são chamadas com ponto: `d.une(a, b)`.
+
+## Armadilhas comuns
+
+- **Ligar os próprios vértices em vez das raízes.** `pai[a] = b` sem `acha` antes quebra o grupo de `a`.
+- **Não conferir se as raízes já são iguais.** Sem o `if (a == b) return false`, o tamanho do grupo é somado a si mesmo, e o contador de grupos diminui à toa.
+- **Ler `tam[x]` de quem não é raiz.** O tamanho só é mantido na raiz: use `tam[acha(x)]`.
+- **Comparar `pai[a] == pai[b]`** para saber se estão conectados. Dois membros do mesmo grupo podem ter pais diferentes. Compare `acha(a) == acha(b)`.
+- **Esquecer de iniciar `pai[x] = x`.** Com o vetor zerado, todo mundo aponta para o 0.
+- **Tentar remover uma ligação.** Não dá; veja se o problema pode ser lido de trás para a frente.
+- **Usar DSU quando o grafo não muda.** Para contar componentes de um grafo fixo, a DFS do módulo de grafos faz o mesmo. O DSU brilha quando as ligações chegam aos poucos, com perguntas no meio.
+
+<details class="para-depois">
+<summary>Para depois: variações que você vai encontrar</summary>
+
+**União por altura ("rank").** Em vez do tamanho, alguns códigos guardam uma estimativa da altura da árvore e penduram a mais baixa debaixo da mais alta. O efeito é o mesmo. O tamanho tem a vantagem de ser uma informação útil por si só.
+
+**Só uma das melhorias.** Com apenas a união por tamanho, ou apenas a compressão, cada operação custa $O(\log n)$, o que também passa. As duas juntas dão o tempo quase constante.
+
+**`acha` sem recursão.** Num juiz com pilha de chamadas pequena, a recursão pode estourar numa cadeia longa formada antes de qualquer compressão. Com união por tamanho isso não acontece (a altura não passa de $\log_2 n$), mas a versão com laço existe: suba até a raiz e depois refaça o caminho apontando todos para ela.
+
+**DSU com peso nas arestas.** Dá para guardar, em cada vértice, uma informação relativa ao pai (uma diferença, uma paridade) e mantê-la certa durante a compressão. Serve para problemas do tipo "o valor de $a$ é o de $b$ mais 5; essas afirmações são consistentes?".
+
+**Desfazer a última união.** Sem compressão de caminho (só com união por tamanho), cada `une` altera duas casas e pode ser desfeita. Isso é a base de uma técnica para remoções em ordem qualquer, que aparece no módulo de técnicas avançadas.
+
+**Juntar conjuntos de verdade.** Quando cada grupo carrega uma coleção (os valores presentes nele, por exemplo), a mesma regra "o menor entra no maior" mantém o custo total baixo: cada elemento muda de coleção no máximo $\log_2 n$ vezes.
+
+</details>
+
+## Referências
+
+- **CPH, capítulo 15 — Spanning trees, seção 15.2 *Union-find structure*:** a estrutura com união pelo tamanho, exatamente como usada pelo algoritmo de Kruskal do próximo módulo.
+- [USACO Guide — Disjoint Set Union](https://usaco.guide/gold/dsu)
+- [cp-algorithms — Disjoint Set Union](https://cp-algorithms.com/data_structures/disjoint_set_union.html), com as duas melhorias, a análise do custo e muitas aplicações.
+
+## Mini-quiz
+
+<Quiz
+  client:visible
+  questions={[
+    {
+      q: 'Cinco computadores, com as ligações `L 1 2`, `L 3 4`, `L 2 4`, nesta ordem (menor debaixo do maior; no empate, a raiz do segundo entra debaixo da do primeiro). Como fica `pai` de 1 a 5?',
+      code: 'a = acha(a); b = acha(b);\nif (a == b) return false;\nif (tam[a] < tam[b]) swap(a, b);\npai[b] = a; tam[a] += tam[b];',
+      options: ['1, 1, 3, 3, 5', '1, 1, 1, 3, 5', '1, 1, 1, 1, 5', '3, 1, 3, 3, 5'],
+      answer: 1,
+      why: 'L 1 2 faz pai[2] = 1. L 3 4 faz pai[4] = 3. Em L 2 4 as raízes são 1 e 3, com tamanhos iguais: pai[3] = 1. O 4 continua apontando para o 3 até alguém chamar acha(4).',
+    },
+    {
+      q: 'Continuando do estado anterior (pai = 1, 1, 1, 3, 5), chega `L 5 4`. Como fica `pai` depois?',
+      code: 'int acha(int x) {\n    if (pai[x] == x) return x;\n    return pai[x] = acha(pai[x]);\n}',
+      options: ['1, 1, 1, 3, 1', '1, 1, 1, 1, 1', '5, 1, 1, 3, 5', '1, 1, 1, 3, 4'],
+      answer: 1,
+      why: 'acha(4) sobe 4 → 3 → 1 e, na volta, pendura o 4 direto no 1. As raízes são 5 (tamanho 1) e 1 (tamanho 4): o 5 entra debaixo do 1.',
+    },
+    {
+      q: 'Quatro computadores e as ligações `L 1 2`, `L 2 1`, `L 3 4`. Quantos grupos existem no final?',
+      options: ['1', '2', '3', '4'],
+      answer: 1,
+      why: 'L 1 2 junta (3 grupos). L 2 1 não faz nada: já tinham a mesma raiz. L 3 4 junta (2 grupos). Um contador que diminuísse a cada evento L, sem conferir, daria 1.',
+    },
+    {
+      q: 'Por que `une` precisa chamar `acha` nos dois antes de ligar?',
+      options: [
+        'Para comprimir o caminho',
+        'Porque a ligação tem de ser feita entre as raízes: mudar o pai de um vértice do meio o arranca do grupo dele',
+        'Para deixar o código mais rápido',
+        'Não precisa: pai[a] = b basta',
+      ],
+      answer: 1,
+      why: 'Só a raiz representa o grupo inteiro. Apontar a raiz de um grupo para a do outro leva todo mundo junto.',
+    },
+    {
+      q: 'Por que pendurar o grupo menor debaixo do maior mantém as árvores baixas?',
+      options: [
+        'Porque o grupo menor tem números menores',
+        'Porque um vértice só fica mais longe da raiz quando o grupo dele pelo menos dobra, e isso só pode acontecer log₂ n vezes',
+        'Porque a compressão de caminho apaga a altura',
+        'Porque a raiz do maior é sempre o vértice 1',
+      ],
+      answer: 1,
+      why: 'Só os membros do grupo menor ganham um passo, e o grupo resultante tem pelo menos o dobro do tamanho do menor.',
+    },
+    {
+      q: 'Um problema começa com um grafo cheio de arestas e, a cada evento, **remove** uma. Entre as remoções há perguntas de conectividade. Como usar union-find?',
+      options: [
+        'Não dá de jeito nenhum',
+        'Lendo tudo primeiro e processando de trás para a frente: cada remoção vira uma ligação',
+        'Desfazendo a compressão de caminho',
+        'Rodando uma DFS a cada remoção',
+      ],
+      answer: 1,
+      why: 'Comece pelo estado final, responda as perguntas na ordem inversa e ligue as arestas à medida que "volta no tempo". No fim, inverta a lista de respostas.',
+    },
+  ]}
+/>
