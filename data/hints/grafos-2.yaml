@@ -1,0 +1,181 @@
+# Dicas do milestone 11 — Grafos II: caminhos mínimos, DAGs e ordenação topológica.
+problems:
+  1671: # Shortest Routes I
+    hints:
+      - >-
+        Voos com preços diferentes, nenhum negativo, e você quer o menor preço de uma cidade até todas as outras. Qual dos algoritmos de caminho mínimo é esse?
+      - >-
+        Dijkstra a partir da cidade 1, com fila de prioridade. Os voos são de mão única: cada um entra em uma lista só.
+    pitfalls:
+      - >-
+        Os preços somam até $10^{14}$: use `long long` nas distâncias, na fila e no infinito. Sem o teste da entrada velha na fila, o programa toma TLE.
+
+  1672: # Shortest Routes II
+    hints:
+      - >-
+        Há até 500 cidades e muitas consultas entre pares quaisquer. Olhe os limites: qual algoritmo calcula a distância entre **todos** os pares de uma vez?
+      - >-
+        Floyd-Warshall, uma vez só; depois cada consulta é uma leitura da tabela. As estradas são de mão dupla: preencha as duas casas.
+    pitfalls:
+      - >-
+        Pode haver várias estradas entre o mesmo par: fique com a menor na leitura. Não combine trechos que valem infinito, e imprima $-1$ quando não houver caminho.
+
+  1195: # Flight Discount
+    hints:
+      - >-
+        O cupom só pode ser usado uma vez. O que você precisa saber, além da cidade em que está, para decidir o que ainda pode fazer?
+      - >-
+        Se o cupom já foi gasto. O estado é (cidade, cupom usado ou não), e cada voo vira duas arestas: uma pelo preço cheio e outra, saindo do estado "não usado" para "usado", pela metade.
+      - >-
+        Rode Dijkstra nesse grafo de estados, que tem o dobro de vértices. A resposta é o destino no estado "usado".
+    pitfalls:
+      - >-
+        A metade é arredondada para baixo. Usar o cupom nunca piora, então não é preciso considerar chegar sem usá-lo.
+
+  1673: # High Score
+    hints:
+      - >-
+        Você quer a **maior** pontuação, e os túneis podem ter pontuação negativa. Trocando o sinal de tudo, vira um caminho mínimo com pesos negativos.
+      - >-
+        Bellman-Ford. A pontuação fica ilimitada quando existe um ciclo que aumenta a pontuação a cada volta. Mas todo ciclo desses importa?
+      - >-
+        Só o que dá para alcançar a partir da sala 1 **e** de onde dá para chegar à sala $n$. Calcule quem é alcançável da 1 e quem alcança a $n$ (uma busca no grafo invertido) e só acuse o ciclo se a melhora da rodada extra acontecer num vértice das duas listas.
+    pitfalls:
+      - >-
+        Um ciclo positivo que não leva à sala $n$ não torna a resposta $-1$. As pontuações somam até cerca de $2{,}5 \cdot 10^{12}$ em módulo: `long long`.
+
+  1197: # Cycle Finding
+    hints:
+      - >-
+        Bellman-Ford detecta ciclo negativo com uma rodada extra. Mas aqui o ciclo pode estar em qualquer parte do grafo, inclusive longe do vértice 1.
+      - >-
+        Comece com distância 0 em **todos** os vértices (como se uma origem imaginária estivesse ligada a todos com custo 0). Assim nenhum ciclo fica fora de alcance.
+      - >-
+        Guarde o pai de cada vértice. Se a rodada $n$ melhorou o vértice $x$, ande $n$ vezes pelos pais a partir de $x$ para garantir que está dentro do ciclo; depois siga os pais até voltar ao mesmo vértice.
+    pitfalls:
+      - >-
+        O vértice melhorado na última rodada pode estar **fora** do ciclo (só alcançável a partir dele): por isso os $n$ passos para trás. O ciclo sai ao contrário; inverta antes de imprimir.
+
+  1196: # Flight Routes
+    hints:
+      - >-
+        No Dijkstra, a primeira vez que uma cidade sai da fila dá o menor preço até ela. O que representa a **segunda** vez que ela sai, se você deixar?
+      - >-
+        O segundo menor preço. Deixe cada cidade sair da fila até $k$ vezes, expandindo os voos em todas elas, e ignore as saídas depois da $k$-ésima.
+      - >-
+        As $k$ vezes em que a cidade $n$ sai da fila são as $k$ respostas, já em ordem.
+    pitfalls:
+      - >-
+        Aqui não vale o teste da entrada velha do Dijkstra comum: no lugar dele, conte quantas vezes cada cidade já saiu. Rotas com o mesmo preço contam separadamente.
+
+  1202: # Investigation
+    hints:
+      - >-
+        São quatro respostas sobre os caminhos de menor preço: o preço, quantos são, o menor e o maior número de voos entre eles. Todas saem de um único Dijkstra, guardando mais informação por cidade.
+      - >-
+        Quando um voo oferece um preço **estritamente menor** para uma cidade, ela herda a contagem e os números de voos de quem ofereceu (mais 1). O que fazer quando o preço **empata**?
+      - >-
+        No empate, some a contagem e atualize o mínimo e o máximo de voos, sem recolocar a cidade na fila.
+    pitfalls:
+      - >-
+        A contagem cresce muito: tire o módulo a cada soma. O empate precisa ser tratado na hora da oferta, e não quando a cidade sai da fila.
+
+  1679: # Course Schedule
+    hints:
+      - >-
+        "O curso $a$ antes do curso $b$" é uma aresta de $a$ para $b$. Você quer uma ordem que respeite todas.
+      - >-
+        Uma ordenação topológica. Conte quantos pré-requisitos faltam para cada curso e vá tirando de uma fila os que já não têm nenhum.
+    pitfalls:
+      - >-
+        Se sobrarem cursos fora da ordem, há requisitos circulares: imprima `IMPOSSIBLE`.
+
+  1678: # Round Trip II
+    hints:
+      - >-
+        Agora os voos têm sentido. Num grafo direcionado, encontrar um vértice já visitado não basta para garantir um ciclo: ele pode ter sido alcançado por outro caminho, sem volta.
+      - >-
+        A DFS precisa de três estados: não visitado, **na pilha de chamadas** e terminado. Um voo para uma cidade que ainda está na pilha fecha um ciclo.
+      - >-
+        Guarde o pai de cada cidade na DFS para reconstruir: do vértice atual, volte pelos pais até a cidade encontrada.
+    pitfalls:
+      - >-
+        A resposta repete a cidade inicial no fim. Volte uma cidade ao estado "terminado" quando a chamada dela acabar, e comece a DFS em toda cidade ainda não visitada.
+
+  1680: # Longest Flight Route
+    hints:
+      - >-
+        Não há ciclos de voos, então o grafo é um DAG, e o maior caminho pode ser calculado com DP.
+      - >-
+        Processe as cidades em ordem topológica. Para cada uma, guarde o maior número de cidades num caminho que **começa na cidade 1** e termina nela, e de onde ele veio.
+    pitfalls:
+      - >-
+        Só valem caminhos que saem da cidade 1: as outras começam como "inalcançável", e uma cidade inalcançável não pode melhorar ninguém. Se $n$ ficar inalcançável, imprima `IMPOSSIBLE`.
+
+  1681: # Game Routes
+    hints:
+      - >-
+        Contar caminhos num grafo sem ciclos: a mesma DP em ordem topológica, com soma no lugar do máximo.
+      - >-
+        Comece com 1 caminho no nível 1 e 0 nos outros. Na ordem topológica, cada nível soma a sua contagem aos níveis para os quais ele tem um teletransporte.
+    pitfalls:
+      - >-
+        Tire o módulo a cada soma. Processar os níveis de 1 a $n$ num laço simples só funciona se essa for uma ordem topológica, o que o enunciado não garante.
+
+  1757: # Course Schedule II
+    hints:
+      - >-
+        A ideia natural é a ordenação topológica pegando sempre o menor curso liberado. Teste com 3 cursos e o requisito "3 antes de 1": ela dá 2, 3, 1, mas o certo é 3, 1, 2 (o curso 1 fica mais cedo).
+      - >-
+        Pegar o menor liberado não olha para o que ele destrava. Pense no problema ao contrário: qual curso deve ser o **último**?
+      - >-
+        O maior curso entre os que ninguém mais espera. Monte a ordem de trás para a frente: no grafo invertido, tire sempre o **maior** disponível, e inverta a lista no final.
+    pitfalls:
+      - >-
+        Use uma fila de prioridade que devolve o maior, sobre os cursos sem sucessores pendentes. Não confunda com "a ordem lexicograficamente menor", que é outro problema.
+
+  3158: # Bus Companies
+    hints:
+      - >-
+        Uma empresa liga **todos** os pares de cidades em que opera, pelo mesmo preço. Criar uma aresta para cada par pode dar cerca de $10^{10}$ arestas.
+      - >-
+        Crie um vértice extra para cada empresa. Entrar no ônibus (cidade para empresa) custa o preço do bilhete; descer (empresa para cidade) custa 0.
+      - >-
+        Agora há $n + m$ vértices e duas arestas por linha da entrada. Rode Dijkstra a partir da cidade 1 e imprima só as distâncias das cidades.
+    pitfalls:
+      - >-
+        As duas arestas têm custos diferentes: se as duas custarem o bilhete, você paga em dobro. Numere as empresas a partir de $n + 1$ para não misturar com as cidades.
+
+  1203: # Visiting Cities
+    hints:
+      - >-
+        Uma cidade está em **todo** caminho de menor preço se nenhum deles consegue desviar dela. Comece calculando o menor preço de 1 até cada cidade e, no grafo invertido, de cada cidade até $n$.
+      - >-
+        Uma cidade $v$ está em **algum** caminho mínimo quando as duas distâncias somam o preço mínimo total. Para saber se está em **todos**, conte caminhos.
+      - >-
+        Conte os caminhos mínimos de 1 até $v$ e de $v$ até $n$. O produto dos dois é o número de caminhos mínimos que passam por $v$: a cidade é obrigatória quando ele é igual ao total de caminhos mínimos de 1 até $n$.
+    pitfalls:
+      - >-
+        As contagens são enormes: trabalhe com módulo. Como dois números diferentes podem coincidir módulo um primo, use dois módulos (ou um módulo grande e pouco comum) para reduzir o risco.
+
+  1756: # Acyclic Graph Edges
+    hints:
+      - >-
+        Um ciclo direcionado precisa, em algum momento, voltar para um vértice "anterior". E se você proibir toda aresta de voltar?
+      - >-
+        Escolha qualquer ordem fixa dos vértices e aponte cada aresta do que vem antes para o que vem depois. A ordem dos próprios números já serve.
+    pitfalls:
+      - >-
+        Não é preciso busca nenhuma: basta comparar os dois extremos de cada aresta ao imprimir.
+
+  3213: # Water Containers Moves
+    hints:
+      - >-
+        A situação é descrita pela quantidade de água em cada recipiente. Quantas situações existem, e quais jogadas saem de cada uma?
+      - >-
+        No máximo $1001 \times 1001$ estados e seis jogadas por estado. O que se quer minimizar não é o número de jogadas, e sim o total de água movimentada: cada jogada tem um custo diferente.
+      - >-
+        Com custos diferentes e não negativos, é um Dijkstra no grafo de estados. Guarde, para cada estado, de qual estado e por qual jogada ele foi alcançado, para imprimir a sequência.
+    pitfalls:
+      - >-
+        Ao passar água de um recipiente para o outro, a quantidade é o mínimo entre o que há na origem e o espaço livre no destino. Jogadas que não movem água nenhuma não são permitidas: ignore-as. O alvo é qualquer estado em que o recipiente A tem exatamente $x$.
