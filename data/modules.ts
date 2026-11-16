@@ -31,7 +31,7 @@ export const modules: ModuleRef[] = [
   { slug: 'bfs', title: 'BFS, multi-fonte e grafos de estados', cph: ['12.2'], status: 'written' },
   { slug: 'dijkstra', title: 'Dijkstra', cph: ['13.2'], status: 'written' },
   { slug: 'bellman-ford-floyd', title: 'Bellman-Ford, ciclos negativos e Floyd-Warshall', cph: ['13.1', '13.3'], status: 'written' },
-  { slug: 'dag-toposort', title: 'Ordenação topológica e DP em DAG', cph: ['16.1', '16.2'], status: 'planned' },
+  { slug: 'dag-toposort', title: 'Ordenação topológica e DP em DAG', cph: ['16.1', '16.2'], status: 'written' },
   { slug: 'dsu', title: 'DSU (union-find)', cph: ['15.2'], status: 'planned' },
   { slug: 'mst', title: 'Árvore geradora mínima (Kruskal)', cph: ['15.1', '15.3'], status: 'planned' },
 

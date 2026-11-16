@@ -1,0 +1,372 @@
+---
+title: Ordenação topológica e DP em DAG
+description: Quando as arestas dizem "isto vem antes daquilo", existe uma ordem que respeita todas elas, desde que não haja dependência circular. Nessa ordem, qualquer DP sobre o grafo fica simples.
+---
+import Callout from '../../src/components/mdx/Callout.astro';
+import Quiz from '../../src/components/mdx/Quiz.tsx';
+import TopoViz from '../../src/components/mdx/viz/TopoViz.tsx';
+
+## Motivação: o cronograma da obra
+
+O problema desta aula, do começo ao fim:
+
+> Uma obra tem $n$ tarefas. A tarefa $i$ leva $d_i$ dias. Há $m$ dependências do tipo "a tarefa $a$ precisa **terminar** antes de a tarefa $b$ **começar**". Tarefas sem relação entre si podem ser feitas ao mesmo tempo, e há gente suficiente para isso. Em quantos dias, no mínimo, a obra inteira fica pronta? Se as dependências forem circulares, a obra é impossível.
+
+Um exemplo com 6 tarefas:
+
+| tarefa | 1 | 2 | 3 | 4 | 5 | 6 |
+|---|---|---|---|---|---|---|
+| duração (dias) | 3 | 2 | 4 | 1 | 2 | 3 |
+
+e 6 dependências:
+
+| vem antes | 1 | 2 | 2 | 3 | 4 | 4 |
+|---|---|---|---|---|---|---|
+| vem depois | 3 | 3 | 4 | 5 | 5 | 6 |
+
+À mão: as tarefas 1 e 2 não dependem de ninguém e começam no dia 0. A 1 termina no dia 3 e a 2 no dia 2. A tarefa 3 espera as duas: começa no dia 3 e termina no 7. A 4 só espera a 2: começa no dia 2 e termina no 3. A tarefa 5 espera a 3 e a 4: começa no dia 7 e termina no 9. A 6 começa no dia 3 e termina no 6. A obra fica pronta no dia **9**.
+
+Para fazer essa conta, foi preciso tratar as tarefas numa ordem em que **toda tarefa aparece depois das tarefas de que depende**. Com 6 tarefas dá para achar essa ordem olhando. Com $10^5$ tarefas e $2 \cdot 10^5$ dependências, é preciso um algoritmo, e é preciso descobrir se a ordem sequer existe.
+
+## Grafos direcionados e o que é um DAG
+
+As dependências formam um **grafo direcionado**: cada tarefa é um vértice e cada dependência é uma aresta com sentido, de quem vem antes para quem vem depois. A aresta 1 → 3 **não** é a mesma coisa que 3 → 1.
+
+Uma **ordem topológica** é uma lista de todos os vértices em que, para toda aresta $a \to b$, o $a$ aparece antes do $b$. No exemplo, 1, 2, 3, 4, 5, 6 é uma ordem topológica. 2, 4, 6, 1, 3, 5 é outra. Em geral há várias.
+
+Ela só existe se o grafo não tiver **ciclo**. Se a tarefa 2 depende da 5, que depende da 3, que depende da 2, nenhuma das três pode ser a primeira. Um grafo direcionado sem ciclo tem um nome que você vai ver muito: **DAG**, de *directed acyclic graph*.
+
+### Por que a BFS comum não dá a ordem
+
+A ordem em que uma BFS (ou uma DFS) visita os vértices **não** é uma ordem topológica. Um grafo de três tarefas com as dependências 1 → 2, 1 → 3 e 3 → 2:
+
+| | Ordem | A dependência 3 → 2 foi respeitada? |
+|---|---|---|
+| BFS a partir da tarefa 1 | 1, 2, 3 | não: a 2 saiu antes da 3 |
+| ordem topológica | 1, 3, 2 | sim |
+
+A BFS visita a tarefa 2 assim que encontra **uma** aresta que chega nela. Uma tarefa só pode ser feita quando **todas** as suas dependências terminaram.
+
+## A ideia: fazer o que já está liberado
+
+Guarde, para cada tarefa, **quantas dependências ainda faltam**. No começo, é o número de arestas que chegam nela (o **grau de entrada**).
+
+| tarefa | 1 | 2 | 3 | 4 | 5 | 6 |
+|---|---|---|---|---|---|---|
+| dependências que faltam | 0 | 0 | 2 | 1 | 2 | 1 |
+
+O algoritmo é o que um mestre de obras faria:
+
+1. Toda tarefa com zero dependências faltando está **liberada**: ponha numa fila.
+2. Tire uma tarefa da fila e faça-a. Ela é a próxima da ordem.
+3. Avise as tarefas que dependiam dela: cada uma tem uma dependência a menos. Quem chegar a zero está liberada e entra na fila.
+4. Repita até a fila esvaziar.
+
+O traço do exemplo:
+
+| Tarefa feita | Quem ela avisa | Quem fica liberado | Fila depois |
+|---|---|---|---|
+| (início) | | 1 e 2 | 1, 2 |
+| 1 | a 3 (falta 1) | ninguém | 2 |
+| 2 | a 3 (falta 0) e a 4 (falta 0) | 3 e 4 | 3, 4 |
+| 3 | a 5 (falta 1) | ninguém | 4 |
+| 4 | a 5 (falta 0) e a 6 (falta 0) | 5 e 6 | 5, 6 |
+| 5 | ninguém | ninguém | 6 |
+| 6 | ninguém | ninguém | (vazia) |
+
+A ordem em que as tarefas saíram da fila, 1, 2, 3, 4, 5, 6, é uma ordem topológica. Esse é o **algoritmo de Kahn**.
+
+Cada tarefa entra na fila uma vez, e cada dependência é olhada uma vez, quando a tarefa de origem é feita:
+
+$$
+O(n + m)
+$$
+
+$n$ é o número de tarefas e $m$ o de dependências.
+
+<Callout type="tente">
+Acrescente a dependência "6 antes de 5". A ordem 1, 2, 3, 4, 5, 6 continua válida? Qual ordem o algoritmo produz?
+
+<details>
+<summary>Ver resposta</summary>
+
+Não: agora o 6 precisa vir antes do 5. No algoritmo, a tarefa 5 passa a ter 3 dependências. Quando a 4 é feita, a 5 fica com 1 faltando e só a 6 é liberada. Depois de fazer a 6, a 5 chega a zero. A ordem é 1, 2, 3, 4, 6, 5.
+
+</details>
+</Callout>
+
+### Dependência circular
+
+Acrescente ao exemplo original a dependência "5 antes de 2". Agora há um ciclo: 2 → 3 → 5 → 2 (e também 2 → 4 → 5 → 2).
+
+| tarefa | 1 | 2 | 3 | 4 | 5 | 6 |
+|---|---|---|---|---|---|---|
+| dependências que faltam | 0 | **1** | 2 | 1 | 2 | 1 |
+
+Só a tarefa 1 começa liberada. Ela é feita, avisa a 3 (que fica com 1 faltando), e a fila **esvazia**. Cinco tarefas ficaram presas: as do ciclo (2, 3, 4, 5), que esperam umas pelas outras, e a 6, que não está no ciclo mas depende de uma tarefa que está.
+
+O teste é uma linha: se a fila esvaziou e o número de tarefas feitas é **menor que $n$**, existe ciclo. Não é preciso nenhum algoritmo separado para detectar.
+
+## DP na ordem topológica
+
+Com a ordem em mãos, calcular os dias fica direto.
+
+**Estado.** `fim[v]` = o dia em que a tarefa $v$ termina, começando o mais cedo possível.
+
+**Transição.** A tarefa $v$ começa quando a **última** de suas dependências termina, e leva $d_v$ dias:
+
+$$
+\text{fim}(v) = d_v + \max_{u \to v} \text{fim}(u)
+$$
+
+O máximo percorre todas as tarefas $u$ com uma dependência $u \to v$; se não houver nenhuma, ele vale 0 e a tarefa começa no dia 0.
+
+**Ordem.** A ordem topológica. É exatamente a ordem em que, ao chegar em $v$, todo `fim[u]` de que ela precisa já está calculado. Num DAG, **a ordem topológica é a ordem de cálculo da DP**.
+
+**Resposta.** O maior `fim`.
+
+Dá para calcular tudo dentro do próprio algoritmo de Kahn. Em vez de cada tarefa olhar para trás (quem são minhas dependências?), cada tarefa feita **empurra** o seu fim para a frente: "você não começa antes do dia em que eu termino".
+
+| Tarefa feita | Começa | Dura | Termina | Empurra |
+|---|---|---|---|---|
+| 1 | 0 | 3 | 3 | início da 3 passa a 3 |
+| 2 | 0 | 2 | 2 | início da 3 continua 3; início da 4 passa a 2 |
+| 3 | 3 | 4 | 7 | início da 5 passa a 7 |
+| 4 | 2 | 1 | 3 | início da 5 continua 7; início da 6 passa a 3 |
+| 5 | 7 | 2 | 9 | |
+| 6 | 3 | 3 | 6 | |
+
+A obra termina no dia **9**. A sequência 1 → 3 → 5, com $3 + 4 + 2 = 9$ dias, é a mais demorada: é ela que define o prazo. Atrasar qualquer tarefa dela atrasa a obra; a tarefa 6, que termina no dia 6, tem três dias de folga.
+
+<TopoViz client:visible />
+
+<Callout type="tente">
+A duração da tarefa 4 passa de 1 para 6 dias. Qual o novo prazo da obra, e qual sequência de tarefas o define?
+
+<details>
+<summary>Ver resposta</summary>
+
+A 4 começa no dia 2 e termina no 8. A tarefa 5 espera a 3 (dia 7) e a 4 (dia 8): começa no 8 e termina no 10. A tarefa 6 começa no dia 8 e termina no **11**. O novo prazo é 11, definido pela sequência 2 → 4 → 6, com $2 + 6 + 3 = 11$.
+
+</details>
+</Callout>
+
+### A mesma receita para outras perguntas
+
+O que acabamos de calcular é o **maior caminho** num DAG (somando as durações). Trocando a operação, o mesmo laço responde outras perguntas, como aconteceu nos módulos de DP:
+
+| Pergunta | Cada vértice guarda | Combina com |
+|---|---|---|
+| maior caminho até $v$ | um número | $\max$ |
+| menor caminho até $v$ | um número (infinito se não dá) | $\min$ |
+| quantos caminhos de $s$ até $v$ | uma contagem (com módulo) | soma |
+
+Para contar os caminhos que saem da tarefa 2, por exemplo, comece com 1 na tarefa 2 e 0 nas outras, e na ordem topológica faça cada tarefa **somar** o seu valor aos sucessores:
+
+| tarefa | 1 | 2 | 3 | 4 | 5 | 6 |
+|---|---|---|---|---|---|---|
+| caminhos a partir da 2 | 0 | 1 | 1 | 1 | 2 | 1 |
+
+Há 2 caminhos da tarefa 2 até a 5: 2 → 3 → 5 e 2 → 4 → 5.
+
+Isso só é possível porque o grafo não tem ciclo. Num grafo com ciclos, o "maior caminho" pode nem existir (dá para rodar para sempre), e achar o maior caminho **sem repetir vértice** é um problema para o qual não se conhece algoritmo rápido.
+
+## Código: o problema da obra completo
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int main() {
+    int n, m;
+    cin >> n >> m;
+    vector<long long> dur(n + 1);
+    for (int u = 1; u <= n; u++) cin >> dur[u];
+
+    vector<vector<int>> depois(n + 1);         // depois[a] = tarefas que só começam quando a termina
+    vector<int> faltam(n + 1, 0);              // faltam[b] = quantas dependências de b ainda não terminaram
+    for (int i = 0; i < m; i++) {
+        int a, b;
+        cin >> a >> b;                         // a precisa terminar antes de b começar
+        depois[a].push_back(b);
+        faltam[b]++;
+    }
+
+    vector<long long> inicio(n + 1, 0), fim(n + 1, 0);
+    queue<int> fila;
+    for (int u = 1; u <= n; u++)
+        if (faltam[u] == 0) fila.push(u);      // tarefas sem dependência podem começar já
+
+    int feitas = 0;
+    long long total = 0;
+    while (!fila.empty()) {
+        int u = fila.front();
+        fila.pop();
+        feitas++;
+        fim[u] = inicio[u] + dur[u];           // todas as dependências de u já foram processadas
+        total = max(total, fim[u]);
+        for (int v : depois[u]) {
+            inicio[v] = max(inicio[v], fim[u]);   // v só começa depois que u terminar
+            if (--faltam[v] == 0) fila.push(v);   // era a última dependência: v está liberada
+        }
+    }
+
+    if (feitas < n) cout << "IMPOSSIVEL\n";    // sobrou tarefa: há dependência circular
+    else cout << total << "\n";
+}
+```
+
+A lista de adjacência guarda as arestas num sentido só (de quem vem antes para quem vem depois), porque o grafo é direcionado. `--faltam[v] == 0` diminui o contador e, na mesma expressão, testa se ele chegou a zero.
+
+**Entrada** (tarefas e dependências, as durações, depois uma dependência por linha):
+
+```
+6 6
+3 2 4 1 2 3
+1 3
+2 3
+2 4
+3 5
+4 5
+4 6
+```
+
+**Saída:**
+
+```
+9
+```
+
+Com mais uma linha `5 2` (e $m = 7$), a saída é `IMPOSSIVEL`.
+
+- **Tempo:** $O(n + m)$.
+- **Memória:** $O(n + m)$.
+
+### O mesmo código no formato de contest
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+typedef long long ll;
+typedef vector<int> vi;
+typedef vector<vi> vvi;
+#define rep(i,a,b) for(int i=(a);i<(b);i++)
+#define pb push_back
+void fastio(){ ios::sync_with_stdio(false); cin.tie(nullptr); }
+
+int main(){
+    fastio();
+    int n, m; cin >> n >> m;
+    vector<ll> dur(n + 1), fim(n + 1, 0);
+    rep(u, 1, n + 1) cin >> dur[u];
+    vvi adj(n + 1); vi grau(n + 1, 0);
+    rep(i, 0, m) { int a, b; cin >> a >> b; adj[a].pb(b); grau[b]++; }
+
+    queue<int> q;
+    rep(u, 1, n + 1) if (!grau[u]) q.push(u);
+    int feitas = 0; ll total = 0;
+    while (!q.empty()) {
+        int u = q.front(); q.pop(); feitas++;
+        fim[u] += dur[u];                      // até aqui, fim[u] guardava o início de u
+        total = max(total, fim[u]);
+        for (int v : adj[u]) { fim[v] = max(fim[v], fim[u]); if (--grau[v] == 0) q.push(v); }
+    }
+    if (feitas < n) cout << "IMPOSSIVEL\n"; else cout << total << "\n";
+}
+```
+
+Aqui um único vetor faz os dois papéis: enquanto a tarefa não é feita, `fim[v]` acumula o início dela; quando ela sai da fila, soma-se a duração.
+
+## Armadilhas comuns
+
+- **Aresta no sentido errado.** "$a$ antes de $b$" é a aresta $a \to b$, e quem ganha grau de entrada é o $b$. Invertendo, você obtém a ordem ao contrário (ou um resultado sem sentido).
+- **Guardar a aresta nos dois sentidos**, por hábito dos grafos não direcionados.
+- **Usar a ordem de uma BFS ou DFS comum** como se fosse topológica.
+- **Não conferir se todas as tarefas saíram da fila.** Com ciclo, o programa imprime um prazo calculado só com parte das tarefas.
+- **Decrementar o grau e esquecer de testar o zero** (ou empurrar a tarefa a cada aviso, e não só quando chega a zero).
+- **Dependência repetida na entrada.** Se a mesma aresta aparece duas vezes, ela conta duas vezes no grau e é descontada duas vezes: fica consistente. Só não tente "remover duplicatas" de um lado e não do outro.
+- **Fazer a DP numa ordem qualquer.** Processar as tarefas de 1 a $n$ só funciona se por acaso essa for uma ordem topológica.
+- **`int` nos dias.** Uma sequência de $10^5$ tarefas de $10^9$ dias passa de $10^{14}$.
+
+<details class="para-depois">
+<summary>Para depois: a ordem pela DFS, a menor ordem e ciclos em grafos direcionados</summary>
+
+**Ordem topológica com DFS.** Rode a DFS e anote cada vértice no momento em que a chamada dele **termina** (depois de visitar todos os sucessores). A lista anotada, invertida, é uma ordem topológica. É comum em códigos alheios; o algoritmo da fila tem a vantagem de detectar ciclo sem esforço e de não usar recursão.
+
+**A menor ordem possível.** Quando há várias ordens e o problema quer a que lista os menores números primeiro, troque a fila por uma `priority_queue` que devolve o menor: a cada passo, entre as tarefas liberadas, sai a de menor número. Há variações mais traiçoeiras (por exemplo, pedir que a tarefa 1 apareça o mais cedo possível, depois a 2…), que exigem construir a ordem **de trás para a frente**.
+
+**Achar o ciclo.** Num grafo direcionado, "encontrei um vértice já visitado" não basta para acusar ciclo: ele pode ter sido alcançado por outro caminho sem que haja volta. A DFS precisa de três estados: não visitado, **na pilha de chamadas** e terminado. Só uma aresta para um vértice que ainda está na pilha fecha um ciclo.
+
+**Caminho mínimo em DAG.** Com a ordem topológica, o menor caminho sai em $O(n + m)$ mesmo com pesos negativos, sem Dijkstra nem Bellman-Ford.
+
+**DAG escondido.** Muitas DPs dos módulos anteriores são DPs em DAG disfarçadas: os estados são os vértices e as transições são as arestas. A ordem dos laços que você escolhia era uma ordem topológica desse grafo. Também é comum um Dijkstra produzir um DAG: as arestas que fazem parte de algum caminho mínimo nunca formam ciclo, e dá para fazer DP sobre elas (contar caminhos mínimos, por exemplo).
+
+</details>
+
+## Referências
+
+- **CPH, capítulo 16 — Directed graphs, seção 16.1 *Topological sorting*:** a ordem topológica (pela DFS com três estados) e a relação com ciclos.
+- **CPH, capítulo 16, seção 16.2 *Dynamic programming*:** contar caminhos e outras DPs sobre um DAG, e a observação de que todo problema de DP é um DAG.
+- [USACO Guide — Topological Sort](https://usaco.guide/gold/toposort), com o algoritmo da fila e DP em DAG.
+- [cp-algorithms — Topological Sorting](https://cp-algorithms.com/graph/topological-sort.html), a versão por DFS.
+
+## Mini-quiz
+
+<Quiz
+  client:visible
+  questions={[
+    {
+      q: 'Cinco tarefas com as dependências 1→3, 2→3, 3→4 e 2→5. Em que ordem elas saem da fila? (As liberadas no início entram em ordem de número.)',
+      code: 'for (int v : depois[u])\n    if (--faltam[v] == 0) fila.push(v);',
+      options: ['1, 2, 3, 4, 5', '1, 2, 3, 5, 4', '1, 2, 5, 3, 4', '2, 1, 3, 4, 5'],
+      answer: 1,
+      why: 'Fila inicial: 1, 2. A 1 avisa a 3 (falta 1). A 2 libera a 3 e a 5: fila 3, 5. A 3 libera a 4: fila 5, 4. Ordem: 1, 2, 3, 5, 4.',
+    },
+    {
+      q: 'Nas mesmas tarefas, as durações são 2, 3, 1, 4 e 2 (tarefas 1 a 5). Em que dia a obra termina?',
+      code: 'fim[u] = inicio[u] + dur[u];\nfor (int v : depois[u]) inicio[v] = max(inicio[v], fim[u]);',
+      options: ['5', '7', '8', '12'],
+      answer: 2,
+      why: 'A 1 termina no dia 2 e a 2 no dia 3. A 3 começa no dia 3 e termina no 4. A 4 termina no dia 8 e a 5 no dia 5. O maior fim é 8, pela sequência 2 → 3 → 4.',
+    },
+    {
+      q: 'Cinco tarefas com as dependências 1→2, 2→3, 3→4, 4→2 e 4→5. Quantas tarefas saem da fila?',
+      options: ['0', '1', '4', '5'],
+      answer: 1,
+      why: 'Só a tarefa 1 começa liberada. A 2 depende da 1 e da 4, e a 4 depende (pela 3) da própria 2. As tarefas 2, 3 e 4 formam um ciclo, e a 5 fica presa atrás dele. Como 1 é menor que 5, o programa responde IMPOSSIVEL.',
+    },
+    {
+      q: 'Por que a ordem topológica é a ordem certa para a DP num DAG?',
+      options: [
+        'Porque é a ordem crescente dos números dos vértices',
+        'Porque nela todo vértice aparece depois de todos os que apontam para ele, que são exatamente os valores de que a transição precisa',
+        'Porque é a ordem da BFS',
+        'Porque assim a fila nunca esvazia',
+      ],
+      answer: 1,
+      why: 'É a mesma exigência de toda DP: quando um estado é calculado, os estados de que ele depende já estão prontos.',
+    },
+    {
+      q: 'No grafo 1→2, 1→3, 3→2, por que a ordem de visita da BFS a partir do 1 não é topológica?',
+      options: [
+        'Porque a BFS não visita todos os vértices',
+        'Porque a BFS visita o 2 ao ver a primeira aresta que chega nele, antes de o 3 (do qual o 2 também depende) ter sido processado',
+        'Porque o grafo tem ciclo',
+        'Porque faltou marcar os visitados',
+      ],
+      answer: 1,
+      why: 'A BFS dá 1, 2, 3, e a aresta 3→2 fica violada. O contador de dependências faz o 2 esperar por todas as arestas que chegam nele.',
+    },
+    {
+      q: 'Seu programa processa as tarefas de 1 a n num laço simples, em vez da ordem topológica, e passa em alguns testes. Por quê?',
+      options: [
+        'Porque a ordem não importa',
+        'Porque nesses testes toda dependência vai de um número menor para um maior, então 1, 2, …, n já é uma ordem topológica',
+        'Porque o juiz está errado',
+        'Porque a DP corrige os erros sozinha',
+      ],
+      answer: 1,
+      why: 'É coincidência dos dados. Basta uma dependência de um número maior para um menor (como 5→2) para o laço ler um valor ainda não calculado.',
+    },
+  ]}
+/>
