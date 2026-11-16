@@ -1,0 +1,135 @@
+# Dicas do milestone 10 — Grafos I: DFS, BFS, componentes e grids.
+problems:
+  1192: # Counting Rooms
+    hints:
+      - >-
+        Cada casa de chão é um vértice, e duas casas de chão vizinhas (cima, baixo, esquerda, direita) estão ligadas. Um cômodo é o quê nesse grafo?
+      - >-
+        Uma componente conexa. Percorra o mapa: toda casa de chão ainda sem marca inicia um cômodo novo, e uma busca a partir dela marca o cômodo inteiro.
+    pitfalls:
+      - >-
+        O mapa tem até $10^6$ casas, e um cômodo em forma de corredor faz a recursão da DFS chegar a essa profundidade. Se der erro de execução, troque por uma BFS ou por uma pilha explícita.
+
+  1193: # Labyrinth
+    hints:
+      - >-
+        Menor número de passos num tabuleiro em que todo passo custa 1: qual das duas buscas garante o caminho mais curto?
+      - >-
+        BFS a partir de A. Para imprimir o caminho, guarde em cada casa a **direção** do passo que chegou nela.
+      - >-
+        Depois ande de B para trás, desfazendo cada passo, e inverta a sequência de letras no final.
+    pitfalls:
+      - >-
+        Ao voltar, o passo é o **oposto** da direção guardada (se cheguei indo para a direita, a casa anterior está à esquerda). Imprima `NO` se B não foi alcançado.
+
+  1666: # Building Roads
+    hints:
+      - >-
+        Conte as componentes conexas. Se são $k$, quantas estradas no mínimo ligam tudo?
+      - >-
+        $k - 1$: cada estrada nova junta duas componentes. Escolha uma cidade de cada componente (a que iniciou a busca serve) e ligue cada uma à seguinte.
+    pitfalls:
+      - >-
+        Se o grafo já é conexo, a resposta é 0 e não há estradas a imprimir.
+
+  1667: # Message Route
+    hints:
+      - >-
+        Menor número de computadores no caminho de 1 até $n$: BFS a partir do 1.
+      - >-
+        Guarde o pai de cada vértice no momento em que ele é descoberto. O caminho sai andando pelos pais a partir de $n$, e depois invertendo.
+    pitfalls:
+      - >-
+        A resposta conta **computadores**, não conexões: é a distância mais 1. Se $n$ não foi alcançado, imprima `IMPOSSIBLE`.
+
+  1668: # Building Teams
+    hints:
+      - >-
+        Dois amigos não podem ficar no mesmo time. O que acontece com o time de um aluno quando o time de um amigo dele já foi escolhido?
+      - >-
+        Fica decidido: é o outro. Pinte um aluno com o time 1 e espalhe a cor oposta pelos amigos; se algum dia dois amigos tiverem a mesma cor, é impossível.
+    pitfalls:
+      - >-
+        O grafo pode ter várias componentes: comece a pintura em todo aluno ainda sem cor. Um aluno sem amigos pode ir para qualquer time.
+
+  1669: # Round Trip
+    hints:
+      - >-
+        Você procura um ciclo. Numa DFS, o que significa encontrar um vizinho já visitado que não é o vértice de onde você veio?
+      - >-
+        Que há dois caminhos até ele: encontrou um ciclo. Guarde o pai de cada vértice para poder reconstruí-lo.
+      - >-
+        O ciclo é: o vizinho encontrado, depois o vértice atual e seus pais, voltando até chegar de novo ao vizinho.
+    pitfalls:
+      - >-
+        A saída repete a cidade inicial no fim. Teste todas as componentes antes de responder `IMPOSSIBLE`, e pare a busca assim que achar o primeiro ciclo.
+
+  3217: # Knight Moves Grid
+    hints:
+      - >-
+        Cada casa é um vértice, e as arestas são os saltos do cavalo. Quantos saltos possíveis saem de uma casa?
+      - >-
+        Oito, e todo salto custa 1. Uma BFS a partir do canto de cima à esquerda dá a resposta de todas as casas de uma vez.
+    pitfalls:
+      - >-
+        Os oito saltos são as combinações de $\pm 1$ numa direção com $\pm 2$ na outra. Use dois vetores de deslocamento, como no tabuleiro do módulo, e teste os limites antes de acessar.
+
+  1194: # Monsters
+    hints:
+      - >-
+        Você não sabe para onde os monstros vão, então precisa supor o pior: uma casa é perigosa a partir do instante em que **algum** monstro consegue chegar nela.
+      - >-
+        Uma BFS com todos os monstros como origens calcula, para cada casa, o primeiro instante em que um monstro pode estar ali.
+      - >-
+        Depois, uma BFS sua: você só entra numa casa se chegar **estritamente antes** de qualquer monstro. Se alcançar uma casa da borda, há saída; guarde as direções para imprimir o caminho.
+    pitfalls:
+      - >-
+        Chegar no mesmo instante que um monstro não vale. Você pode já começar na borda: a resposta é `YES` com caminho de tamanho 0. Pode não haver monstro nenhum.
+
+  1707: # Graph Girth
+    hints:
+      - >-
+        Rode uma BFS a partir de um vértice $s$. Quando ela olha uma aresta para um vértice **já visitado** que não é o pai, você achou um ciclo. Qual o tamanho dele, no máximo?
+      - >-
+        Se a aresta liga $u$ e $v$, o ciclo tem no máximo $\text{dist}(u) + \text{dist}(v) + 1$ arestas. Esse valor pode superestimar para um $s$ ruim, mas é exato quando $s$ está no menor ciclo.
+      - >-
+        Como você não sabe qual vértice está no menor ciclo, rode a BFS a partir de **todos** e fique com o menor valor encontrado. Com 2500 vértices e 5000 arestas, isso cabe.
+    pitfalls:
+      - >-
+        Limpe as distâncias e os pais antes de cada BFS. Se nenhuma BFS encontrar uma aresta dessas, o grafo não tem ciclo: imprima $-1$.
+
+  3303: # Nearest Shops
+    hints:
+      - >-
+        Para uma cidade **sem** loja, a pergunta é a distância até a loja mais próxima: uma BFS com todas as lojas como origens responde.
+      - >-
+        O difícil são as cidades **com** loja, que precisam da loja mais próxima em **outra** cidade. Na BFS com várias origens, guarde também **de qual loja** veio a onda que alcançou cada cidade.
+      - >-
+        Olhe cada estrada que liga cidades alcançadas por lojas diferentes. Ela dá um caminho entre essas duas lojas: quanto ele mede, e para quais lojas ele é um candidato?
+    pitfalls:
+      - >-
+        Se a cidade com loja não alcança nenhuma outra loja, a resposta é $-1$. O mesmo vale para uma cidade sem loja numa componente sem lojas.
+
+  1670: # Swap Game
+    hints:
+      - >-
+        O tabuleiro inteiro é o estado. Quantos estados existem?
+      - >-
+        $9! = 362\,880$ arrumações dos nove números. De cada uma saem 12 jogadas (as trocas entre casas vizinhas). É uma BFS no grafo de estados, da arrumação dada até a arrumação final.
+      - >-
+        O trabalho está em guardar "já visitei este estado" de forma rápida: transforme a arrumação num número (por exemplo, lendo os nove dígitos numa base) e use-o como índice.
+    pitfalls:
+      - >-
+        Um `map` de strings funciona mas pode ficar lento. Um vetor de bits indexado pelo número do estado é rápido e cabe na memória.
+
+  3357: # Fixed Length Walk Queries
+    hints:
+      - >-
+        Você pode ir e voltar pela mesma aresta: isso gasta exatamente 2 turnos e não muda onde você está. O que isso diz sobre caminhadas mais longas que a necessária?
+      - >-
+        Se dá para chegar em $d$ turnos, dá em $d + 2$, $d + 4$, … Então só importam o menor número **par** e o menor número **ímpar** de turnos entre cada par de vértices.
+      - >-
+        Calcule os dois com uma BFS em que o estado é (vértice, paridade do número de passos). Como há poucos vértices, rode essa BFS a partir de cada um e responda as consultas consultando a tabela.
+    pitfalls:
+      - >-
+        Pode não existir caminhada de uma das paridades (pense num grafo que dá para pintar com duas cores). A consulta com $x = 0$ só vale quando os dois vértices são o mesmo.
