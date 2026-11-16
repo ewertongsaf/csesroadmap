@@ -1,0 +1,333 @@
+---
+title: Árvore geradora mínima (Kruskal)
+description: Ligar todos os vértices de um grafo gastando o mínimo. O algoritmo de Kruskal é um guloso que funciona de verdade - percorre as arestas da mais barata para a mais cara e fica com as que ligam grupos diferentes.
+---
+import Callout from '../../src/components/mdx/Callout.astro';
+import Quiz from '../../src/components/mdx/Quiz.tsx';
+import KruskalViz from '../../src/components/mdx/viz/KruskalViz.tsx';
+
+## Motivação: a fibra mais barata
+
+O problema desta aula, do começo ao fim:
+
+> Uma operadora quer levar fibra a $n$ bairros. Existem $m$ trechos que **podem** ser construídos; cada um liga dois bairros e tem um custo. Quais trechos construir para que todo bairro fique conectado a todos os outros (direto ou passando por outros bairros), gastando o **mínimo**? Se não der para conectar todos, avise.
+
+Um exemplo com 5 bairros e 7 trechos possíveis:
+
+| trecho | 1–2 | 1–3 | 2–3 | 2–4 | 3–4 | 3–5 | 4–5 |
+|---|---|---|---|---|---|---|---|
+| custo | 4 | 2 | 1 | 5 | 8 | 10 | 3 |
+
+Construir todos custaria 33, e seria desperdício. Com 1–3, 2–3 e 1–2 construídos, por exemplo, o trecho 1–2 é inútil: os bairros 1 e 2 já se falam passando pelo 3. Um trecho que fecha um **ciclo** nunca é necessário.
+
+A melhor escolha aqui são os trechos 2–3, 1–3, 4–5 e 2–4, com custo $1 + 2 + 3 + 5 = 11$. Testar todas as escolhas não escala: só neste exemplo pequeno há 21 jeitos diferentes de ligar os cinco bairros sem desperdício, e num mapa em que todo par de bairros tem um trecho possível, 10 bairros já dão cem milhões.
+
+## O que estamos procurando
+
+Uma solução sem desperdício tem três propriedades:
+
+- **conecta** todos os $n$ bairros;
+- **não tem ciclo** (um ciclo teria um trecho sobrando);
+- tem exatamente **$n - 1$ trechos**.
+
+A terceira vem das outras duas. Comece com $n$ bairros soltos: são $n$ grupos. Cada trecho que não fecha ciclo junta dois grupos em um. Para sair de $n$ grupos e chegar a 1, são precisas exatamente $n - 1$ junções.
+
+Um grafo conexo e sem ciclos é uma **árvore**. Uma árvore que usa arestas do grafo e alcança todos os vértices é uma **árvore geradora**. A de menor custo total é a **árvore geradora mínima**, ou **MST** (de *minimum spanning tree*).
+
+## Duas ideias que não funcionam
+
+**Cada bairro escolhe o seu trecho mais barato.** Parece razoável: ninguém fica isolado.
+
+| bairro | 1 | 2 | 3 | 4 | 5 |
+|---|---|---|---|---|---|
+| trecho mais barato | 1–3 (2) | 2–3 (1) | 2–3 (1) | 4–5 (3) | 4–5 (3) |
+
+Os trechos escolhidos são 1–3, 2–3 e 4–5: três trechos, custo 6. Mas os bairros 1, 2, 3 ficam de um lado e 4, 5 do outro, **sem ligação entre os dois grupos**. Cada bairro tem um vizinho, e a rede não é conexa.
+
+**Usar os caminhos mínimos a partir de um bairro.** O Dijkstra também produz uma árvore (os pais formam uma). Mas ela minimiza a distância de cada bairro até a origem, não o custo total. Três bairros, com os trechos 1–2 (2), 1–3 (2) e 2–3 (1):
+
+| | Trechos | Custo total |
+|---|---|---|
+| caminhos mínimos a partir do 1 | 1–2 e 1–3 | 4 |
+| árvore geradora mínima | 2–3 e mais um dos outros dois | 3 |
+
+Para o bairro 3, ir direto ao 1 (custo 2) é melhor que passar pelo 2 (custo 3). Mas construir 2–3 é mais barato que construir 1–3. São perguntas diferentes, com respostas diferentes.
+
+## A ideia: o trecho mais barato que ainda serve
+
+Uma terceira tentativa: olhar os trechos **em ordem de custo**, do mais barato para o mais caro, e construir cada um **a menos que ele feche um ciclo**.
+
+Fechar um ciclo quer dizer ligar dois bairros que **já estão conectados**. Então a regra é: o trecho entra se os dois bairros dele estão em **grupos diferentes**.
+
+No exemplo, com os trechos ordenados:
+
+| Trecho | Custo | Grupos antes | Decisão | Total |
+|---|---|---|---|---|
+| 2–3 | 1 | \{1\} \{2\} \{3\} \{4\} \{5\} | entra | 1 |
+| 1–3 | 2 | \{1\} \{2, 3\} \{4\} \{5\} | entra | 3 |
+| 4–5 | 3 | \{1, 2, 3\} \{4\} \{5\} | entra | 6 |
+| 1–2 | 4 | \{1, 2, 3\} \{4, 5\} | **fora**: 1 e 2 já estão juntos | 6 |
+| 2–4 | 5 | \{1, 2, 3\} \{4, 5\} | entra | 11 |
+| 3–4 | 8 | \{1, 2, 3, 4, 5\} | fora | 11 |
+| 3–5 | 10 | \{1, 2, 3, 4, 5\} | fora | 11 |
+
+Quatro trechos entraram, que é $n - 1$, e o custo é **11**. Esse é o **algoritmo de Kruskal**.
+
+Repare que as escolhas "ruins" da tentativa anterior (1–3, 2–3, 4–5) estão todas aqui. O que faltava era continuar: o próximo trecho barato que **junta dois grupos** é o 2–4.
+
+<KruskalViz client:visible />
+
+A pergunta "estes dois bairros estão no mesmo grupo?", com grupos que só se juntam, é exatamente o que o union-find do módulo anterior responde. Kruskal é uma ordenação mais um DSU:
+
+```cpp
+sort(trechos.begin(), trechos.end());         // por custo
+for (auto& t : trechos)
+    if (une(t[1], t[2])) total += t[0];       // une devolve true se eram grupos diferentes
+```
+
+<Callout type="tente">
+Se o custo do trecho 2–4 subisse de 5 para 9, quais trechos o algoritmo escolheria, e qual seria o custo?
+
+<details>
+<summary>Ver resposta</summary>
+
+A ordem passa a ser 2–3 (1), 1–3 (2), 4–5 (3), 1–2 (4), 3–4 (8), 2–4 (9), 3–5 (10). Os três primeiros entram e o 1–2 fica fora, como antes. O próximo é o 3–4, que liga os dois grupos: entra, com total $1 + 2 + 3 + 8 = 14$. O 2–4, agora mais caro, chega depois e é recusado.
+
+</details>
+</Callout>
+
+## Por que o guloso funciona aqui
+
+Gulosos costumam falhar (o módulo de greedy mostrou vários), então este merece uma justificativa. É o **argumento de troca** de lá.
+
+Olhe o momento em que o algoritmo aceita o trecho 2–4, de custo 5. Antes dele há dois grupos, \{1, 2, 3\} e \{4, 5\}. Qualquer solução precisa de **algum** trecho entre esses dois grupos, senão eles ficam separados. Os candidatos são 2–4 (5), 3–4 (8) e 3–5 (10).
+
+Suponha uma solução que **não** usa o 2–4 e usa, digamos, o 3–4. Troque: tire o 3–4 e ponha o 2–4. Os dois grupos continuam ligados, então tudo continua conexo, e o custo **caiu** de 8 para 5. A solução sem o 2–4 não era a melhor.
+
+O raciocínio vale em qualquer passo. Quando Kruskal aceita um trecho, ele é o **mais barato que liga dois grupos ainda separados** (os mais baratos que ele já foram processados, e todos os que ficaram de fora ligavam bairros do mesmo grupo). Uma solução que o dispense pode sempre ser melhorada, ou pelo menos igualada, trocando por ele o trecho mais caro que ela usa para fazer a mesma ligação.
+
+<Callout type="tente">
+Na solução de custo 11, troque o trecho 2–4 pelo 3–4. O resultado ainda conecta todos os bairros? Qual o custo? E se a troca fosse do 2–4 pelo 1–2?
+
+<details>
+<summary>Ver resposta</summary>
+
+Com 3–4 no lugar do 2–4: os trechos são 2–3, 1–3, 4–5 e 3–4. Continua conexo, com custo $1 + 2 + 3 + 8 = 14$. É outra árvore geradora, só que mais cara. Com 1–2 no lugar do 2–4: os trechos 2–3, 1–3 e 1–2 formam um ciclo entre 1, 2 e 3, e nada liga esse grupo ao \{4, 5\}. Deixou de ser uma árvore geradora: tem um ciclo **e** está desconexa.
+
+</details>
+</Callout>
+
+## Quando não dá para ligar todo mundo
+
+Se o mapa de trechos possíveis não conecta todos os bairros, não existe árvore geradora. Com 4 bairros e só os trechos 1–2 e 3–4, os dois entram, e os grupos \{1, 2\} e \{3, 4\} ficam separados para sempre.
+
+O teste é contar: uma árvore geradora tem exatamente $n - 1$ trechos. Se o algoritmo terminar tendo aceitado **menos** que isso, é impossível.
+
+## Quanto custa
+
+Ordenar os $m$ trechos custa $O(m \log m)$. Depois, cada trecho faz uma operação de union-find, que é praticamente constante:
+
+$$
+O(m \log m)
+$$
+
+Para $m = 2 \cdot 10^5$, são poucos milhões de operações. O gargalo é a ordenação.
+
+## Código: o problema da fibra completo
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<int> pai, tam;
+int acha(int x) { return pai[x] == x ? x : pai[x] = acha(pai[x]); }
+bool une(int a, int b) {
+    a = acha(a);
+    b = acha(b);
+    if (a == b) return false;                  // já estavam no mesmo grupo
+    if (tam[a] < tam[b]) swap(a, b);
+    pai[b] = a;
+    tam[a] += tam[b];
+    return true;
+}
+
+int main() {
+    int n, m;
+    cin >> n >> m;
+    // cada trecho é {custo, a, b}: com o custo na frente, ordenar o vetor ordena por custo
+    vector<array<long long, 3>> trechos(m);
+    for (auto& t : trechos) cin >> t[1] >> t[2] >> t[0];
+    sort(trechos.begin(), trechos.end());
+
+    pai.resize(n + 1);
+    tam.assign(n + 1, 1);
+    for (int x = 1; x <= n; x++) pai[x] = x;
+
+    long long total = 0;
+    int usados = 0;
+    for (auto& t : trechos) {                  // do mais barato para o mais caro
+        if (une(t[1], t[2])) {                 // liga dois grupos diferentes: entra
+            total += t[0];
+            usados++;
+        }                                      // senão fecharia um ciclo: fica de fora
+    }
+
+    if (usados < n - 1) cout << "IMPOSSIVEL\n";   // não deu para ligar todo mundo
+    else cout << total << "\n";
+}
+```
+
+O truque de leitura: a entrada traz `a b custo`, mas o trecho é guardado como `{custo, a, b}`. Um `array` é comparado posição por posição, da primeira para a última, então ordenar o vetor já ordena pelo custo, sem escrever função de comparação. A leitura `cin >> t[1] >> t[2] >> t[0]` põe cada número na casa certa.
+
+**Entrada:**
+
+```
+5 7
+1 2 4
+1 3 2
+2 3 1
+2 4 5
+3 4 8
+3 5 10
+4 5 3
+```
+
+**Saída:**
+
+```
+11
+```
+
+O programa percorre as sete linhas da tabela do traço e soma os quatro trechos aceitos.
+
+- **Tempo:** $O(m \log m)$.
+- **Memória:** $O(n + m)$.
+
+### O mesmo código no formato de contest
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+typedef long long ll;
+typedef vector<int> vi;
+#define all(x) (x).begin(),(x).end()
+void fastio(){ ios::sync_with_stdio(false); cin.tie(nullptr); }
+
+struct DSU {
+    vi pai, tam;
+    DSU(int n) : pai(n + 1), tam(n + 1, 1) { iota(all(pai), 0); }
+    int acha(int x) { return pai[x] == x ? x : pai[x] = acha(pai[x]); }
+    bool une(int a, int b) {
+        a = acha(a); b = acha(b);
+        if (a == b) return false;
+        if (tam[a] < tam[b]) swap(a, b);
+        pai[b] = a; tam[a] += tam[b];
+        return true;
+    }
+};
+
+int main(){
+    fastio();
+    int n, m; cin >> n >> m;
+    vector<array<ll, 3>> es(m);                // {custo, a, b}
+    for (auto& e : es) cin >> e[1] >> e[2] >> e[0];
+    sort(all(es));
+    DSU d(n);
+    ll total = 0; int usados = 0;
+    for (auto& [w, a, b] : es) if (d.une(a, b)) { total += w; usados++; }
+    if (usados < n - 1) cout << "IMPOSSIVEL\n"; else cout << total << "\n";
+}
+```
+
+## Armadilhas comuns
+
+- **Não conferir se a árvore ficou completa.** Num grafo desconexo, o programa imprime a soma de uma floresta como se fosse a resposta. Conte os trechos aceitos.
+- **Ordenar pelo campo errado.** Se o custo não está na primeira posição do `array` (ou do par), a ordenação sai por número de bairro.
+- **`int` no total.** $2 \cdot 10^5$ trechos de custo $10^9$ somam $2 \cdot 10^{14}$.
+- **Achar que a árvore mínima é única.** Com custos repetidos pode haver várias, todas com o mesmo custo total. Se o problema pede os trechos, qualquer uma serve, a menos que ele diga o contrário.
+- **Confundir com caminho mínimo.** A MST minimiza a **soma de todos os trechos**, e não a distância entre dois bairros. Dentro dela, o caminho entre dois bairros pode ser bem mais longo que o menor caminho do grafo.
+- **Usar em grafo direcionado.** Kruskal é para arestas sem sentido. A versão direcionada é outro problema, bem mais difícil.
+- **Um DSU com defeito.** Kruskal herda todas as armadilhas do módulo anterior, em especial ligar os vértices em vez das raízes.
+
+<details class="para-depois">
+<summary>Para depois: Prim, a maior árvore e o que mais a MST garante</summary>
+
+**O algoritmo de Prim.** Outro jeito de montar a mesma árvore: comece de um bairro qualquer e vá crescendo um único grupo, sempre pelo trecho mais barato que sai dele para um bairro de fora. Com uma fila de prioridade, o código é quase igual ao do Dijkstra (a prioridade é o custo do trecho, e não a distância acumulada) e custa $O(m \log m)$. Kruskal costuma ser mais curto de escrever; Prim é melhor quando o grafo é dado como uma tabela completa de custos.
+
+**A maior árvore geradora.** Ordene do mais caro para o mais barato (ou troque o sinal dos custos). No exemplo, ela custa 27.
+
+**A maior aresta é a menor possível.** Entre todas as árvores geradoras, a mínima também é uma das que têm o **trecho mais caro mais barato possível**. E, dentro dela, o caminho entre dois bairros é o que minimiza o maior trecho do percurso. Isso resolve problemas do tipo "qual a menor capacidade que me deixa ir de $a$ até $b$?".
+
+**Os grupos ao longo do tempo.** Parar o Kruskal antes do fim tem significado: depois de processar todos os trechos de custo até $x$, os grupos do DSU são exatamente os bairros que se alcançam usando só trechos de custo até $x$. Muitos problemas são um Kruskal em que se olha o DSU no meio do caminho.
+
+**A segunda melhor árvore.** No exemplo ela custa 13. Achá-la em geral exige saber, para cada trecho de fora, qual o trecho mais caro do ciclo que ele fecharia na árvore, o que pede as técnicas de árvores da próxima fase.
+
+</details>
+
+## Referências
+
+- **CPH, capítulo 15 — Spanning trees, seção 15.1 *Kruskal's algorithm*:** o algoritmo, com a justificativa de por que o guloso é ótimo.
+- **CPH, capítulo 15, seção 15.3 *Prim's algorithm*:** a alternativa que cresce a árvore a partir de um vértice.
+- [USACO Guide — Minimum Spanning Trees](https://usaco.guide/gold/mst)
+- [cp-algorithms — Kruskal with Disjoint Set Union](https://cp-algorithms.com/graph/mst_kruskal_with_dsu.html), a versão desta aula.
+- [cp-algorithms — Prim's Algorithm](https://cp-algorithms.com/graph/mst_prim.html)
+
+## Mini-quiz
+
+<Quiz
+  client:visible
+  questions={[
+    {
+      q: 'Quatro bairros e os trechos 1–2 (3), 2–3 (1), 3–4 (4), 1–3 (2), 2–4 (6). Quais trechos Kruskal aceita, na ordem?',
+      code: 'sort(trechos);   // por custo\nfor (cada trecho)\n    if (une(a, b)) total += custo;',
+      options: ['2–3, 1–3, 1–2', '2–3, 1–3, 3–4', '2–3, 1–2, 3–4', '1–3, 2–3, 2–4'],
+      answer: 1,
+      why: 'Em ordem de custo: 2–3 (entra), 1–3 (entra), 1–2 (fora: 1 e 2 já estão juntos pelo 3), 3–4 (entra), 2–4 (fora). Custo 1 + 2 + 4 = 7.',
+    },
+    {
+      q: 'Três bairros com os trechos 1–2, 2–3 e 1–3, todos de custo 5. Qual o custo da árvore geradora mínima, e ela é única?',
+      options: ['15, única', '10, única', '10, e há três árvores possíveis com esse custo', '5, única'],
+      answer: 2,
+      why: 'Qualquer dois dos três trechos ligam os três bairros, por 10. Com custos repetidos, a árvore mínima pode não ser única; o custo mínimo é.',
+    },
+    {
+      q: 'Quatro bairros e só os trechos 1–2 (3) e 3–4 (1). O que o programa da aula imprime?',
+      options: ['4', '1', 'IMPOSSIVEL', '0'],
+      answer: 2,
+      why: 'Os dois trechos são aceitos (usados = 2), mas uma árvore geradora de 4 bairros precisa de 3. Como 2 < 3, a resposta é IMPOSSIVEL. Sem esse teste, o programa imprimiria 4.',
+    },
+    {
+      q: 'Por que uma árvore geradora de n vértices tem exatamente n − 1 arestas?',
+      options: [
+        'Porque é uma convenção',
+        'Porque cada aresta que não fecha ciclo junta dois grupos, e sair de n grupos para 1 exige n − 1 junções',
+        'Porque cada vértice tem exatamente uma aresta',
+        'Porque o grafo tem n − 1 arestas',
+      ],
+      answer: 1,
+      why: 'Menos que isso não conecta todo mundo; mais que isso obriga alguma aresta a ligar vértices já conectados, fechando um ciclo.',
+    },
+    {
+      q: 'No momento em que Kruskal aceita um trecho, o que se pode afirmar sobre ele?',
+      options: [
+        'É o trecho mais barato do grafo',
+        'É o mais barato entre os que ligam dois grupos ainda separados',
+        'É o trecho com os menores números de bairro',
+        'Faz parte do menor caminho entre os dois bairros',
+      ],
+      answer: 1,
+      why: 'Os mais baratos que ele já foram processados, e os que ficaram de fora ligavam bairros do mesmo grupo. É isso que o argumento de troca usa.',
+    },
+    {
+      q: 'Você precisa do menor custo para ir do bairro 1 ao bairro 5, somando os trechos do percurso. Serve calcular a árvore geradora mínima e seguir o caminho dentro dela?',
+      options: [
+        'Sim, é a mesma coisa',
+        'Não: a árvore minimiza a soma de todos os trechos, e o caminho dentro dela pode ser mais longo que o menor caminho do grafo',
+        'Sim, desde que os custos sejam distintos',
+        'Não, porque a árvore não conecta 1 e 5',
+      ],
+      answer: 1,
+      why: 'No triângulo 1–2 (2), 2–3 (2), 1–3 (3), a árvore mínima usa 1–2 e 2–3: dentro dela, ir de 1 a 3 custa 4, e o trecho direto custa 3. Menor caminho é com Dijkstra.',
+    },
+  ]}
+/>

@@ -33,7 +33,7 @@ export const modules: ModuleRef[] = [
   { slug: 'bellman-ford-floyd', title: 'Bellman-Ford, ciclos negativos e Floyd-Warshall', cph: ['13.1', '13.3'], status: 'written' },
   { slug: 'dag-toposort', title: 'Ordenação topológica e DP em DAG', cph: ['16.1', '16.2'], status: 'written' },
   { slug: 'dsu', title: 'DSU (union-find)', cph: ['15.2'], status: 'written' },
-  { slug: 'mst', title: 'Árvore geradora mínima (Kruskal)', cph: ['15.1', '15.3'], status: 'planned' },
+  { slug: 'mst', title: 'Árvore geradora mínima (Kruskal)', cph: ['15.1', '15.3'], status: 'written' },
 
   // Fase 3 — Estruturas e árvores
   { slug: 'fenwick', title: 'Fenwick tree (BIT)', cph: ['9.2'], status: 'planned' },
