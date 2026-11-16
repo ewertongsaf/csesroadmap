@@ -1,0 +1,376 @@
+---
+title: Dijkstra
+description: Quando cada aresta tem um custo diferente, a BFS deixa de achar o menor caminho. O algoritmo de Dijkstra conserta isso com uma ideia só - a cidade mais próxima ainda em aberto já tem a resposta definitiva.
+---
+import Callout from '../../src/components/mdx/Callout.astro';
+import Quiz from '../../src/components/mdx/Quiz.tsx';
+import DijkstraViz from '../../src/components/mdx/viz/DijkstraViz.tsx';
+
+## Motivação: o tempo das entregas
+
+O problema desta aula, do começo ao fim:
+
+> Há $n$ cidades e $m$ estradas de mão dupla. Cada estrada liga duas cidades e leva um certo tempo para ser percorrida. Uma central de entregas fica na cidade 1. Qual o **menor tempo** para chegar a cada cidade? (Se não der para chegar, responda −1.)
+
+Um exemplo com 5 cidades e 6 estradas:
+
+| estrada | 1–2 | 1–3 | 3–2 | 2–4 | 3–4 | 4–5 |
+|---|---|---|---|---|---|---|
+| tempo | 7 | 2 | 3 | 1 | 8 | 2 |
+
+À mão: para a cidade 2, a estrada direta leva 7, mas ir pela cidade 3 leva $2 + 3 = 5$. Para a cidade 4, o melhor é 1 → 3 → 2 → 4, com $2 + 3 + 1 = 6$, e a cidade 5 fica a mais 2: total 8. A resposta é 0, 5, 2, 6, 8.
+
+### A BFS não serve mais
+
+O módulo anterior achava o caminho com **menos arestas**. Aqui ele erra, porque o caminho com menos estradas pode ser o mais demorado:
+
+| cidade | 1 | 2 | 3 | 4 | 5 |
+|---|---|---|---|---|---|
+| tempo pelo caminho de menos estradas | 0 | **7** | 2 | **8** | **10** |
+| menor tempo de verdade | 0 | 5 | 2 | 6 | 8 |
+
+A BFS chega à cidade 2 pela estrada direta, de tempo 7, e nunca considera o desvio pela cidade 3. Ela supõe que todo passo custa o mesmo.
+
+Um **grafo com pesos** é isso: cada aresta carrega um número (tempo, distância, preço), e o tamanho de um caminho é a **soma** dos pesos. Testar todos os caminhos é impraticável, pelo mesmo motivo de sempre: são exponencialmente muitos.
+
+## A ideia: a mais próxima em aberto já está resolvida
+
+Guarde, para cada cidade, o **melhor tempo conhecido até agora**. No começo, a cidade 1 tem tempo 0 e as outras têm infinito ("ainda não sei chegar").
+
+Olhe as estradas que saem da cidade 1: a 2 passa a ter tempo 7 e a 3 passa a ter tempo 2. Esses números são provisórios. Qual deles já é definitivo?
+
+O **menor**: o 2 da cidade 3. Qualquer outro jeito de chegar à cidade 3 teria de sair da cidade 1 por outra estrada, e a única outra já custa 7. Como nenhuma estrada tem tempo negativo, um caminho que começa gastando 7 nunca termina gastando menos que 2.
+
+Esse raciocínio vale sempre. Entre as cidades ainda em aberto, a de **menor tempo provisório** não pode ser melhorada: qualquer caminho alternativo passaria antes por outra cidade em aberto, que já está tão longe quanto ela ou mais. O algoritmo de **Dijkstra** repete três passos:
+
+1. Entre as cidades em aberto, pegue a de menor tempo provisório. Esse tempo é definitivo: **feche** a cidade.
+2. Para cada estrada que sai dela, veja se passar por ali **melhora** o tempo do vizinho. Se melhora, atualize.
+3. Repita até não sobrar cidade em aberto com tempo finito.
+
+No exemplo (∞ quer dizer "sem caminho conhecido"):
+
+| Passo | Cidade fechada | Tempo | O que melhora | Tempos de 1, 2, 3, 4, 5 depois |
+|---|---|---|---|---|
+| início | | | | 0, ∞, ∞, ∞, ∞ |
+| 1 | 1 | 0 | 2: ∞ → 7; 3: ∞ → 2 | 0, 7, 2, ∞, ∞ |
+| 2 | 3 | 2 | 2: 7 → 5; 4: ∞ → 10 | 0, 5, 2, 10, ∞ |
+| 3 | 2 | 5 | 4: 10 → 6 | 0, 5, 2, 6, ∞ |
+| 4 | 4 | 6 | 5: ∞ → 8 | 0, 5, 2, 6, 8 |
+| 5 | 5 | 8 | nada | 0, 5, 2, 6, 8 |
+
+A cidade 2 teve o tempo corrigido de 7 para 5 **antes** de ser fechada, e a 4 foi corrigida duas vezes (∞ → 10 → 6). Um tempo provisório pode melhorar várias vezes; o que nunca muda é o tempo de uma cidade já fechada.
+
+Testar se um caminho por $u$ melhora o tempo de $v$ tem nome: **relaxar** a aresta. A conta é
+
+$$
+\text{dist}(v) \leftarrow \min\bigl(\text{dist}(v),\ \text{dist}(u) + t\bigr)
+$$
+
+$\text{dist}(u)$ é o melhor tempo conhecido até $u$, e $t$ é o tempo da estrada de $u$ para $v$.
+
+<Callout type="tente">
+Mude o tempo da estrada 3–4 de 8 para 3. Em que ordem as cidades são fechadas, e quais são os tempos finais?
+
+<details>
+<summary>Ver resposta</summary>
+
+Fecha a 1 (tempos 0, 7, 2, ∞, ∞). Fecha a 3 com tempo 2: a cidade 2 vai a 5 e a 4 vai a $2 + 3 = 5$. Agora 2 e 4 empatam em 5; tanto faz qual fecha primeiro. Fechando a 2: ela oferece $5 + 1 = 6$ para a 4, que já tem 5, então nada muda. Fecha a 4 com 5: a cidade 5 vai a 7. Tempos finais: 0, 5, 2, 5, 7.
+
+</details>
+</Callout>
+
+## Achando a mais próxima depressa: a fila de prioridade
+
+O passo 1 pede "a cidade em aberto de menor tempo". Procurar isso com um laço sobre todas as cidades custa $n$ a cada vez, ou $n^2$ no total: $10^{10}$ para $n = 10^5$. Não passa.
+
+A estrutura que entrega o menor elemento de um conjunto que muda o tempo todo é a `priority_queue`, do módulo de estruturas da STL. Ela vai guardar **pares** (tempo, cidade), e precisa devolver o de **menor** tempo:
+
+```cpp
+priority_queue<pair<long long, int>, vector<pair<long long, int>>, greater<pair<long long, int>>> fila;
+```
+
+A declaração é comprida, mas tem só três partes: o tipo dos elementos (um par), o contêiner interno (sempre um `vector` desse tipo) e `greater`, que inverte a ordem para sair primeiro o **menor**. Pares são comparados pelo primeiro elemento; por isso o tempo vem na frente.
+
+Há um detalhe. Quando o tempo de uma cidade melhora, a entrada antiga dela **continua na fila**: a `priority_queue` não deixa alterar nem remover um elemento do meio. A solução é não se preocupar: empurre uma entrada nova e, quando uma entrada sair da fila, confira se ela ainda vale.
+
+```cpp
+auto [d, u] = fila.top();
+fila.pop();
+if (d > dist[u]) continue;                    // entrada velha: já achei caminho melhor até u
+```
+
+Se o tempo `d` guardado na entrada é maior que o melhor tempo atual de `u`, ela é de uma versão antiga e é descartada.
+
+O traço do exemplo, agora com a fila:
+
+| Sai da fila | Decisão | Melhoras | Fila depois |
+|---|---|---|---|
+| (início) | | | (0, 1) |
+| (0, 1) | fecha a 1 | 2 → 7; 3 → 2 | (2, 3), (7, 2) |
+| (2, 3) | fecha a 3 | 2 → 5; 4 → 10 | (5, 2), (7, 2), (10, 4) |
+| (5, 2) | fecha a 2 | 4 → 6 | (6, 4), (7, 2), (10, 4) |
+| (6, 4) | fecha a 4 | 5 → 8 | (7, 2), (8, 5), (10, 4) |
+| (7, 2) | **velha**: a 2 já tem tempo 5 | | (8, 5), (10, 4) |
+| (8, 5) | fecha a 5 | nada | (10, 4) |
+| (10, 4) | **velha**: a 4 já tem tempo 6 | | (vazia) |
+
+Sete entradas passaram pela fila, e duas eram velhas. Repare que não existe um vetor de "fechado": a comparação `d > dist[u]` faz esse papel.
+
+<DijkstraViz client:visible />
+
+### Quanto custa
+
+Cada estrada pode empurrar no máximo uma entrada para cada lado, então a fila recebe no máximo $2m$ entradas, e cada operação nela custa o logaritmo do tamanho:
+
+$$
+O\bigl((n + m) \log m\bigr)
+$$
+
+$n$ é o número de cidades e $m$ o de estradas. Para $n = 10^5$ e $m = 2 \cdot 10^5$, são poucos milhões de passos.
+
+## Por que os pesos não podem ser negativos
+
+O argumento do "já é definitivo" usou uma frase: um caminho que começa gastando mais nunca termina gastando menos. Com um peso negativo, ela é falsa.
+
+Três cidades, com estradas de **mão única** (um grafo direcionado): de 1 para 2 com tempo 2, de 1 para 3 com tempo 5, e de 3 para 2 com tempo **−4**.
+
+| Passo | Cidade fechada | Tempo | Tempos de 1, 2, 3 |
+|---|---|---|---|
+| 1 | 1 | 0 | 0, 2, 5 |
+| 2 | 2 | **2** | 0, 2, 5 |
+| 3 | 3 | 5 | 0, 2, 5 |
+
+O algoritmo fecha a cidade 2 com tempo 2. Mas o caminho 1 → 3 → 2 custa $5 - 4 = 1$. Quando a cidade 3 finalmente é processada, a 2 já foi fechada, e a resposta sai **2** em vez de 1.
+
+Com a versão de fila deste módulo (que não tem o vetor de fechados), a cidade 2 seria reaberta e a resposta sairia certa neste exemplo, mas a garantia de tempo desaparece: há grafos em que essa versão leva tempo exponencial. A regra prática é uma só: **se existe peso negativo, não é Dijkstra**. O algoritmo para esse caso está no próximo módulo.
+
+Peso **zero** não atrapalha: o argumento só precisa de "não negativo".
+
+## Recuperar o caminho
+
+Como na BFS, guarde de onde veio a melhor oferta para cada cidade. A diferença é que aqui o pai pode **mudar**: toda vez que o tempo de `v` melhora, o pai é atualizado.
+
+```cpp
+if (dist[u] + t < dist[v]) {
+    dist[v] = dist[u] + t;
+    pai[v] = u;                               // a melhor forma conhecida de chegar a v é por u
+    fila.push({dist[v], v});
+}
+```
+
+No exemplo, os pais finais são:
+
+| cidade | 2 | 3 | 4 | 5 |
+|---|---|---|---|---|
+| `pai` | 3 | 1 | 2 | 4 |
+
+Andando para trás a partir da 5: 5, 4, 2, 3, 1. Invertendo, o caminho é **1 → 3 → 2 → 4 → 5**, com tempo $2 + 3 + 1 + 2 = 8$.
+
+<Callout type="tente">
+Durante a execução, qual foi o **primeiro** pai atribuído à cidade 4? Por que ele mudou?
+
+<details>
+<summary>Ver resposta</summary>
+
+O primeiro pai da 4 foi a cidade 3: ao fechar a 3, a oferta $2 + 8 = 10$ era a única conhecida. Quando a cidade 2 foi fechada, ela ofereceu $5 + 1 = 6$, melhor que 10, e o pai passou a ser a 2. Se você guardasse o pai só na primeira vez (como na BFS), o caminho reconstruído seria 1 → 3 → 4, com tempo 10.
+
+</details>
+</Callout>
+
+## Grafos direcionados
+
+Se as estradas são de mão única, nada muda no algoritmo. Só a leitura: a estrada de `a` para `b` entra apenas na lista de `a`.
+
+```cpp
+viz[a].push_back({b, t});                     // só este sentido
+```
+
+Num grafo direcionado, a distância de 1 até 4 pode ser pequena e a de 4 até 1 pode nem existir. Leia o enunciado procurando a palavra que diz se as ligações têm sentido.
+
+## Código: o problema das entregas completo
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int main() {
+    int n, m;
+    cin >> n >> m;
+    // viz[u] = lista de pares (vizinho, tempo da estrada)
+    vector<vector<pair<int, long long>>> viz(n + 1);
+    for (int i = 0; i < m; i++) {
+        int a, b;
+        long long t;
+        cin >> a >> b >> t;
+        viz[a].push_back({b, t});
+        viz[b].push_back({a, t});              // estrada de mão dupla
+    }
+
+    const long long INF = 1e18;                // "ainda não sei chegar"
+    vector<long long> dist(n + 1, INF);
+    // fila de prioridade de pares (tempo, cidade); com greater, sai primeiro o MENOR tempo
+    priority_queue<pair<long long, int>, vector<pair<long long, int>>, greater<pair<long long, int>>> fila;
+    dist[1] = 0;
+    fila.push({0, 1});
+    while (!fila.empty()) {
+        auto [d, u] = fila.top();
+        fila.pop();
+        if (d > dist[u]) continue;             // entrada velha: já achei caminho melhor até u
+        for (auto [v, t] : viz[u]) {
+            if (dist[u] + t < dist[v]) {       // passar por u melhora o tempo até v?
+                dist[v] = dist[u] + t;
+                fila.push({dist[v], v});
+            }
+        }
+    }
+    for (int u = 1; u <= n; u++) cout << (dist[u] == INF ? -1 : dist[u]) << " \n"[u == n];
+}
+```
+
+A lista de adjacência agora guarda pares: `for (auto [v, t] : viz[u])` percorre os vizinhos de `u` já separando o vizinho `v` e o tempo `t`. Na última linha, `cond ? a : b` imprime −1 para quem ficou com infinito.
+
+**Entrada:**
+
+```
+5 6
+1 2 7
+1 3 2
+3 2 3
+2 4 1
+3 4 8
+4 5 2
+```
+
+**Saída:**
+
+```
+0 5 2 6 8
+```
+
+O programa passa pelas oito linhas do traço da fila.
+
+- **Tempo:** $O((n + m) \log m)$.
+- **Memória:** $O(n + m)$.
+
+### O mesmo código no formato de contest
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+typedef long long ll;
+typedef pair<ll,ll> pll;
+#define rep(i,a,b) for(int i=(a);i<(b);i++)
+#define pb push_back
+void fastio(){ ios::sync_with_stdio(false); cin.tie(nullptr); }
+
+int main(){
+    fastio();
+    int n, m; cin >> n >> m;
+    vector<vector<pll>> viz(n + 1);            // (vizinho, peso)
+    rep(i, 0, m) { ll a, b, t; cin >> a >> b >> t; viz[a].pb({b, t}); viz[b].pb({a, t}); }
+
+    const ll INF = 1e18;
+    vector<ll> dist(n + 1, INF);
+    priority_queue<pll, vector<pll>, greater<pll>> pq;   // (distância, vértice)
+    dist[1] = 0; pq.push({0, 1});
+    while (!pq.empty()) {
+        auto [d, u] = pq.top(); pq.pop();
+        if (d > dist[u]) continue;
+        for (auto [v, t] : viz[u]) if (d + t < dist[v]) { dist[v] = d + t; pq.push({dist[v], v}); }
+    }
+    rep(u, 1, n + 1) cout << (dist[u] == INF ? -1 : dist[u]) << " \n"[u == n];
+}
+```
+
+O `typedef pair<ll,ll> pll` do template encurta a declaração da fila. Tanto faz usar `d` ou `dist[u]` dentro do laço: depois do teste da entrada velha, os dois são iguais.
+
+## Armadilhas comuns
+
+- **Esquecer o `greater`.** Sem ele a fila devolve o **maior** tempo, e o algoritmo continua "funcionando", só que errado ou lentíssimo.
+- **Esquecer o teste da entrada velha.** A resposta continua certa, mas uma cidade pode ser processada muitas vezes, e o programa toma TLE em grafos feitos para isso.
+- **`int` nas distâncias.** Com $10^5$ estradas de peso $10^9$, um caminho chega a $10^{14}$. Use `long long` em `dist`, no par da fila e no infinito.
+- **Infinito que estoura.** `INF + t` não pode passar do limite do tipo. $10^{18}$ deixa folga; `LLONG_MAX` não deixa.
+- **Par na ordem errada.** A fila compara pelo **primeiro** elemento: tem de ser o tempo. Na lista de adjacência a ordem é livre, mas não confunda as duas.
+- **Usar Dijkstra com peso negativo.**
+- **Usar Dijkstra quando todos os pesos são iguais.** Funciona, mas a BFS resolve com menos código e sem o logaritmo.
+- **Grafo direcionado lido como não direcionado** (ou o contrário).
+- **Guardar o pai só na primeira descoberta**, como na BFS. Aqui o pai muda toda vez que o tempo melhora.
+
+<details class="para-depois">
+<summary>Para depois: estados, contagem de caminhos e outras variações</summary>
+
+**Dijkstra num grafo de estados.** Como a BFS, o Dijkstra roda sobre situações, e não só sobre lugares. Se você tem direito a usar **um** cupom que corta um preço pela metade, o estado é (cidade, já usei o cupom?), e cada estrada gera duas arestas: uma normal e uma que gasta o cupom. O número de vértices dobra, e o algoritmo é o mesmo.
+
+**Contar os caminhos mínimos.** Guarde, além de `dist[v]`, quantos caminhos mínimos chegam em `v`. Quando uma oferta é **estritamente melhor**, a contagem de `v` passa a ser a de `u`; quando **empata**, soma-se a de `u`. O mesmo esquema calcula o caminho mínimo com menos (ou mais) arestas.
+
+**Os $k$ menores caminhos.** Deixando cada cidade ser fechada até $k$ vezes (em vez de uma), a $k$-ésima vez que ela sai da fila dá o $k$-ésimo menor caminho até ela.
+
+**Origens demais.** Para a distância até a origem mais próxima entre várias, vale o truque da BFS: todas entram na fila com tempo 0.
+
+**A versão sem fila.** Num grafo com quase todas as arestas possíveis ($m$ perto de $n^2$), o laço simples que procura o mínimo entre as cidades em aberto custa $O(n^2)$ e ganha da versão com fila. É raro precisar.
+
+**Do destino para trás.** A distância de todas as cidades **até** uma cidade $t$ é um Dijkstra a partir de $t$ no grafo com as arestas invertidas. Muitos problemas combinam um Dijkstra de ida com um de volta.
+
+</details>
+
+## Referências
+
+- **CPH, capítulo 13 — Shortest paths, seção 13.2 *Dijkstra's algorithm*:** o algoritmo com fila de prioridade e o exemplo de por que pesos negativos o quebram.
+- [USACO Guide — Shortest Paths with Non-Negative Edge Weights](https://usaco.guide/gold/shortest-paths)
+- [cp-algorithms — Dijkstra on sparse graphs](https://cp-algorithms.com/graph/dijkstra_sparse.html), a versão com fila de prioridade desta aula.
+- [cp-algorithms — Dijkstra](https://cp-algorithms.com/graph/dijkstra.html), com a prova de correção e a versão $O(n^2)$.
+
+## Mini-quiz
+
+<Quiz
+  client:visible
+  questions={[
+    {
+      q: 'Estradas de mão dupla: 1–2 (4), 1–3 (1), 3–2 (2), 2–4 (5), 3–4 (9). Em que ordem o Dijkstra a partir de 1 fecha as cidades, e com quais tempos?',
+      code: 'auto [d, u] = fila.top(); fila.pop();\nif (d > dist[u]) continue;\nfor (auto [v, t] : viz[u])\n    if (d + t < dist[v]) { dist[v] = d + t; fila.push({dist[v], v}); }',
+      options: ['1 (0), 2 (4), 3 (1), 4 (9)', '1 (0), 3 (1), 2 (3), 4 (8)', '1 (0), 3 (1), 2 (4), 4 (9)', '1 (0), 3 (1), 4 (10), 2 (3)'],
+      answer: 1,
+      why: 'Fecha 1; as ofertas são 2 → 4 e 3 → 1. Fecha 3 com 1: melhora 2 para 3 e oferece 10 para 4. Fecha 2 com 3: melhora 4 para 8. Fecha 4 com 8.',
+    },
+    {
+      q: 'No mesmo grafo, quantas entradas **velhas** saem da fila ao longo da execução?',
+      options: ['0', '1', '2', '3'],
+      answer: 2,
+      why: 'A cidade 2 foi empurrada com 4 e depois com 3; a cidade 4, com 10 e depois com 8. As entradas (4, 2) e (10, 4) saem depois que as cidades já têm tempos melhores, e são descartadas.',
+    },
+    {
+      q: 'Estradas de **mão única**: 1→2 (1), 2→3 (1), 1→3 (5), 3→4 (1). Qual a distância de 1 até 4, e de 3 até 1?',
+      options: ['3, e não existe caminho', '6, e 5', '3, e 5', '6, e não existe caminho'],
+      answer: 0,
+      why: 'De 1 a 4: 1 → 2 → 3 → 4 custa 3 (a estrada direta 1→3 custa 5). De 3 só se chega a 4: não há caminho de 3 até 1.',
+    },
+    {
+      q: 'Por que a cidade de menor tempo provisório pode ser fechada na hora?',
+      options: [
+        'Porque ela foi a primeira a entrar na fila',
+        'Porque qualquer outro caminho até ela passaria por uma cidade em aberto que já está tão longe ou mais, e os pesos não são negativos',
+        'Porque a fila de prioridade nunca erra',
+        'Porque ela tem menos vizinhos',
+      ],
+      answer: 1,
+      why: 'É o argumento central do algoritmo, e ele depende de os pesos serem não negativos: um caminho só pode ficar mais caro ao crescer.',
+    },
+    {
+      q: 'Um grafo tem a aresta 3→2 com peso −4. O que fazer?',
+      options: [
+        'Dijkstra normalmente',
+        'Somar 4 a todos os pesos e rodar Dijkstra',
+        'Usar outro algoritmo: a garantia do Dijkstra não vale com peso negativo',
+        'Trocar o sinal de todos os pesos',
+      ],
+      answer: 2,
+      why: 'Somar uma constante a todas as arestas muda os caminhos mínimos, porque penaliza mais os caminhos com mais arestas. Peso negativo pede Bellman-Ford, do próximo módulo.',
+    },
+    {
+      q: 'Seu Dijkstra dá a resposta certa nos exemplos, mas errada em testes grandes com pesos até 10^9. Causa mais provável?',
+      options: ['Faltou o greater', 'As distâncias estão em int e estouram', 'O grafo é direcionado', 'A fila ficou vazia cedo demais'],
+      answer: 1,
+      why: 'Um caminho com muitas arestas de peso 10^9 passa de 2 · 10^9. dist, o par da fila e o infinito precisam ser long long.',
+    },
+  ]}
+/>
