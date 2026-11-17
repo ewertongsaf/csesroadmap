@@ -1,0 +1,364 @@
+---
+title: Grafos funcionais (successor graphs)
+description: Quando cada vértice tem exatamente uma seta de saída, todo caminho acaba preso num ciclo. A aula usa os saltos de 2^k para andar bilhões de passos de uma vez (somando o que se paga no caminho) e acha ciclos com a tartaruga e a lebre.
+---
+import Callout from '../../src/components/mdx/Callout.astro';
+import Quiz from '../../src/components/mdx/Quiz.tsx';
+import FunctionalViz from '../../src/components/mdx/viz/FunctionalViz.tsx';
+
+## Motivação: a carta que nunca para
+
+O problema desta aula, do começo ao fim:
+
+> Há $n$ cidades. Cada cidade $v$ encaminha toda carta que recebe para uma cidade fixa $\text{suc}(v)$, e cobra um pedágio $c_v$ quando a carta sai dela. Chegam $q$ perguntas `x k`: uma carta sai da cidade $x$ e é encaminhada $k$ vezes. Em que cidade ela termina, e quanto pagou de pedágio? ($k$ vai até $10^9$; os pedágios, até $10^6$.)
+
+Um exemplo com 8 cidades:
+
+| Cidade | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+|---|---|---|---|---|---|---|---|---|
+| Encaminha para | 2 | 3 | 4 | 5 | 3 | 1 | 6 | 4 |
+| Pedágio | 5 | 1 | 2 | 4 | 3 | 6 | 2 | 7 |
+
+| Pergunta | `7 4` | `1 10` | `8 5` | `6 1` | `3 1000000000` |
+|---|---|---|---|---|---|
+| Cidade final | 3 | 5 | 5 | 1 | 4 |
+| Pedágio | **14** | **30** | **20** | **6** | **2999999999** |
+
+Na pergunta `1 10`, a carta passa por 2, 3, 4, 5, 3, 4, 5, 3, 4, 5 e paga $5 + 1 + 2 + 4 + 3 + 2 + 4 + 3 + 2 + 4 = 30$.
+
+Encaminhar uma vez por passo custa $k$ passos por pergunta. Com $k = 10^9$ e $2 \cdot 10^5$ perguntas, são $2 \cdot 10^{14}$ passos. Não passa nem perto.
+
+## O que é um grafo funcional
+
+Um grafo em que **cada vértice tem exatamente uma seta de saída** se chama **grafo funcional** (ou *grafo de sucessores*): ele descreve uma função, $v \mapsto \text{suc}(v)$.
+
+Siga uma carta qualquer. Como só existem $n$ cidades, depois de no máximo $n$ encaminhamentos ela repete uma cidade, e a partir daí faz exatamente o mesmo trajeto de antes, para sempre. Então **todo trajeto termina num ciclo**. No exemplo, o único ciclo é 3 → 4 → 5 → 3, e todas as outras cidades formam "caudas" que desembocam nele:
+
+- 7 → 6 → 1 → 2 → 3 (uma cauda de 4 setas);
+- 8 → 4 (uma cauda de 1 seta).
+
+O desenho de um trajeto parece a letra grega ρ (*rho*): uma cauda e depois um laço.
+
+## Saltos de $2^j$, agora com pedágio
+
+A ideia da aula de binary lifting serve sem mudança nenhuma: guarde para cada cidade onde a carta está depois de 1, 2, 4, 8… encaminhamentos. A novidade é guardar, junto, **quanto se paga** nesses encaminhamentos.
+
+- `up[v][j]`: a cidade em que a carta que sai de $v$ está depois de $2^j$ encaminhamentos;
+- `soma[v][j]`: o pedágio pago nesses $2^j$ encaminhamentos.
+
+$2^j$ encaminhamentos são $2^{j-1}$ e depois mais $2^{j-1}$, a partir de onde a primeira metade parou:
+
+$$
+\text{up}[v][j] = \text{up}[m][j-1] \qquad \text{soma}[v][j] = \text{soma}[v][j-1] + \text{soma}[m][j-1]
+$$
+
+$m = \text{up}[v][j-1]$ é a cidade em que a carta está no meio do caminho.
+
+No exemplo (cada casa: cidade de chegada / pedágio pago):
+
+| Cidade | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+|---|---|---|---|---|---|---|---|---|
+| 1 encaminhamento | 2 / 5 | 3 / 1 | 4 / 2 | 5 / 4 | 3 / 3 | 1 / 6 | 6 / 2 | 4 / 7 |
+| 2 encaminhamentos | 3 / 6 | 4 / 3 | 5 / 6 | 3 / 7 | 4 / 5 | 2 / 11 | 1 / 8 | 5 / 11 |
+| 4 encaminhamentos | 5 / 12 | 3 / 10 | 4 / 11 | 5 / 13 | 3 / 12 | 4 / 14 | 3 / 14 | 4 / 16 |
+| 8 encaminhamentos | 3 / 24 | 4 / 21 | 5 / 24 | 3 / 25 | 4 / 23 | 5 / 27 | 4 / 25 | 5 / 29 |
+
+Confira uma casa: 2 encaminhamentos a partir da 7 vão até a 6 (pedágio 2) e daí até a 1 (pedágio 6): chegada 1, pedágio $2 + 6 = 8$.
+
+Diferente da árvore, aqui não há raiz nem DFS: a tabela é preenchida **coluna por coluna**. Toda a linha de "2 encaminhamentos" usa só a de "1", toda a de "4" usa só a de "2", e assim por diante.
+
+```cpp
+for (int j = 1; j < LOG; j++) {                // a coluna j inteira depende só da coluna j - 1
+    for (int v = 1; v <= n; v++) {
+        int meio = up[v][j - 1];               // onde a carta está depois da primeira metade
+        up[v][j] = up[meio][j - 1];
+        soma[v][j] = soma[v][j - 1] + soma[meio][j - 1];
+    }
+}
+```
+
+### Respondendo uma pergunta
+
+Escreva $k$ em binário e dê um salto por bit ligado, somando o pedágio de cada salto **a partir da cidade onde a carta está naquele momento**. Para `1 10` ($10 = 1010$, bits 1 e 3):
+
+| Bit | Salto | Sai de | Pedágio do salto | Chega em | Total |
+|---|---|---|---|---|---|
+| 1 | 2 encaminhamentos | 1 | 6 | 3 | 6 |
+| 3 | 8 encaminhamentos | 3 | 24 | 5 | 30 |
+
+Dois saltos em vez de dez passos. Para $k = 10^9$ são no máximo 30 saltos, porque $2^{30} > 10^9$.
+
+```cpp
+for (int j = 0; j < LOG; j++) {
+    if (k >> j & 1) {                          // o bit j de k está ligado
+        pago += soma[x][j];                    // primeiro soma o pedágio a partir de onde a carta está
+        x = up[x][j];                          // depois move a carta
+    }
+}
+```
+
+<Callout type="tente">
+Responda `8 5` com a tabela, sem simular passo a passo.
+
+<details>
+<summary>Ver resposta</summary>
+
+$5 = 101$ em binário: bits 0 e 2. O salto de 1 a partir da 8 vai para a 4 e paga 7. O salto de 4 a partir da 4 vai para a 5 e paga 13. Resposta: cidade **5**, pedágio $7 + 13 = 20$. Confira simulando: 8 → 4 → 5 → 3 → 4 → 5, pagando $7 + 4 + 3 + 2 + 4 = 20$.
+
+</details>
+</Callout>
+
+## Três cuidados, cada um com seu contraexemplo
+
+**Somar a segunda metade a partir do lugar certo.** A segunda metade do salto começa no **meio**, não em $v$. Escrevendo `soma[v][j] = soma[v][j-1] + soma[v][j-1]` (a primeira metade duas vezes), a tabela fica errada sem nenhum aviso: a pergunta `7 4` responde pedágio **8** em vez de 14. Só dobrou o que se paga nos dois primeiros encaminhamentos a partir da 7.
+
+**Somar antes de mover.** Na resposta, o pedágio do salto é o da cidade de onde a carta **sai**. Trocando a ordem das duas linhas (mover e depois somar), cada salto cobra o trecho que começa na cidade de chegada: `7 4` responde **11** em vez de 14, e `1 10` responde 29 em vez de 30.
+
+**Saltos suficientes.** Com `LOG = 18`, só cabem $k < 2^{18} = 262144$. Para `3 1000000000`, os bits de 18 a 29 são ignorados, e a resposta sai (cidade 3, pedágio 548352) em vez de (4, 2999999999). Para $k$ até $10^9$, `LOG` precisa ser 30; até $10^{18}$, 60.
+
+## Achando o ciclo: a tartaruga e a lebre
+
+Uma pergunta diferente: a partir de uma cidade $x$, depois de quantos encaminhamentos a carta entra no ciclo, e de que tamanho ele é? Dá para marcar as cidades visitadas num vetor, mas existe um jeito que usa memória constante, o **algoritmo de Floyd**:
+
+1. Duas cartas saem de $x$: a **tartaruga** anda uma seta por vez, a **lebre** anda duas. Repita até as duas estarem na mesma cidade.
+2. Volte a tartaruga para $x$ e deixe a lebre no encontro. Agora as duas andam **uma** seta por vez. Onde se encontrarem é a **entrada** do ciclo, e o número de passos é o tamanho da cauda.
+3. A partir da entrada, dê uma volta contando: é o tamanho do ciclo.
+
+A partir da 7:
+
+| Fase | Passo | Tartaruga | Lebre |
+|---|---|---|---|
+| 1 | 1 | 6 | 1 |
+| 1 | 2 | 1 | 3 |
+| 1 | 3 | 2 | 5 |
+| 1 | 4 | 3 | 4 |
+| 1 | 5 | 4 | 3 |
+| 1 | 6 | **5** | **5** |
+| 2 | 1 | 6 | 3 |
+| 2 | 2 | 1 | 4 |
+| 2 | 3 | 2 | 5 |
+| 2 | 4 | **3** | **3** |
+
+O primeiro encontro foi na 5, mas a entrada do ciclo é a **3**: tratar o primeiro encontro como entrada é um erro comum. A cauda tem 4 setas (7 → 6 → 1 → 2 → 3), e a volta 3 → 4 → 5 → 3 mostra um ciclo de 3 cidades.
+
+Por que a fase 2 funciona? Quando as duas se encontram, a lebre andou exatamente o dobro da tartaruga, e a diferença entre as duas distâncias é um número inteiro de voltas no ciclo. Daí sai que a distância do encontro até a entrada (andando para a frente) é igual à distância de $x$ até a entrada, a menos de voltas inteiras. Andando juntas uma seta por vez, uma a partir de $x$ e outra a partir do encontro, as duas chegam à entrada ao mesmo tempo.
+
+```cpp
+// A partir de x: quantos passos até entrar no ciclo (mu) e o comprimento do ciclo (lambda).
+pair<int, int> floyd(int x) {
+    int t = suc[x], l = suc[suc[x]];           // tartaruga anda 1, lebre anda 2
+    while (t != l) {
+        t = suc[t];
+        l = suc[suc[l]];
+    }
+    int mu = 0;
+    t = x;                                     // a tartaruga volta ao início; a lebre fica no encontro
+    while (t != l) {                           // agora as duas andam 1 por vez
+        t = suc[t];
+        l = suc[l];
+        mu++;
+    }
+    int lambda = 1;
+    l = suc[t];                                // t está na entrada do ciclo; dá uma volta contando
+    while (l != t) {
+        l = suc[l];
+        lambda++;
+    }
+    return {mu, lambda};
+}
+```
+
+`pair<int, int>` devolve dois números juntos; quem chama pode ler com `auto [mu, lambda] = floyd(x);`.
+
+<FunctionalViz client:visible />
+
+<Callout type="tente">
+A partir da cidade 8, quanto valem a cauda (mu) e o ciclo (lambda)? Em que cidade a carta entra no ciclo?
+
+<details>
+<summary>Ver resposta</summary>
+
+A 8 encaminha direto para a 4, que já está no ciclo: a cauda tem **1** seta e a entrada é a **4**. O ciclo continua sendo 3 → 4 → 5 → 3, com **3** cidades. A entrada depende de onde a carta começa: a da 7 entra pela 3, a da 8 pela 4.
+
+</details>
+</Callout>
+
+## Código: o problema do correio completo
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+const int LOG = 30;                            // 2^30 > 10^9: cobre qualquer k da entrada
+int n;
+vector<array<int, LOG>> up;                    // up[v][j] = cidade onde a carta está 2^j encaminhamentos depois de v
+vector<array<long long, LOG>> soma;            // soma[v][j] = pedágio pago nesses 2^j encaminhamentos
+
+int main() {
+    int q;
+    cin >> n >> q;
+    up.assign(n + 1, {});
+    soma.assign(n + 1, {});
+    for (int v = 1; v <= n; v++) cin >> up[v][0];          // a próxima cidade de v
+    for (int v = 1; v <= n; v++) cin >> soma[v][0];        // o pedágio de sair de v
+
+    for (int j = 1; j < LOG; j++) {            // a coluna j inteira depende só da coluna j - 1
+        for (int v = 1; v <= n; v++) {
+            int meio = up[v][j - 1];           // onde a carta está depois da primeira metade
+            up[v][j] = up[meio][j - 1];
+            soma[v][j] = soma[v][j - 1] + soma[meio][j - 1];
+        }
+    }
+
+    while (q--) {
+        int x;
+        long long k;
+        cin >> x >> k;
+        long long pago = 0;
+        for (int j = 0; j < LOG; j++) {
+            if (k >> j & 1) {                  // o bit j de k está ligado: 2^j encaminhamentos de uma vez
+                pago += soma[x][j];            // primeiro soma o pedágio a partir de onde a carta está
+                x = up[x][j];                  // depois move a carta
+            }
+        }
+        cout << x << " " << pago << "\n";
+    }
+}
+```
+
+**Entrada:**
+
+```
+8 5
+2 3 4 5 3 1 6 4
+5 1 2 4 3 6 2 7
+7 4
+1 10
+8 5
+6 1
+3 1000000000
+```
+
+**Saída:**
+
+```
+3 14
+5 30
+5 20
+1 6
+4 2999999999
+```
+
+São as cinco respostas da tabela da motivação. Na última, a carta dá $10^9$ encaminhamentos dentro do ciclo 3 → 4 → 5, que custa 9 por volta: são $333\,333\,333$ voltas inteiras e mais um encaminhamento (o da 3, pedágio 2), dando $333\,333\,333 \cdot 9 + 2 = 2\,999\,999\,999$ e terminando na 4.
+
+- **Tempo:** $O(n \log K)$ para a tabela e $O(\log K)$ por pergunta, com $K = 10^9$ o maior $k$.
+- **Memória:** $O(n \log K)$: 30 pares de números por cidade.
+
+### O mesmo código no formato de contest
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+typedef long long ll;
+#define rep(i,a,b) for(int i=(a);i<(b);i++)
+void fastio(){ ios::sync_with_stdio(false); cin.tie(nullptr); }
+const int LOG = 30;
+
+int main(){
+    fastio();
+    int n, q; cin >> n >> q;
+    vector<vector<int>> up(LOG, vector<int>(n + 1));
+    vector<vector<ll>> s(LOG, vector<ll>(n + 1));
+    rep(v,1,n+1) cin >> up[0][v];
+    rep(v,1,n+1) cin >> s[0][v];
+    rep(j,1,LOG) rep(v,1,n+1) { up[j][v] = up[j-1][up[j-1][v]]; s[j][v] = s[j-1][v] + s[j-1][up[j-1][v]]; }
+    while (q--) {
+        int x; ll k; cin >> x >> k; ll p = 0;
+        rep(j,0,LOG) if (k >> j & 1) { p += s[j][x]; x = up[j][x]; }
+        cout << x << " " << p << "\n";
+    }
+}
+```
+
+Aqui a tabela está "deitada": `up[j][v]` em vez de `up[v][j]`. As duas formas funcionam. Esta deixa cada coluna `j` como um vetor contínuo na memória, o que costuma ser um pouco mais rápido, porque o laço de dentro percorre um vetor só.
+
+## Armadilhas comuns
+
+- **Somar a segunda metade a partir de $v$.** A segunda metade do salto começa no meio: `soma[meio][j - 1]`.
+- **Mover antes de somar.** O pedágio de um salto é contado a partir da cidade de onde a carta sai.
+- **`LOG` pequeno.** Precisa de $2^{\text{LOG}} > k$: 30 para $10^9$, 60 para $10^{18}$.
+- **Preencher a tabela linha por linha.** Sem raiz, a ordem certa é coluna por coluna (todas as cidades para `j = 1`, depois todas para `j = 2`…).
+- **`k` em `int`.** Até $10^9$ cabe, mas `k >> j` com `k` até $10^{18}$ precisa de `long long`.
+- **Somas em `int`.** $10^9$ encaminhamentos com pedágio até $10^6$ dão $10^{15}$.
+- **Confundir o encontro com a entrada do ciclo.** No Floyd, o primeiro encontro está em algum ponto do ciclo; a entrada só aparece na segunda fase.
+
+<details class="para-depois">
+<summary>Para depois: todos os ciclos de uma vez e distâncias</summary>
+
+**Todos os vértices em $O(n)$.** Para saber, para **cada** vértice, o tamanho da cauda e do ciclo, rodar o Floyd de cada um custa $O(n^2)$. Em vez disso, ande a partir de cada vértice ainda não processado guardando o caminho; ao bater num vértice já processado, ou num vértice do próprio caminho (aí se fecha um ciclo novo), dá para preencher todos os vértices do caminho de trás para a frente. Cada vértice é processado uma vez.
+
+**"Quantos passos de $a$ até $b$?"** Se $b$ está na cauda de $a$, é uma diferença de profundidades (as caudas formam árvores penduradas no ciclo, com a raiz no vértice de entrada). Se $b$ está no ciclo, é a distância de $a$ até a entrada mais a distância dentro do ciclo (numerando os vértices do ciclo em ordem). Se não for nenhum dos dois, a resposta é "nunca".
+
+**Outras somas e mínimos.** No lugar do pedágio, a tabela pode guardar qualquer coisa que se combine "primeira metade, depois segunda": o menor valor visto, o maior, uma composição de funções.
+
+</details>
+
+## Referências
+
+- **CPH, capítulo 16 — Directed graphs:** seção 16.3 *Successor paths* (a tabela de sucessores para andar $k$ passos) e seção 16.4 *Cycle detection* (o algoritmo de Floyd e o de Brent).
+- [USACO Guide — Introduction to Functional Graphs](https://usaco.guide/silver/func-graphs), com detecção de ciclos e problemas.
+- [USACO Guide — Binary Jumping](https://usaco.guide/plat/binary-jump), com os saltos em grafos funcionais.
+
+## Mini-quiz
+
+<Quiz
+  client:visible
+  questions={[
+    {
+      q: 'Responda `2 3` com a tabela do exemplo: em que cidade a carta termina, e quanto pagou?',
+      code: 'for (int j = 0; j < LOG; j++)\n    if (k >> j & 1) { pago += soma[x][j]; x = up[x][j]; }',
+      options: ['Cidade 5, pedágio 7', 'Cidade 4, pedágio 3', 'Cidade 5, pedágio 9', 'Cidade 3, pedágio 7'],
+      answer: 0,
+      why: '3 = 11 em binário. Salto de 1 a partir da 2: vai para a 3, paga 1. Salto de 2 a partir da 3: vai para a 5, paga 6. Total 7. Simulando: 2 → 3 → 4 → 5, pagando 1 + 2 + 4.',
+    },
+    {
+      q: 'Quanto vale `soma[7][1]` (o pedágio de 2 encaminhamentos a partir da 7)?',
+      code: 'int meio = up[v][j - 1];\nsoma[v][j] = soma[v][j - 1] + soma[meio][j - 1];',
+      options: ['4', '6', '8', '12'],
+      answer: 2,
+      why: 'meio = up[7][0] = 6. soma[7][1] = soma[7][0] + soma[6][0] = 2 + 6 = 8. O 4 seria a versão que soma a primeira metade duas vezes.',
+    },
+    {
+      q: 'E a pergunta `5 6`?',
+      code: 'for (int j = 0; j < LOG; j++)\n    if (k >> j & 1) { pago += soma[x][j]; x = up[x][j]; }',
+      options: ['Cidade 3, pedágio 18', 'Cidade 4, pedágio 16', 'Cidade 5, pedágio 15', 'Cidade 5, pedágio 18'],
+      answer: 3,
+      why: '6 = 110: bits 1 e 2. Salto de 2 a partir da 5: vai para a 4, paga 5. Salto de 4 a partir da 4: vai para a 5, paga 13. Total 18. Faz sentido: 6 encaminhamentos são duas voltas inteiras no ciclo, que custa 9 por volta.',
+    },
+    {
+      q: 'Com o Floyd a partir da 6, quanto valem mu (a cauda) e lambda (o ciclo)?',
+      code: 'auto [mu, lambda] = floyd(6);',
+      options: ['mu 3 e lambda 3', 'mu 4 e lambda 3', 'mu 3 e lambda 4', 'mu 2 e lambda 3'],
+      answer: 0,
+      why: 'A carta da 6 passa por 1 e 2 e entra no ciclo na 3: cauda 6 → 1 → 2 → 3, com 3 setas. O ciclo 3 → 4 → 5 tem 3 cidades.',
+    },
+    {
+      q: 'Uma versão troca a ordem dentro do `if`: primeiro move a carta, depois soma. O que ela responde para `7 4`?',
+      code: 'if (k >> j & 1) {\n    x = up[x][j];\n    pago += soma[x][j];\n}',
+      options: ['Cidade 3, pedágio 14', 'Cidade 3, pedágio 11', 'Cidade 4, pedágio 11', 'Cidade 3, pedágio 8'],
+      answer: 1,
+      why: 'O salto de 4 leva da 7 à 3 e depois soma soma[3][2] = 11, o pedágio de 4 encaminhamentos a partir da 3, em vez de soma[7][2] = 14. A cidade final sai certa; o pedágio, não.',
+    },
+    {
+      q: 'Por que todo trajeto num grafo funcional acaba num ciclo?',
+      options: [
+        'Porque o grafo é conexo',
+        'Porque, com n cidades, a carta repete alguma cidade em no máximo n passos, e daí em diante refaz sempre o mesmo trajeto',
+        'Porque toda cidade tem uma seta de entrada',
+        'Nem sempre: a carta pode parar numa cidade sem saída',
+      ],
+      answer: 1,
+      why: 'Cada cidade tem exatamente uma saída, então a carta nunca para. Depois de no máximo n encaminhamentos, alguma cidade se repete, e como a saída de cada cidade é fixa, o trajeto a partir dali se repete para sempre.',
+    },
+  ]}
+/>

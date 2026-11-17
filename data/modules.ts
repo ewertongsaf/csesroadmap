@@ -45,7 +45,7 @@ export const modules: ModuleRef[] = [
   { slug: 'arvores-basico', title: 'Árvores: DFS, subárvores e diâmetro', cph: ['14.1', '14.2', '14.3'], status: 'written' },
   { slug: 'dp-em-arvore', title: 'DP em árvore e rerooting', cph: ['14.1', '14.3'], status: 'written' },
   { slug: 'binary-lifting-lca', title: 'Binary lifting e LCA', cph: ['18.1', '18.3'], status: 'written' },
-  { slug: 'grafos-funcionais', title: 'Grafos funcionais (successor graphs)', cph: ['16.3', '16.4'], status: 'planned' },
+  { slug: 'grafos-funcionais', title: 'Grafos funcionais (successor graphs)', cph: ['16.3', '16.4'], status: 'written' },
   { slug: 'euler-tour', title: 'Euler tour: subárvores e caminhos como intervalos', cph: ['18.2'], status: 'planned' },
   { slug: 'small-to-large', title: 'Small-to-large', cph: ['18.4'], status: 'planned' },
   { slug: 'hld', title: 'Heavy-light decomposition', cph: [], basedOn: CPA, status: 'planned' },
