@@ -42,7 +42,7 @@ export const modules: ModuleRef[] = [
   { slug: 'segtree-nos-compostos', title: 'Segment tree com nós compostos', cph: ['9.3', '28.3'], status: 'written' },
   { slug: 'queries-offline', title: 'Queries offline (ordenar queries e eventos)', cph: ['18.4', '27.3'], status: 'written' },
   { slug: 'lazy-propagation', title: 'Lazy propagation e segment tree persistente', cph: ['28.1', '28.2'], status: 'written' },
-  { slug: 'arvores-basico', title: 'Árvores: DFS, subárvores e diâmetro', cph: ['14.1', '14.2'], status: 'planned' },
+  { slug: 'arvores-basico', title: 'Árvores: DFS, subárvores e diâmetro', cph: ['14.1', '14.2', '14.3'], status: 'written' },
   { slug: 'dp-em-arvore', title: 'DP em árvore e rerooting', cph: ['14.3'], status: 'planned' },
   { slug: 'binary-lifting-lca', title: 'Binary lifting e LCA', cph: ['18.1', '18.3'], status: 'planned' },
   { slug: 'grafos-funcionais', title: 'Grafos funcionais (successor graphs)', cph: ['16.3', '16.4'], status: 'planned' },

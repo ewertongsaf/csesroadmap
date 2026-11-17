@@ -8,4 +8,4 @@ Material de apoio das aulas, fora do site: nada aqui é renderizado nem entra no
 - `modules/<slug>.mdx` (quando existir): aula ainda em preparação. Pronta, ela vai para `content/modules/`
   e o módulo passa a `status: 'written'` em `data/modules.ts`.
 
-Aulas com testes aqui: `dp-introducao`, `dp-mochila`, `dp-grid-strings`, `lis`, `grafos-dfs`, `bfs`, `dijkstra`, `bellman-ford-floyd`, `dag-toposort`, `dsu`, `mst`, `fenwick`, `segment-tree`, `ordered-set`, `segtree-nos-compostos`, `queries-offline`, `lazy-propagation`.
+Aulas com testes aqui: `dp-introducao`, `dp-mochila`, `dp-grid-strings`, `lis`, `grafos-dfs`, `bfs`, `dijkstra`, `bellman-ford-floyd`, `dag-toposort`, `dsu`, `mst`, `fenwick`, `segment-tree`, `ordered-set`, `segtree-nos-compostos`, `queries-offline`, `lazy-propagation`, `arvores-basico`.

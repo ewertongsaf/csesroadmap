@@ -1,0 +1,374 @@
+---
+title: 'Árvores: DFS, subárvores e diâmetro'
+description: Uma árvore é o grafo mais simples que existe - um caminho só entre cada par de vértices - e por isso aceita truques que grafos gerais não aceitam. A aula percorre, enraíza e mede árvores, até achar a maior distância entre dois vértices com só duas buscas.
+---
+import Callout from '../../src/components/mdx/Callout.astro';
+import Quiz from '../../src/components/mdx/Quiz.tsx';
+import TreeDiameterViz from '../../src/components/mdx/viz/TreeDiameterViz.tsx';
+
+## Motivação: o posto de guarda do parque
+
+O problema desta aula, do começo ao fim:
+
+> Um parque tem $n$ clareiras ligadas por $n - 1$ trilhas, cada uma com um comprimento. Dá para ir de qualquer clareira a qualquer outra. Responda duas coisas: qual é a **maior distância** entre duas clareiras? E em que clareira pôr um **posto de guarda** para que a maior distância do posto até uma clareira seja a menor possível?
+
+Um exemplo com 8 clareiras:
+
+| Trilha | 1–2 | 1–3 | 2–4 | 2–5 | 3–6 | 6–7 | 6–8 |
+|---|---|---|---|---|---|---|---|
+| Comprimento | 3 | 2 | 4 | 1 | 5 | 2 | 1 |
+
+A maior distância é **16**, entre as clareiras 4 e 7 (o caminho 4 – 2 – 1 – 3 – 6 – 7, com $4 + 3 + 2 + 5 + 2$). O posto fica na clareira **1**: dali, a clareira mais distante está a **9**, e nenhuma outra escolha faz melhor.
+
+A ideia direta é fazer uma busca a partir de cada clareira e anotar as distâncias. São $n$ buscas de $O(n)$ cada: com $2 \cdot 10^5$ clareiras, $4 \cdot 10^{10}$ passos. Não passa.
+
+A aula mostra que **três** buscas bastam, não importa o tamanho do parque. O que permite isso é o formato especial do grafo.
+
+## O que é uma árvore
+
+Um grafo com $n$ vértices, **conexo** (dá para ir de qualquer um a qualquer outro) e com exatamente $n - 1$ arestas é uma **árvore**. Três fatos andam juntos com essa definição:
+
+- **Não há ciclos.** Um ciclo precisaria de uma aresta "a mais" além das $n - 1$ que já são necessárias para ligar tudo.
+- **Entre dois vértices existe exatamente um caminho** (sem repetir vértices). Se existissem dois, juntos eles formariam um ciclo.
+- **Tirar qualquer aresta desconecta a árvore** em dois pedaços.
+
+O segundo fato é o mais útil: a distância entre duas clareiras é a soma das trilhas do **único** caminho entre elas. Não há escolha de caminho, nem Dijkstra.
+
+Nomes que vão aparecer: um vértice com uma aresta só é uma **folha** (no exemplo, 4, 5, 7 e 8). Escolhido um vértice especial, a **raiz**, cada vértice passa a ter um **pai** (o próximo no caminho até a raiz) e **filhos**.
+
+## DFS numa árvore: o pai no lugar do vetor de visitados
+
+A DFS da aula de grafos marca cada vértice visitado, para não entrar duas vezes no mesmo lugar. Numa árvore, isso é desnecessário: o único jeito de chegar de volta a um vértice já visitado é pela aresta por onde você veio. Basta **não voltar pelo pai**.
+
+```cpp
+void dfs(int v, int pai, long long d, vector<long long>& dist) {
+    dist[v] = d;                               // distância de v até onde a busca começou
+    for (auto [u, w] : adj[v]) {               // adj[v]: pares (vizinho, comprimento)
+        if (u != pai) dfs(u, v, d + w, dist);
+    }
+}
+```
+
+`auto [u, w]` dá nome às duas partes de cada par da lista: o vizinho e o comprimento da trilha. A chamada inicial é `dfs(1, 0, 0, dist)`: o 0 no lugar do pai é um número que não é clareira.
+
+A busca a partir da clareira 1, no exemplo (com as trilhas lidas na ordem da tabela):
+
+| Passo | Clareira | Veio de | Distância desde 1 |
+|---|---|---|---|
+| 1 | 1 | | 0 |
+| 2 | 2 | 1 | $0 + 3 = 3$ |
+| 3 | 4 | 2 | $3 + 4 = 7$ |
+| 4 | 5 | 2 | $3 + 1 = 4$ |
+| 5 | 3 | 1 | $0 + 2 = 2$ |
+| 6 | 6 | 3 | $2 + 5 = 7$ |
+| 7 | 7 | 6 | $7 + 2 = 9$ |
+| 8 | 8 | 6 | $7 + 1 = 8$ |
+
+Uma busca visita cada clareira uma vez e olha cada trilha duas vezes (uma de cada lado): $O(n)$.
+
+Sem o `if (u != pai)`, a busca volta pela trilha de onde veio: `dfs(1)` chama `dfs(2)`, que chama `dfs(1)` de novo, e assim para sempre, até a pilha de chamadas estourar. É o mesmo erro da aula de DFS, com o mesmo remédio.
+
+## Enraizar: pai, profundidade e tamanho da subárvore
+
+Escolhendo a clareira 1 como raiz, uma única DFS calcula três informações sobre cada vértice:
+
+- `pai[v]`: quem vem antes de $v$ no caminho até a raiz;
+- `prof[v]`: quantas arestas separam $v$ da raiz (a **profundidade**);
+- `tam[v]`: quantos vértices há na **subárvore** de $v$, isto é, $v$ e tudo o que fica "abaixo" dele.
+
+O tamanho só fica pronto **na volta** da recursão: primeiro cada filho conta a própria subárvore, depois o pai soma.
+
+```cpp
+void enraiza(int v, int p) {
+    pai[v] = p;
+    tam[v] = 1;                                // a própria clareira
+    for (auto [u, w] : adj[v]) {
+        if (u == p) continue;
+        prof[u] = prof[v] + 1;
+        enraiza(u, v);
+        tam[v] += tam[u];                      // na volta: a subárvore do filho já está contada
+    }
+}
+```
+
+`continue` pula o resto da volta do laço e passa para o próximo vizinho. No exemplo:
+
+| Clareira | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+|---|---|---|---|---|---|---|---|---|
+| `pai` | — | 1 | 1 | 2 | 2 | 3 | 6 | 6 |
+| `prof` | 0 | 1 | 1 | 2 | 2 | 2 | 3 | 3 |
+| `tam` | 8 | 3 | 4 | 1 | 1 | 3 | 1 | 1 |
+
+As folhas têm tamanho 1. A raiz tem tamanho $n$. E o tamanho de cada vértice é 1 mais a soma dos tamanhos dos filhos: `tam[3]` $= 1 +$ `tam[6]` $= 1 + 3 = 4$.
+
+<Callout type="tente">
+Com a raiz em 1, quais clareiras estão na subárvore da 2? E se a raiz fosse a 6, quanto valeria o tamanho da subárvore da 1?
+
+<details>
+<summary>Ver resposta</summary>
+
+Com raiz em 1: a subárvore da 2 tem 2, 4 e 5 (tamanho 3, como na tabela). Com raiz em 6, o pai da 1 passa a ser a 3, e "abaixo" da 1 ficam 1, 2, 4 e 5: tamanho **4**. Subárvore depende da raiz escolhida. É a mesma árvore, olhada de outro ponto.
+
+</details>
+</Callout>
+
+## Diâmetro: duas buscas bastam
+
+A maior distância entre dois vértices de uma árvore se chama **diâmetro**. O truque para achá-lo:
+
+1. Faça uma busca a partir de **qualquer** vértice e ache o mais distante dele. Chame-o de $A$.
+2. Faça uma busca a partir de $A$ e ache o mais distante de $A$. Chame-o de $B$.
+3. A distância de $A$ a $B$ é o diâmetro.
+
+No exemplo: a busca a partir de 1 (a tabela anterior) termina com a clareira 7 como a mais distante, a 9. Então $A = 7$. A busca a partir da 7:
+
+| Clareira | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+|---|---|---|---|---|---|---|---|---|
+| Distância desde 7 | 9 | 12 | 7 | **16** | 13 | 2 | 0 | 3 |
+
+A mais distante é a 4, a 16: $B = 4$, e o diâmetro é **16**.
+
+Por que funciona? A ideia, sem a prova completa: a clareira mais distante de **qualquer** ponto de partida é sempre uma ponta de algum caminho mais longo. Se não fosse, daria para trocar um pedaço do caminho mais longo por um pedaço que chega até ela e obter um caminho ainda maior. E, partindo de uma ponta do caminho mais longo, a clareira mais distante é a outra ponta.
+
+A primeira busca **sozinha** não basta: a partir de 1, a maior distância encontrada é 9 (até a 7), e o diâmetro é 16. A clareira 1 não está numa das pontas.
+
+### A clareira mais distante de cada uma
+
+A segunda pergunta do problema precisa, para cada clareira $v$, da maior distância de $v$ até alguma outra. Ela se chama **excentricidade** de $v$. O mesmo argumento do diâmetro mostra que a clareira mais distante de $v$ é sempre $A$ ou $B$. Então uma terceira busca, a partir de $B$, completa o quadro:
+
+$$
+\text{exc}(v) = \max(\text{dist}(v, A),\ \text{dist}(v, B))
+$$
+
+$\text{exc}(v)$ é a maior distância de $v$ até uma clareira, e $A$ e $B$ são as pontas do diâmetro.
+
+| Clareira | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+|---|---|---|---|---|---|---|---|---|
+| Distância desde $A = 7$ | 9 | 12 | 7 | 16 | 13 | 2 | 0 | 3 |
+| Distância desde $B = 4$ | 7 | 4 | 9 | 0 | 5 | 14 | 16 | 15 |
+| Excentricidade | **9** | 12 | **9** | 16 | 13 | 14 | 16 | 15 |
+
+A menor excentricidade é 9, e ela aparece **duas vezes**: nas clareiras 1 e 3. Faz sentido: o meio exato do diâmetro fica a 8 da clareira 4, e no caminho 4 – 2 – 1 – 3 a clareira 1 está a 7 e a 3 está a 9. O meio cai **dentro** da trilha 1–3, e as duas pontas dela empatam. O problema pede uma clareira, e o programa escolhe a de menor número.
+
+A clareira de menor excentricidade é o **centro** da árvore. Sempre existe um centro no caminho do diâmetro.
+
+<TreeDiameterViz client:visible />
+
+<Callout type="tente">
+Numa árvore em que a clareira 1 está ligada à 2 por uma trilha de comprimento 5 e, do outro lado, à sequência 1 – 3 – 4 – 5 – 6 (trilhas de comprimento 1), qual é a clareira mais distante da 1? Ela está no meio ou na ponta do diâmetro?
+
+<details>
+<summary>Ver resposta</summary>
+
+É a **2**, a 5 de distância (a 6 está a 4). E ela é uma ponta do diâmetro: a busca a partir da 2 acha a 6, a $5 + 4 = 9$. O diâmetro é 2 – 1 – 3 – 4 – 5 – 6. A primeira busca sempre cai numa ponta, mesmo quando a clareira mais distante parece "fora do caminho principal".
+
+</details>
+</Callout>
+
+## A condição: comprimentos não negativos
+
+O truque das duas buscas supõe que andar mais nunca **diminui** a distância. Com uma trilha de comprimento negativo, ele quebra. O menor exemplo: trilhas 1–2 com comprimento $-4$ e 2–3 com comprimento 2.
+
+- A partir de 1: as distâncias são 0 (até a 1), $-4$ (até a 2) e $-2$ (até a 3). A "mais distante" é a própria 1.
+- A partir de 1 de novo: a resposta seria **0**.
+- Mas a distância entre 2 e 3 é **2**.
+
+Com pesos negativos, a maior distância precisa de outra técnica (a DP em árvore da próxima aula resolve). Com comprimentos zero ou positivos, as duas buscas estão sempre certas.
+
+## Código: o problema do parque completo
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int n;
+vector<vector<pair<int, int>>> adj;            // adj[v] = lista de (vizinho, comprimento da trilha)
+
+// Preenche dist[v] = distância de v até a clareira onde a busca começou.
+void dfs(int v, int pai, long long d, vector<long long>& dist) {
+    dist[v] = d;
+    for (auto [u, w] : adj[v]) {
+        if (u != pai) dfs(u, v, d + w, dist);  // numa árvore, só não se pode voltar pelo pai
+    }
+}
+
+// Clareira mais distante segundo o vetor dist (a de menor número, no empate).
+int maisLonge(const vector<long long>& dist) {
+    int melhor = 1;
+    for (int v = 2; v <= n; v++)
+        if (dist[v] > dist[melhor]) melhor = v;
+    return melhor;
+}
+
+int main() {
+    cin >> n;
+    adj.resize(n + 1);
+    for (int i = 0; i < n - 1; i++) {
+        int a, b, w;
+        cin >> a >> b >> w;
+        adj[a].push_back({b, w});
+        adj[b].push_back({a, w});
+    }
+
+    vector<long long> d1(n + 1), dA(n + 1), dB(n + 1);
+    dfs(1, 0, 0, d1);
+    int A = maisLonge(d1);                     // uma ponta do diâmetro
+    dfs(A, 0, 0, dA);
+    int B = maisLonge(dA);                     // a outra ponta
+    dfs(B, 0, 0, dB);
+
+    long long diametro = dA[B];
+    int centro = 1;
+    long long melhor = LLONG_MAX;
+    for (int v = 1; v <= n; v++) {
+        long long pior = max(dA[v], dB[v]);    // a clareira mais distante de v é A ou B
+        if (pior < melhor) {
+            melhor = pior;
+            centro = v;
+        }
+    }
+    cout << diametro << " " << centro << " " << melhor << "\n";
+}
+```
+
+`vector<long long>& dist` passa o vetor por **referência**: a função escreve no vetor de quem chamou, em vez de numa cópia. A saída tem três números: o diâmetro, a clareira do posto e a maior distância a partir dela.
+
+**Entrada:**
+
+```
+8
+1 2 3
+1 3 2
+2 4 4
+2 5 1
+3 6 5
+6 7 2
+6 8 1
+```
+
+**Saída:**
+
+```
+16 1 9
+```
+
+O diâmetro 16 vai da clareira 4 à 7. As clareiras 1 e 3 empatam com excentricidade 9, e o programa fica com a de menor número.
+
+- **Tempo:** $O(n)$: três buscas e um laço.
+- **Memória:** $O(n)$: a lista de vizinhos e três vetores de distância.
+
+### O mesmo código no formato de contest
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+typedef long long ll;
+typedef vector<ll> vl;
+#define rep(i,a,b) for(int i=(a);i<(b);i++)
+void fastio(){ ios::sync_with_stdio(false); cin.tie(nullptr); }
+
+int main(){
+    fastio();
+    int n; cin >> n;
+    vector<vector<pair<int,int>>> adj(n + 1);
+    rep(i,0,n-1) { int a, b, w; cin >> a >> b >> w; adj[a].push_back({b, w}); adj[b].push_back({a, w}); }
+    auto dists = [&](int s) {
+        vl d(n + 1, 0);
+        auto dfs = [&](auto& self, int v, int p) -> void {
+            for (auto [u, w] : adj[v]) if (u != p) { d[u] = d[v] + w; self(self, u, v); }
+        };
+        dfs(dfs, s, 0);
+        return d;
+    };
+    auto far = [&](const vl& d) { return int(max_element(d.begin() + 1, d.end()) - d.begin()); };
+    vl d1 = dists(1); int A = far(d1);
+    vl dA = dists(A); int B = far(dA);
+    vl dB = dists(B);
+    int c = 1;
+    rep(v,1,n+1) if (max(dA[v], dB[v]) < max(dA[c], dB[c])) c = v;
+    cout << dA[B] << " " << c << " " << max(dA[c], dB[c]) << "\n";
+}
+```
+
+A busca virou uma lambda recursiva, com o truque `self(self, ...)` da aula de DFS. `max_element(d.begin() + 1, d.end())` devolve um iterador para o maior valor a partir da posição 1. Subtrair `d.begin()` transforma esse iterador no número da posição. No empate, `max_element` fica com o primeiro, como o laço da versão didática.
+
+## Armadilhas comuns
+
+- **Voltar pelo pai.** Sem `u != pai`, a busca entra em recursão infinita.
+- **Uma busca só.** A clareira mais distante de 1 é uma ponta do diâmetro, mas a distância até ela não é o diâmetro.
+- **Começar a segunda busca do lugar errado.** Ela parte de $A$, o resultado da primeira, e não de 1 de novo.
+- **Pesos negativos.** O truque das duas buscas exige comprimentos maiores ou iguais a zero.
+- **`int` nas distâncias.** São até $2 \cdot 10^5$ trilhas de até $10^9$: `long long`.
+- **Ler $n$ arestas.** Uma árvore de $n$ vértices tem $n - 1$ arestas. Ler uma a mais trava o programa esperando entrada.
+- **Confundir centro com centroide.** O centro minimiza a maior **distância**. O centroide (outra aula) é o vértice que, removido, deixa pedaços de no máximo $n/2$ **vértices**. São coisas diferentes.
+
+<details class="para-depois">
+<summary>Para depois: recursão funda, centro sem pesos e diâmetro por DP</summary>
+
+**Recursão funda.** Uma árvore em forma de caminho com $2 \cdot 10^5$ vértices faz a DFS empilhar $2 \cdot 10^5$ chamadas. No CSES e na OBI a pilha é grande o suficiente; em juízes com pilha pequena, troque a recursão por uma pilha explícita (`vector<int>`) guardando também o pai de cada vértice, como na aula de DFS.
+
+**Árvores sem pesos.** Com todas as arestas de comprimento 1, o diâmetro conta arestas, e o centro é o vértice do meio do caminho do diâmetro (ou os **dois** vértices do meio, quando o diâmetro tem comprimento ímpar).
+
+**Diâmetro por DP.** Outra forma de achar o diâmetro, que funciona até com pesos negativos: enraíze a árvore e calcule, para cada vértice, o caminho mais longo que desce dele. O diâmetro passa por algum vértice "mais alto", e é a soma das duas descidas mais longas a partir dele por filhos diferentes. É o primeiro exemplo da próxima aula.
+
+**A ordem de visita.** Anotando o momento em que a DFS entra e sai de cada vértice, toda subárvore vira um trecho contínuo de um vetor. Isso transforma perguntas sobre subárvores em perguntas sobre trechos, que a segment tree responde. É a técnica de *Euler tour*, de um milestone mais adiante.
+
+</details>
+
+## Referências
+
+- **CPH, capítulo 14 — Tree algorithms:** seção 14.1 *Tree traversal* (DFS com o pai e DP simples sobre subárvores), seção 14.2 *Diameter* (os dois algoritmos, por DP e por duas buscas) e seção 14.3 *All longest paths* (a maior distância a partir de cada vértice).
+- [USACO Guide — Introduction to Tree Algorithms](https://usaco.guide/silver/intro-tree), com DFS em árvore, tamanho de subárvore e diâmetro.
+- [cp-algorithms — Depth First Search](https://cp-algorithms.com/graph/depth-first-search.html), com a ordem de entrada e saída dos vértices.
+
+## Mini-quiz
+
+<Quiz
+  client:visible
+  questions={[
+    {
+      q: 'Uma árvore tem as arestas 1–2, 2–3, 3–4 e 2–5, lidas nessa ordem. Em que ordem `dfs(1, 0, ...)` visita os vértices?',
+      code: 'void dfs(int v, int pai, ...) {\n    // visita v\n    for (auto [u, w] : adj[v])\n        if (u != pai) dfs(u, v, ...);\n}',
+      options: ['1, 2, 5, 3, 4', '1, 2, 3, 4, 5', '1, 2, 3, 5, 4', '1, 5, 2, 3, 4'],
+      answer: 1,
+      why: 'A lista do 2 é (1, 3, 5), na ordem em que as arestas foram lidas. Do 2 a busca desce para o 3 e daí para o 4 antes de voltar e visitar o 5. Visitar 5 antes de 3 seria uma busca em largura, nível por nível.',
+    },
+    {
+      q: 'Nessa mesma árvore, todas as arestas com comprimento 1. Quanto vale o diâmetro, e quais são A e B?',
+      code: 'dfs(1, 0, 0, d1);  int A = maisLonge(d1);\ndfs(A, 0, 0, dA);  int B = maisLonge(dA);\ncout << dA[B];',
+      options: ['2, com A = 4 e B = 1', '3, com A = 1 e B = 4', '4, com A = 4 e B = 5', '3, com A = 4 e B = 1'],
+      answer: 3,
+      why: 'A partir de 1, a mais distante é a 4 (distância 3). A partir de 4, as distâncias até 1 e até 5 são ambas 3; no empate, maisLonge fica com a de menor número, a 1. O diâmetro é 3 (4–3–2–1 ou 4–3–2–5).',
+    },
+    {
+      q: 'No exemplo da aula (raiz 1), quanto valem `tam[6]` e `prof[7]`?',
+      code: 'void enraiza(int v, int p) {\n    pai[v] = p; tam[v] = 1;\n    for (auto [u, w] : adj[v]) {\n        if (u == p) continue;\n        prof[u] = prof[v] + 1;\n        enraiza(u, v);\n        tam[v] += tam[u];\n    }\n}',
+      options: ['tam 3 e prof 3', 'tam 2 e prof 3', 'tam 3 e prof 9', 'tam 4 e prof 2'],
+      answer: 0,
+      why: 'A subárvore da 6 tem 6, 7 e 8. A 7 está a três arestas da raiz (1–3–6–7). A profundidade conta arestas; 9 seria a distância somando os comprimentos.',
+    },
+    {
+      q: 'Na árvore com a trilha 1–2 de comprimento 5 e o caminho 1–3–4–5–6 com trilhas de comprimento 1, as excentricidades são 5, 9, 6, 7, 8, 9 (clareiras 1 a 6). Onde fica o posto de guarda?',
+      options: ['Na 3, que fica no meio da sequência 1–3–4–5–6', 'Na 6, uma das pontas', 'Na 1, com excentricidade 5', 'Na 2, a mais distante de 1'],
+      answer: 2,
+      why: 'O posto vai na clareira de menor excentricidade: a 1, de onde o ponto mais distante está a 5. O meio do diâmetro (comprimento 9) fica a 4,5 da clareira 2, dentro da trilha 1–2, mais perto da 1.',
+    },
+    {
+      q: 'Por que, numa árvore, a DFS não precisa de um vetor de visitados?',
+      options: [
+        'Porque árvores não têm vértices repetidos',
+        'Porque o único caminho de volta a um vértice já visitado é a aresta para o pai, e ela é pulada',
+        'Porque a recursão já impede repetições',
+        'Precisa, sim, como em qualquer grafo',
+      ],
+      answer: 1,
+      why: 'Sem ciclos, a única forma de reencontrar um vértice já visitado é voltar pela aresta de onde se veio. Pular o pai basta.',
+    },
+    {
+      q: 'Com trilhas 1–2 de comprimento −4 e 2–3 de comprimento 2, o que o programa da aula imprimiria como diâmetro, e qual é a maior distância de verdade?',
+      options: ['Imprime 2; a verdade é 2', 'Imprime −2; a verdade é 2', 'Imprime 0; a verdade é 2', 'Imprime 0; a verdade é 0'],
+      answer: 2,
+      why: 'A partir de 1 as distâncias são 0, −4 e −2: a "mais distante" é a própria 1, e a segunda busca também acha 0. Mas entre 2 e 3 a distância é 2. Com pesos negativos as duas buscas não funcionam.',
+    },
+  ]}
+/>
