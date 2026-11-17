@@ -1,0 +1,171 @@
+# Dicas do milestone 16 — binary lifting, LCA, Euler tour e grafos funcionais.
+problems:
+  1687: # Company Queries I
+    hints:
+      - >-
+        "O chefe do chefe do chefe…, $k$ vezes" é subir $k$ passos na árvore. Subir um por vez pode custar $n$ passos por pergunta.
+      - >-
+        Monte a tabela de saltos da aula de binary lifting (o ancestral a $2^j$ passos) e dê um salto para cada bit ligado de $k$.
+    pitfalls:
+      - >-
+        Se $k$ passa da profundidade do funcionário, a resposta é $-1$. Use 0 como "acima do diretor" (e faça o 0 apontar para si mesmo), ou compare $k$ com a profundidade antes.
+
+  1688: # Company Queries II
+    hints:
+      - >-
+        O menor chefe comum de dois funcionários é o LCA deles na hierarquia.
+      - >-
+        LCA com saltos: iguale as profundidades, confira se já são o mesmo funcionário, e então salte os dois juntos do maior salto para o menor, só quando os destinos forem diferentes.
+    pitfalls:
+      - >-
+        Não esqueça o caso em que um é chefe (direto ou não) do outro: depois de igualar, os dois coincidem.
+
+  1135: # Distance Queries
+    hints:
+      - >-
+        O caminho entre $a$ e $b$ sobe de $a$ até o LCA e desce até $b$.
+      - >-
+        Com a profundidade de cada nó, a distância é $\text{prof}(a) + \text{prof}(b) - 2 \cdot \text{prof}(\text{lca})$: é a fórmula da aula de LCA, com todas as arestas de comprimento 1.
+    pitfalls:
+      - >-
+        Uma busca por pergunta é $O(nq)$. A árvore pode ser um caminho de $2 \cdot 10^5$ nós: o LCA de um em um também fica lento.
+
+  1136: # Counting Paths
+    hints:
+      - >-
+        Somar 1 em cada nó de cada caminho é lento. Lembre do vetor de diferenças: num vetor, somar num trecho vira duas mudanças. Existe algo parecido em árvore?
+      - >-
+        Se cada nó guardar um número e a resposta de $v$ for a **soma da subárvore** de $v$, então um caminho de $a$ até $b$ vira quatro mudanças: $+1$ em $a$, $+1$ em $b$, $-1$ no LCA e $-1$ no pai do LCA.
+      - >-
+        Faça todas as mudanças e, no fim, uma DFS somando as subárvores (na volta da recursão).
+    pitfalls:
+      - >-
+        Os $-1$ vão no LCA **e** no pai dele: o LCA está no caminho e precisa contar 1 vez, não 2 nem 0. Se o LCA é a raiz, o pai não existe e a segunda mudança é descartada.
+
+  1137: # Subtree Queries
+    hints:
+      - >-
+        Uma subárvore não é um trecho na numeração da entrada. Como renumerar os nós para que ela seja?
+      - >-
+        Euler tour: numere na ordem em que a DFS entra em cada nó. A subárvore de $v$ vira o trecho de `ent[v]` a `sai[v]`, e o problema vira "mudar um valor, somar um trecho" numa Fenwick tree.
+    pitfalls:
+      - >-
+        A mudança é "o valor passa a ser $x$": some a diferença (guarde o valor atual de cada nó). As somas passam de `int`.
+
+  1138: # Path Queries
+    hints:
+      - >-
+        Agora a pergunta é a soma no caminho de um nó até a **raiz**. Mudar o valor de $v$ afeta a resposta de quais nós?
+      - >-
+        De todos os nós da subárvore de $v$: todos eles passam por $v$ no caminho até a raiz. Então mudar $v$ é "somar a diferença no trecho `ent[v]`..`sai[v]`", e a resposta de $u$ é o valor na posição `ent[u]`.
+      - >-
+        É o problema da aula de Euler tour: diferenças numa Fenwick tree, $+x$ em `ent[v]` e $-x$ em `sai[v] + 1`, e a resposta é uma soma de prefixo.
+    pitfalls:
+      - >-
+        Comece somando o valor inicial de cada nó na subárvore dele (as mesmas duas mudanças), ou guarde a soma inicial do caminho até a raiz separadamente.
+
+  1750: # Planets Queries I
+    hints:
+      - >-
+        Cada planeta tem exatamente um teleporte: é um grafo funcional, e $k$ vai até $10^9$.
+      - >-
+        Tabela de saltos da aula de grafos funcionais (o planeta depois de $2^j$ teleportes), preenchida coluna por coluna, e um salto por bit de $k$.
+    pitfalls:
+      - >-
+        Com $k$ até $10^9$ são 30 colunas. Uma tabela de $30 \times 2 \cdot 10^5$ inteiros cabe; guarde `int`, não `long long`, se a memória apertar.
+
+  1751: # Planets Cycles
+    hints:
+      - >-
+        A partir de cada planeta, o trajeto anda por uma cauda e entra num ciclo, e o primeiro planeta repetido é a entrada do ciclo. Quantos teleportes são feitos até repetir?
+      - >-
+        O tamanho da cauda mais o tamanho do ciclo. Rodar o Floyd de cada planeta é $O(n^2)$: aproveite que trajetos se juntam.
+      - >-
+        Ande a partir de cada planeta ainda sem resposta, guardando o caminho. Se bater num planeta do próprio caminho, achou um ciclo novo: todos do ciclo têm resposta igual ao tamanho dele. Se bater num planeta já resolvido, a resposta dos anteriores é a dele mais a distância. Preencha o caminho de trás para a frente.
+    pitfalls:
+      - >-
+        Marque três estados: nunca visto, no caminho atual, já resolvido. Sem o estado "no caminho atual" você não distingue um ciclo novo de um planeta resolvido.
+
+  1160: # Planets Queries II
+    hints:
+      - >-
+        No grafo funcional, cada planeta está numa cauda ou num ciclo. Separe os casos: $a$ e $b$ podem estar no mesmo ciclo; $b$ pode estar na cauda que sai de $a$; ou nenhum dos dois.
+      - >-
+        As caudas formam árvores penduradas no ciclo (a raiz de cada árvore é o planeta de entrada). Se $b$ está numa cauda, ele precisa ser ancestral de $a$ nessa árvore: compare profundidades e use os saltos para subir.
+      - >-
+        Se $b$ está no ciclo, a resposta é a distância de $a$ até a entrada do ciclo dele mais a distância, dentro do ciclo, da entrada até $b$ (numere o ciclo em ordem para isso). Se o ciclo de $b$ não é o mesmo de $a$, a resposta é $-1$.
+    pitfalls:
+      - >-
+        Muitos casos: $a = b$ (resposta 0), $b$ na cauda mas não ancestral de $a$, ciclos diferentes. Teste cada um contra uma simulação de até $n$ passos.
+
+  1664: # Movie Festival Queries
+    hints:
+      - >-
+        Para uma pergunta só, o guloso da aula de greedy resolve: a partir do horário atual, assista sempre o filme que **termina primeiro** entre os que ainda dá para começar.
+      - >-
+        Esse guloso é uma função: "estando livre no horário $t$, o próximo filme termina no horário $\text{prox}(t)$". Cada pergunta é andar nesse grafo funcional a partir de $a$ enquanto não passar de $b$.
+      - >-
+        Calcule $\text{prox}(t)$ para todos os horários (de trás para a frente, com o menor fim entre os filmes que começam em $t$ ou depois) e monte a tabela de saltos. Na pergunta, salte do maior para o menor, só se o destino ainda for no máximo $b$, contando os filmes.
+    pitfalls:
+      - >-
+        Os horários vão até $10^6$: a tabela tem 20 colunas de $10^6$ posições. Use um valor "infinito" para quando não há mais filmes, e faça o infinito apontar para si mesmo.
+
+  3409: # MST Edge Cost
+    hints:
+      - >-
+        Se a aresta obrigatória já está na MST, a resposta é o custo da MST. E se não está?
+      - >-
+        Ao forçar a aresta $(a, b)$, forma-se um ciclo com o caminho entre $a$ e $b$ na MST. Para voltar a ser uma árvore, tire a aresta mais **cara** desse caminho.
+      - >-
+        Resposta: custo da MST $+ w - $ (maior aresta no caminho de $a$ a $b$ na MST). O maior peso no caminho sai do binary lifting, guardando junto com cada salto o maior peso das arestas puladas.
+    pitfalls:
+      - >-
+        As somas passam de `int`. Se a aresta já está na MST, a fórmula também funciona (a maior aresta do caminho é ela mesma), desde que o caminho seja calculado na MST.
+
+  3114: # Tree Coin Collecting I
+    hints:
+      - >-
+        O melhor caminho de $a$ até $b$ que passa por uma moeda sai do caminho de $a$ até $b$ em algum ponto $v$, vai até a moeda mais próxima de $v$ e volta. Quanto isso custa?
+      - >-
+        $\text{dist}(a, b) + 2 \cdot d(v)$, em que $d(v)$ é a distância de $v$ até a moeda mais próxima. Calcule $d$ para todos os nós com uma BFS de várias fontes (todas as moedas ao mesmo tempo).
+      - >-
+        Falta o menor $d(v)$ entre os nós do caminho de $a$ até $b$: binary lifting com o mínimo de $d$ guardado em cada salto, como no LCA.
+    pitfalls:
+      - >-
+        Inclua os dois extremos e o LCA no mínimo. Se o caminho já passa por uma moeda, $d(v) = 0$ ali e a resposta é a distância.
+
+  2416: # Increasing Array Queries
+    hints:
+      - >-
+        Para um trecho só: cada elemento precisa subir até o maior valor que apareceu antes dele no trecho. O custo é a soma de (máximo do prefixo $-$ elemento).
+      - >-
+        A soma dos elementos sai de somas de prefixo; o difícil é a soma dos "máximos do prefixo" a partir de $a$. Esses máximos mudam só nos elementos maiores que todos os anteriores: o próximo maior de cada posição (pilha monotônica).
+      - >-
+        Cada posição pula para o próximo elemento maior que ela, e entre um pulo e outro o máximo é constante: a soma dos máximos de $a$ até $b$ é uma soma ao longo desses pulos. Binary lifting sobre "próximo maior", guardando a soma em cada salto, ou queries offline por $a$ decrescente.
+    pitfalls:
+      - >-
+        "Crescente" aqui aceita iguais: o próximo elemento que muda o máximo é o **estritamente** maior. O último trecho (do último pulo até $b$) é parcial. Tudo em `long long`.
+
+  1191: # Cyclic Array
+    hints:
+      - >-
+        Se você soubesse onde começa o primeiro pedaço, o guloso resolve: estique cada pedaço o máximo possível. O problema é que o vetor é cíclico e o começo pode ser qualquer posição.
+      - >-
+        Duplique o vetor e, para cada posição $i$, calcule com dois ponteiros $\text{prox}(i)$: onde começa o pedaço seguinte, se um pedaço guloso começar em $i$.
+      - >-
+        Testar todos os começos com o guloso é $O(n^2)$. Mas $\text{prox}$ é uma função: com a tabela de saltos, conte quantos pedaços são precisos a partir de cada começo para avançar $n$ posições, em $O(\log n)$ cada.
+    pitfalls:
+      - >-
+        $k$ vai até $10^{18}$ e as somas também: `long long`. O começo ótimo é uma das $n$ posições originais.
+
+  3304: # Visible Buildings Queries
+    hints:
+      - >-
+        Começando no prédio $a$, os prédios vistos são $a$, depois o primeiro à direita **mais alto** que ele, depois o primeiro mais alto que esse, e assim por diante.
+      - >-
+        "O primeiro à direita estritamente mais alto" sai da pilha monotônica, para todas as posições. Isso define um grafo funcional (com um "fim" depois do último prédio).
+      - >-
+        A resposta é quantos pulos dá para fazer a partir de $a$ sem passar de $b$, mais 1. Com a tabela de saltos, salte do maior para o menor enquanto o destino for no máximo $b$.
+    pitfalls:
+      - >-
+        Prédios de mesma altura não aparecem: o próximo tem de ser estritamente mais alto. Faça o "fim" ($n + 1$) apontar para si mesmo.
