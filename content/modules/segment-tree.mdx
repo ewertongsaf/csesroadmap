@@ -1,0 +1,473 @@
+---
+title: Segment tree
+description: Uma árvore em que cada nó guarda o resumo de um trecho do vetor - o mínimo, a soma, o máximo. Mudar um valor e consultar um trecho custam poucos passos, e a mesma árvore ainda responde "qual a primeira posição que serve?".
+---
+import Callout from '../../src/components/mdx/Callout.astro';
+import Quiz from '../../src/components/mdx/Quiz.tsx';
+import SegTreeViz from '../../src/components/mdx/viz/SegTreeViz.tsx';
+
+## Motivação: o posto mais barato do trecho
+
+O problema desta aula, do começo ao fim:
+
+> Uma estrada tem $n$ postos de gasolina em fila, e o posto $i$ cobra $p_i$ pelo litro. Chegam $q$ eventos, um de cada vez. Um evento `M k x` **muda** o preço do posto $k$ para $x$. Um evento `Q a b` **pergunta**: neste momento, qual é o menor preço entre os postos $a$ e $b$?
+
+Um exemplo com 8 postos, que começam cobrando 5, 3, 8, 6, 2, 7, 4 e 6:
+
+| Evento | O que acontece | Preços depois | Resposta |
+|---|---|---|---|
+| `Q 1 8` | menor de todos | 5, 3, 8, 6, 2, 7, 4, 6 | **2** |
+| `Q 3 4` | menor entre 8 e 6 | | **6** |
+| `M 5 9` | o posto 5 passa a cobrar 9 | 5, 3, 8, 6, **9**, 7, 4, 6 | |
+| `Q 3 7` | menor entre 8, 6, 9, 7, 4 | | **4** |
+| `M 2 7` | o posto 2 passa a cobrar 7 | 5, **7**, 8, 6, 9, 7, 4, 6 | |
+| `Q 1 4` | menor entre 5, 7, 8, 6 | | **5** |
+
+Com um vetor comum, cada pergunta é um laço de até $n$ passos: com $2 \cdot 10^5$ postos e $2 \cdot 10^5$ perguntas, são $4 \cdot 10^{10}$. Não passa.
+
+A Fenwick tree da aula anterior não resolve. Ela monta o trecho de $a$ a $b$ **subtraindo** um prefixo de outro, e o mínimo não tem subtração: saber que o menor de 1 a 7 é 2 e que o menor de 1 a 2 é 3 não diz qual é o menor de 3 a 7. (A sparse table, que você já viu, responde mínimos de trecho, mas não aceita mudanças.)
+
+É preciso uma estrutura que monte o trecho **juntando** pedaços, sem nunca precisar tirar nada.
+
+## A ideia: um campeonato de mata-mata
+
+Pense nos 8 preços como times de um campeonato em que ganha o **menor**. Na primeira rodada, os vizinhos se enfrentam dois a dois. Os vencedores se enfrentam na rodada seguinte, e assim por diante, até sobrar um:
+
+| Rodada | Confrontos | Vencedores |
+|---|---|---|
+| preços | | 5, 3, 8, 6, 2, 7, 4, 6 |
+| 1ª | 5×3, 8×6, 2×7, 4×6 | 3, 6, 2, 4 |
+| 2ª | 3×6, 2×4 | 3, 2 |
+| final | 3×2 | 2 |
+
+Guarde **todos** os resultados, não só o campeão. Cada resultado é o menor preço de um trecho: o 3 da 1ª rodada é o menor dos postos 1 a 2; o 3 da 2ª rodada é o menor dos postos 1 a 4; o 2 da final é o menor de todos.
+
+Isso é a **segment tree**. Desenhada como árvore, a final fica em cima (a **raiz**) e os preços ficam embaixo (as **folhas**). Cada **nó** cuida de um trecho e guarda o menor valor dele; os dois **filhos** de um nó cuidam das duas metades do trecho.
+
+Numere os nós assim: a raiz é o nó 1, e os filhos do nó $x$ são os nós $2x$ (metade esquerda) e $2x + 1$ (metade direita).
+
+| Nó | Trecho | Guarda | | Nó | Trecho | Guarda |
+|---|---|---|---|---|---|---|
+| 1 | 1 a 8 | 2 | | 8 | posto 1 | 5 |
+| 2 | 1 a 4 | 3 | | 9 | posto 2 | 3 |
+| 3 | 5 a 8 | 2 | | 10 | posto 3 | 8 |
+| 4 | 1 a 2 | 3 | | 11 | posto 4 | 6 |
+| 5 | 3 a 4 | 6 | | 12 | posto 5 | 2 |
+| 6 | 5 a 6 | 2 | | 13 | posto 6 | 7 |
+| 7 | 7 a 8 | 4 | | 14 | posto 7 | 4 |
+| | | | | 15 | posto 8 | 6 |
+
+Com essa numeração não é preciso guardar ponteiros: a árvore inteira mora num vetor `arv`, e para ir de um nó aos filhos basta multiplicar por 2.
+
+## Mudar um valor: refaça só os jogos daquele time
+
+No evento `M 5 9`, o posto 5 passa a cobrar 9. No campeonato, isso muda só os jogos **de que o posto 5 participou**: um por rodada.
+
+| Nó | Trecho | Conta refeita | Antes → depois |
+|---|---|---|---|
+| 12 | posto 5 | recebe o valor novo | 2 → 9 |
+| 6 | 5 a 6 | menor entre 9 e 7 | 2 → 7 |
+| 3 | 5 a 8 | menor entre 7 e 4 | 2 → 4 |
+| 1 | 1 a 8 | menor entre 3 e 4 | 2 → 3 |
+
+Foram 4 nós, de um total de 15. Em geral, a árvore tem cerca de $\log_2 n$ andares, e uma mudança toca um nó por andar.
+
+Em código, a função desce da raiz até a folha, escolhendo a cada nó a metade em que a posição está, e refaz o mínimo de cada nó **na volta** da recursão:
+
+```cpp
+void muda(int no, int l, int r, int k, int x) {    // o nó "no" cuida das posições l a r
+    if (l == r) {                                  // chegou à folha da posição k
+        arv[no] = x;
+        return;
+    }
+    int m = (l + r) / 2;                           // a metade esquerda vai de l a m
+    if (k <= m) muda(2 * no, l, m, k, x);
+    else muda(2 * no + 1, m + 1, r, k, x);
+    arv[no] = min(arv[2 * no], arv[2 * no + 1]);   // refaz o jogo deste nó
+}
+```
+
+O trecho de cada nó não fica guardado: ele viaja nos parâmetros `l` e `r`. A chamada inicial é `muda(1, 1, n, k, x)`, porque o nó 1 cuida de tudo.
+
+## Consultar um trecho: use os resultados prontos
+
+No evento `Q 3 7` (depois da mudança acima, com os preços 5, 3, 8, 6, 9, 7, 4, 6), a pergunta é o menor dos postos 3 a 7. Três resultados já guardados cobrem exatamente esse trecho:
+
+- o nó 5 (postos 3 a 4) guarda 6;
+- o nó 6 (postos 5 a 6) guarda 7;
+- o nó 14 (posto 7) guarda 4.
+
+O menor entre 6, 7 e 4 é **4**. Foram três valores lidos em vez de cinco, e a diferença cresce com $n$: qualquer trecho se decompõe em no máximo cerca de $2 \log_2 n$ nós.
+
+Para achar esses nós, a consulta desce a partir da raiz e, em cada nó, compara o trecho do nó com o trecho pedido. Só há três situações:
+
+| Situação | O que fazer |
+|---|---|
+| O nó está **todo fora** do trecho pedido | Não serve para nada: devolva "nenhum valor" e não desça |
+| O nó está **todo dentro** do trecho pedido | Devolva o valor guardado e não desça |
+| O nó está **em parte** dentro | Pergunte aos dois filhos e fique com o menor |
+
+A consulta `Q 3 7` inteira, chamada por chamada:
+
+| Nó | Trecho do nó | Situação | Devolve |
+|---|---|---|---|
+| 1 | 1 a 8 | em parte | menor dos filhos = 4 |
+| 2 | 1 a 4 | em parte | menor dos filhos = 6 |
+| 4 | 1 a 2 | fora | nenhum valor |
+| 5 | 3 a 4 | dentro | 6 |
+| 3 | 5 a 8 | em parte | menor dos filhos = 4 |
+| 6 | 5 a 6 | dentro | 7 |
+| 7 | 7 a 8 | em parte | menor dos filhos = 4 |
+| 14 | posto 7 | dentro | 4 |
+| 15 | posto 8 | fora | nenhum valor |
+
+Nove nós visitados. O "nenhum valor" precisa ser um número que **nunca ganha** a comparação: para o mínimo, um valor enorme (infinito).
+
+```cpp
+int consulta(int no, int l, int r, int a, int b) {     // menor valor entre as posições a e b
+    if (b < l || r < a) return INF;                    // todo fora
+    if (a <= l && r <= b) return arv[no];              // todo dentro
+    int m = (l + r) / 2;                               // em parte: pergunta aos dois filhos
+    int esq = consulta(2 * no, l, m, a, b);
+    int dir = consulta(2 * no + 1, m + 1, r, a, b);
+    return min(esq, dir);
+}
+```
+
+A consulta parece visitar muita coisa, mas em cada andar da árvore no máximo dois nós ficam "em parte" (os que contêm as duas pontas do trecho). Todo o resto é resolvido na hora. No total são no máximo cerca de $4 \log_2 n$ visitas: com $n = 1024$, nenhuma consulta passa de 39 nós.
+
+<SegTreeViz client:visible />
+
+<Callout type="tente">
+Com os preços iniciais (5, 3, 8, 6, 2, 7, 4, 6), quais nós a consulta `Q 3 4` visita, e em que situação cada um cai?
+
+<details>
+<summary>Ver resposta</summary>
+
+Cinco nós. O nó 1 (1 a 8) está em parte dentro. O nó 2 (1 a 4) também. O nó 4 (1 a 2) está fora. O nó 5 (3 a 4) está todo dentro e devolve 6. De volta ao nó 1, o filho direito, nó 3 (5 a 8), está fora. Resposta: 6. Repare que a consulta nem chegou às folhas.
+
+</details>
+</Callout>
+
+## Quando $n$ não é potência de 2
+
+O campeonato com 8 times fecha certinho. Com 6 postos, a mesma recursão funciona sem mudança nenhuma: `m = (l + r) / 2` divide o trecho em duas partes de tamanhos quase iguais, e pronto.
+
+| Nó | Trecho | | Nó | Trecho |
+|---|---|---|---|---|
+| 1 | 1 a 6 | | 7 | posto 6 |
+| 2 | 1 a 3 | | 8 | posto 1 |
+| 3 | 4 a 6 | | 9 | posto 2 |
+| 4 | 1 a 2 | | 12 | posto 4 |
+| 5 | posto 3 | | 13 | posto 5 |
+| 6 | 4 a 5 | | | |
+
+A árvore fica torta: algumas folhas estão um andar acima das outras, e os índices 10 e 11 não são usados (seriam os filhos do nó 5, que é folha). Isso tem uma consequência prática: **o maior índice usado é 13, que passa de $2n = 12$**. Um vetor `arv` com $2n$ casas seria acessado fora dos limites, com resultado imprevisível.
+
+A regra segura é reservar **$4n$ casas**. Nunca falta: o maior índice usado nunca chega a $4n$.
+
+## Trocar a operação
+
+Nada na árvore depende de a operação ser o mínimo. Troque duas coisas e você tem outra estrutura:
+
+| Para responder | Como juntar dois filhos | "Nenhum valor" (elemento neutro) |
+|---|---|---|
+| mínimo do trecho | `min(x, y)` | um valor enorme |
+| máximo do trecho | `max(x, y)` | um valor muito negativo |
+| soma do trecho | `x + y` | 0 |
+| mdc do trecho | `gcd(x, y)` | 0 |
+
+O **elemento neutro** é o valor que, juntado com qualquer outro, não muda nada: `min(x, INF)` é $x$, e $x + 0$ é $x$.
+
+Errar o neutro dá resposta errada sem nenhum aviso. Se a árvore de mínimo devolvesse 0 para os nós de fora, a consulta `Q 3 4` do exemplo responderia **0** em vez de 6: o 0 vindo dos nós 4 e 3, que estão fora, ganharia de todo mundo. E o erro se esconde: `Q 1 8` continuaria respondendo 2, porque a raiz está toda dentro e nenhum nó de fora é visitado.
+
+A segment tree de soma faz tudo o que a Fenwick tree faz. Quando usar cada uma?
+
+| | Fenwick tree | Segment tree |
+|---|---|---|
+| Código | 2 funções de 3 linhas | 3 funções recursivas |
+| Memória | $n$ | $4n$ |
+| Velocidade | mais rápida (constante pequena) | um pouco mais lenta |
+| Operações | só as que podem ser desfeitas (soma, xor) | qualquer uma que junte dois trechos (mínimo, máximo, mdc…) |
+| Descer na árvore, lazy propagation | limitado | sim |
+
+Se o problema é de soma, use a Fenwick. Para o resto, a segment tree.
+
+## Descer na árvore: a primeira posição que serve
+
+A árvore responde mais um tipo de pergunta, que aparece em vários problemas:
+
+> Qual é o **primeiro** posto (o de menor número) que cobra no máximo $x$?
+
+A raiz guarda o menor preço de todos. Se ele é maior que $x$, nenhum posto serve. Senão, existe pelo menos um, e a questão é onde. Olhe o filho da esquerda: se o mínimo **dele** é no máximo $x$, o primeiro posto que serve está na metade esquerda. Se não, só pode estar na direita. Repita até chegar a uma folha.
+
+Com os preços atuais do exemplo (5, 7, 8, 6, 9, 7, 4, 6) e $x = 4$:
+
+| Nó | Trecho | Mínimo do filho esquerdo | Decisão |
+|---|---|---|---|
+| 1 | 1 a 8 | 5 (nó 2) | maior que 4: direita |
+| 3 | 5 a 8 | 7 (nó 6) | maior que 4: direita |
+| 7 | 7 a 8 | 4 (nó 14) | serve: esquerda |
+| 14 | posto 7 | | chegou: **posto 7** |
+
+Um nó por andar: $O(\log n)$, sem busca binária por fora.
+
+```cpp
+// Primeira posição com valor <= x, ou 0 se não existe nenhuma.
+int primeiro(int no, int l, int r, int x) {
+    if (arv[no] > x) return 0;                 // ninguém neste trecho serve
+    if (l == r) return l;                      // folha: achou
+    int m = (l + r) / 2;
+    if (arv[2 * no] <= x) return primeiro(2 * no, l, m, x);    // a esquerda tem alguém: a resposta está lá
+    return primeiro(2 * no + 1, m + 1, r, x);
+}
+```
+
+A mesma ideia, com outras operações:
+
+- **Árvore de máximo:** "primeira posição com valor pelo menos $x$". Serve para achar o primeiro lugar em que algo **cabe** (o primeiro hotel com quartos suficientes, por exemplo).
+- **Árvore de soma com 0 e 1 nas folhas:** "onde está o $k$-ésimo 1?". Se a metade esquerda tem pelo menos $k$ uns, ele está lá; senão, desça para a direita procurando o de número $k$ menos a quantidade da esquerda. Serve para achar o $k$-ésimo elemento que **ainda não foi removido** de uma lista.
+
+<Callout type="tente">
+Com os mesmos preços (5, 7, 8, 6, 9, 7, 4, 6), qual é o primeiro posto que cobra no máximo 6? Quais nós a descida visita? E para $x = 3$?
+
+<details>
+<summary>Ver resposta</summary>
+
+Para $x = 6$: no nó 1, o filho esquerdo (nó 2) tem mínimo 5, que serve: esquerda. No nó 2, o filho esquerdo (nó 4) tem mínimo 5: esquerda. No nó 4, o filho esquerdo (nó 8) vale 5: esquerda. Resposta: **posto 1**. O posto 4, que cobra 6, também serve, mas não é o primeiro. Para $x = 3$: a raiz guarda 4, que é maior que 3. A função devolve 0 sem descer: nenhum posto serve.
+
+</details>
+</Callout>
+
+## Código: o problema dos postos completo
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+const int INF = INT_MAX;                       // "nenhum valor": nunca ganha de ninguém num mínimo
+int n;
+vector<int> v, arv;                            // v = os preços; arv[no] = menor preço do trecho de que o nó cuida
+
+// Monta o nó "no", que cuida das posições l a r.
+void monta(int no, int l, int r) {
+    if (l == r) {                              // folha: uma posição só
+        arv[no] = v[l];
+        return;
+    }
+    int m = (l + r) / 2;
+    monta(2 * no, l, m);                       // filho da esquerda: l a m
+    monta(2 * no + 1, m + 1, r);               // filho da direita: m+1 a r
+    arv[no] = min(arv[2 * no], arv[2 * no + 1]);
+}
+
+// A posição k passa a valer x.
+void muda(int no, int l, int r, int k, int x) {
+    if (l == r) {
+        arv[no] = x;
+        return;
+    }
+    int m = (l + r) / 2;
+    if (k <= m) muda(2 * no, l, m, k, x);      // k está na metade esquerda
+    else muda(2 * no + 1, m + 1, r, k, x);     // ou na direita
+    arv[no] = min(arv[2 * no], arv[2 * no + 1]);   // na volta, refaz o mínimo deste nó
+}
+
+// Menor valor entre as posições a e b.
+int consulta(int no, int l, int r, int a, int b) {
+    if (b < l || r < a) return INF;            // o nó está todo fora do trecho pedido
+    if (a <= l && r <= b) return arv[no];      // o nó está todo dentro: usa o valor pronto
+    int m = (l + r) / 2;                       // está parcialmente dentro: pergunta aos dois filhos
+    int esq = consulta(2 * no, l, m, a, b);
+    int dir = consulta(2 * no + 1, m + 1, r, a, b);
+    return min(esq, dir);
+}
+
+int main() {
+    int q;
+    cin >> n >> q;
+    v.resize(n + 1);
+    arv.resize(4 * n);                         // 4n casas sempre bastam
+    for (int i = 1; i <= n; i++) cin >> v[i];
+    monta(1, 1, n);                            // o nó 1 é a raiz e cuida de tudo
+
+    while (q--) {
+        char tipo;
+        int x, y;
+        cin >> tipo >> x >> y;
+        if (tipo == 'M') muda(1, 1, n, x, y);                    // M k x: o posto k passa a cobrar x
+        else cout << consulta(1, 1, n, x, y) << "\n";            // Q a b: menor preço entre os postos a e b
+    }
+}
+```
+
+`INT_MAX` é o maior valor que cabe num `int`. As três funções têm o mesmo esqueleto: caso da folha (ou dos casos fáceis), cálculo do meio, chamada nos filhos.
+
+**Entrada:**
+
+```
+8 6
+5 3 8 6 2 7 4 6
+Q 1 8
+Q 3 4
+M 5 9
+Q 3 7
+M 2 7
+Q 1 4
+```
+
+**Saída:**
+
+```
+2
+6
+4
+5
+```
+
+São as quatro perguntas da tabela da motivação, na ordem.
+
+- **Tempo:** $O(n + q \log n)$: montar visita cada nó uma vez; cada mudança e cada consulta visitam $O(\log n)$ nós.
+- **Memória:** $O(n)$: o vetor `arv` tem $4n$ casas.
+
+### O mesmo código no formato de contest
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+typedef vector<int> vi;
+#define rep(i,a,b) for(int i=(a);i<(b);i++)
+void fastio(){ ios::sync_with_stdio(false); cin.tie(nullptr); }
+
+struct Seg {
+    int n; vi t;
+    const int NEUTRO = INT_MAX;
+    int junta(int x, int y) { return min(x, y); }
+    Seg(const vi& v) : n(v.size() - 1), t(4 * v.size()) { build(1, 1, n, v); }
+    void build(int no, int l, int r, const vi& v) {
+        if (l == r) { t[no] = v[l]; return; }
+        int m = (l + r) / 2;
+        build(2*no, l, m, v); build(2*no+1, m+1, r, v);
+        t[no] = junta(t[2*no], t[2*no+1]);
+    }
+    void upd(int k, int x, int no, int l, int r) {
+        if (l == r) { t[no] = x; return; }
+        int m = (l + r) / 2;
+        if (k <= m) upd(k, x, 2*no, l, m); else upd(k, x, 2*no+1, m+1, r);
+        t[no] = junta(t[2*no], t[2*no+1]);
+    }
+    int qry(int a, int b, int no, int l, int r) {
+        if (b < l || r < a) return NEUTRO;
+        if (a <= l && r <= b) return t[no];
+        int m = (l + r) / 2;
+        return junta(qry(a, b, 2*no, l, m), qry(a, b, 2*no+1, m+1, r));
+    }
+    void upd(int k, int x) { upd(k, x, 1, 1, n); }
+    int qry(int a, int b) { return qry(a, b, 1, 1, n); }
+};
+
+int main(){
+    fastio();
+    int n, q; cin >> n >> q;
+    vi v(n + 1);
+    rep(i,1,n+1) cin >> v[i];
+    Seg s(v);
+    while (q--) {
+        char t; int x, y; cin >> t >> x >> y;
+        if (t == 'M') s.upd(x, y);
+        else cout << s.qry(x, y) << "\n";
+    }
+}
+```
+
+A operação e o neutro ficam isolados em `junta` e `NEUTRO`: para virar árvore de soma, só essas duas linhas mudam (e o tipo vira `long long`). As versões curtas `upd(k, x)` e `qry(a, b)` escondem os três parâmetros que são sempre `1, 1, n`. O `const vi& v` recebe o vetor sem copiá-lo.
+
+## Armadilhas comuns
+
+- **Vetor com $2n$ casas.** Só serve quando $n$ é potência de 2. Reserve $4n$.
+- **Elemento neutro errado.** O nó de fora precisa devolver algo que não altera o resultado: infinito para o mínimo, 0 para a soma.
+- **Esquecer de refazer o nó na volta de `muda`.** Sem a última linha, a folha muda mas os andares de cima continuam com o valor velho, e as consultas respondem como se nada tivesse mudado.
+- **Trocar os testes de "fora" e "dentro".** Fora: `b < l || r < a`. Dentro: `a <= l && r <= b`. Testar "dentro" comparando ao contrário (`l <= a && b <= r`) pergunta se o trecho pedido cabe no nó, o que é verdade logo na raiz.
+- **Chamar com o trecho errado.** A chamada inicial é sempre `(1, 1, n)`. Um `n` global diferente do tamanho usado em `monta` desalinha tudo.
+- **Árvore de soma em `int`.** A raiz guarda a soma de tudo: `long long`.
+- **Descer sem conferir a raiz.** Na função `primeiro`, o teste `arv[no] > x` no começo é o que garante que a descida nunca entra num trecho sem resposta.
+
+<details class="para-depois">
+<summary>Para depois: o que mais a segment tree faz</summary>
+
+**Versão sem recursão.** O CPH (seção 9.3) apresenta uma segment tree de baixo para cima: as folhas ficam nas casas $n$ a $2n - 1$ e a consulta sobe com dois índices. É mais curta e mais rápida, mas é menos flexível: descer na árvore e lazy propagation ficam mais naturais na versão recursiva desta aula.
+
+**Primeira posição que serve a partir de uma posição dada.** A descida desta aula procura no vetor inteiro. Para procurar só de uma posição $a$ em diante, combine a descida com o teste "fora do trecho": nós inteiramente antes de $a$ devolvem "não achei".
+
+**Nós que guardam mais de um número.** Um nó pode guardar um pequeno pacote (soma, melhor prefixo, melhor sufixo, melhor resposta), desde que dê para calcular o pacote do pai a partir dos pacotes dos filhos. É o assunto da aula de nós compostos.
+
+**Mudar um trecho inteiro.** "Some 5 a todas as posições de $a$ a $b$" custaria um `muda` por posição. A lazy propagation deixa a mudança "pendurada" nos nós de cima e só a empurra para baixo quando alguém precisa. Tem aula própria.
+
+**Compressão de coordenadas.** Quando as posições são valores grandes (até $10^9$) mas poucos deles aparecem, ordene os que aparecem e use a posição de cada um nessa ordem como índice. É o mesmo truque da aula de Fenwick tree.
+
+</details>
+
+## Referências
+
+- **CPH, capítulo 9 — Range queries, seção 9.3 *Segment tree*:** a versão de baixo para cima, com soma e mínimo. **Seção 9.4 *Additional techniques*:** compressão de índices e atualização em trechos com vetor de diferenças.
+- **CPH, capítulo 28 — Segment trees revisited:** a versão recursiva de cima para baixo, que é a desta aula (a introdução do capítulo), e os assuntos das próximas aulas.
+- [USACO Guide — Point Update Range Sum](https://usaco.guide/gold/PURS), com segment tree e Fenwick tree lado a lado.
+- [cp-algorithms — Segment Tree](https://cp-algorithms.com/data_structures/segment_tree.html), com a versão recursiva, a descida para achar o $k$-ésimo e muitas variações.
+
+## Mini-quiz
+
+<Quiz
+  client:visible
+  questions={[
+    {
+      q: 'Um vetor de 4 posições vale 4, 9, 1, 7. Depois de `monta(1, 1, 4)`, quanto valem `arv[1]`, `arv[2]` e `arv[3]`?',
+      code: 'void monta(int no, int l, int r) {\n    if (l == r) { arv[no] = v[l]; return; }\n    int m = (l + r) / 2;\n    monta(2 * no, l, m);\n    monta(2 * no + 1, m + 1, r);\n    arv[no] = min(arv[2 * no], arv[2 * no + 1]);\n}',
+      options: ['1, 4, 1', '1, 4, 9', '4, 9, 1', '1, 1, 7'],
+      answer: 0,
+      why: 'O nó 2 cuida das posições 1 a 2 (menor entre 4 e 9 = 4). O nó 3 cuida de 3 a 4 (menor entre 1 e 7 = 1). A raiz é o menor entre 4 e 1.',
+    },
+    {
+      q: 'Na mesma árvore (4, 9, 1, 7), quantos nós a consulta do trecho 2 a 3 visita?',
+      code: 'int consulta(int no, int l, int r, int a, int b) {\n    if (b < l || r < a) return INF;\n    if (a <= l && r <= b) return arv[no];\n    int m = (l + r) / 2;\n    int esq = consulta(2 * no, l, m, a, b);\n    int dir = consulta(2 * no + 1, m + 1, r, a, b);\n    return min(esq, dir);\n}',
+      options: ['2', '3', '5', '7'],
+      answer: 3,
+      why: 'É o pior caso para 4 posições: a raiz e os nós 2 e 3 ficam em parte dentro, então todos os 7 nós são visitados. As folhas das posições 1 e 4 caem fora; as das posições 2 e 3 devolvem 9 e 1. Resposta: 1.',
+    },
+    {
+      q: 'Ainda com 4, 9, 1, 7: depois de `muda(1, 1, 4, 3, 8)`, como fica `arv[1..7]`?',
+      code: 'void muda(int no, int l, int r, int k, int x) {\n    if (l == r) { arv[no] = x; return; }\n    int m = (l + r) / 2;\n    if (k <= m) muda(2 * no, l, m, k, x);\n    else muda(2 * no + 1, m + 1, r, k, x);\n    arv[no] = min(arv[2 * no], arv[2 * no + 1]);\n}',
+      options: ['4, 4, 7, 4, 9, 8, 7', '1, 4, 1, 4, 9, 8, 7', '4, 4, 8, 4, 9, 8, 7', '8, 4, 7, 4, 9, 8, 7'],
+      answer: 0,
+      why: 'A folha da posição 3 é o nó 6, que vira 8. O nó 3 refaz: menor entre 8 e 7 = 7. A raiz refaz: menor entre 4 e 7 = 4. A segunda opção é o que acontece quando se esquece de refazer os nós na volta.',
+    },
+    {
+      q: 'Com n = 6, por que um vetor `arv` de 12 casas (2n) não basta?',
+      options: [
+        'Porque a árvore tem mais de 12 nós',
+        'Porque a árvore fica torta: há índices sem uso no meio, e o maior índice usado é 13',
+        'Porque cada nó ocupa duas casas',
+        'Basta, sim',
+      ],
+      answer: 1,
+      why: 'A árvore tem só 11 nós, mas eles não ocupam índices consecutivos: 10 e 11 ficam vazios e as folhas das posições 4 e 5 caem nos índices 12 e 13.',
+    },
+    {
+      q: 'Você transforma a árvore de mínimo numa árvore de **máximo** trocando `min` por `max`, mas deixa `return INF` no caso "fora". O que acontece?',
+      options: [
+        'Nada, continua certo',
+        'Toda consulta que visita algum nó de fora responde INF',
+        'O programa não compila',
+        'Só a raiz fica errada',
+      ],
+      answer: 1,
+      why: 'O neutro precisa perder sempre. Num máximo, INF ganha de todos. O certo seria um valor muito negativo. Consultas em que só há nós "dentro" (o vetor inteiro, por exemplo) escondem o erro.',
+    },
+    {
+      q: 'Numa árvore de mínimo sobre 4, 9, 1, 7, o que `primeiro(1, 1, 4, 7)` devolve (a primeira posição com valor no máximo 7)?',
+      code: 'int primeiro(int no, int l, int r, int x) {\n    if (arv[no] > x) return 0;\n    if (l == r) return l;\n    int m = (l + r) / 2;\n    if (arv[2 * no] <= x) return primeiro(2 * no, l, m, x);\n    return primeiro(2 * no + 1, m + 1, r, x);\n}',
+      options: ['1', '3', '4', '0'],
+      answer: 0,
+      why: 'A raiz vale 1, então existe resposta. O filho esquerdo (posições 1 a 2) tem mínimo 4, que serve: desce para a esquerda. Lá, a folha da posição 1 vale 4: é ela. A posição 3 tem o menor valor, mas a pergunta é pela primeira que serve.',
+    },
+  ]}
+/>
