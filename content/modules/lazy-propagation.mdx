@@ -1,0 +1,499 @@
+---
+title: Lazy propagation e segment tree persistente
+description: Para mudar um trecho inteiro de uma vez, a segment tree deixa recados nos nós de cima e só os repassa quando alguém precisa descer. E, copiando só o caminho que muda, ela guarda todas as versões antigas do vetor.
+---
+import Callout from '../../src/components/mdx/Callout.astro';
+import Quiz from '../../src/components/mdx/Quiz.tsx';
+import LazyViz from '../../src/components/mdx/viz/LazyViz.tsx';
+
+## Motivação: as frentes de calor
+
+O problema desta aula, do começo ao fim:
+
+> Um sensor registrou a temperatura de $n$ dias. Chegam $q$ eventos, um de cada vez. `S a b x`: uma frente de calor **soma** $x$ graus a **todos** os dias de $a$ a $b$ ($x$ pode ser negativo). `Q a b`: qual é a **maior** temperatura entre os dias $a$ e $b$?
+
+Um exemplo com 8 dias, que começam com 2, 6, 1, 8, 3, 5, 4 e 7 graus:
+
+| Evento | O que acontece | Temperaturas depois | Resposta |
+|---|---|---|---|
+| `Q 1 8` | maior de todas | 2, 6, 1, 8, 3, 5, 4, 7 | **8** |
+| `S 1 4 3` | +3 nos dias 1 a 4 | **5, 9, 4, 11**, 3, 5, 4, 7 | |
+| `Q 3 6` | maior entre 4, 11, 3, 5 | | **11** |
+| `S 5 8 -2` | −2 nos dias 5 a 8 | 5, 9, 4, 11, **1, 3, 2, 5** | |
+| `S 2 7 4` | +4 nos dias 2 a 7 | 5, **13, 8, 15, 5, 7, 6**, 5 | |
+| `Q 5 8` | maior entre 5, 7, 6, 5 | | **7** |
+| `Q 1 2` | maior entre 5 e 13 | | **13** |
+
+A segment tree de máximo da aula de segment tree responde as perguntas em $O(\log n)$. O problema é a soma no trecho: com a função `muda` de lá, somar a um trecho de $k$ dias custa $k$ mudanças, cada uma de $O(\log n)$. Com $2 \cdot 10^5$ eventos que pegam o vetor quase inteiro, são cerca de $2 \cdot 10^5 \times 2 \cdot 10^5 \times 18 \approx 7 \cdot 10^{11}$ passos. Não passa.
+
+Falta um jeito de mudar um trecho inteiro **sem visitar cada posição dele**.
+
+## A ideia: deixar um recado no nó
+
+Volte à consulta da segment tree: qualquer trecho se decompõe em poucos nós que cabem inteiros nele. No evento `S 1 4 3`, o trecho dos dias 1 a 4 é exatamente o nó 2. Somar 3 a todos os dias do nó 2 tem dois efeitos:
+
+1. **O máximo do nó 2 sobe 3.** Se todos os valores sobem 3, o maior também sobe 3: era 8, vira 11. Dá para atualizar o nó **sem olhar** para os filhos.
+2. **Os filhos e netos do nó 2 também deveriam subir 3.** Mas ninguém vai olhar para eles agora. Em vez de descer, o nó 2 guarda um **recado**: "meus filhos ainda devem receber +3".
+
+O recado se chama **pendência** (em inglês, *lazy*, "preguiçoso": o trabalho é adiado até ser necessário). Em cada nó passam a existir dois números:
+
+| Campo | Significado |
+|---|---|
+| `arv[no]` | o maior valor do trecho do nó, **já contando** tudo o que foi somado ao nó |
+| `pend[no]` | quanto os **filhos** do nó ainda devem receber |
+
+O evento `S 1 4 3` inteiro, nó por nó:
+
+| Nó | Trecho | Situação | O que acontece |
+|---|---|---|---|
+| 1 | 1 a 8 | em parte dentro | desce |
+| 2 | 1 a 4 | todo dentro | máximo 8 → 11; pendência +3; **não desce** |
+| 3 | 5 a 8 | todo fora | nada |
+| 1 | 1 a 8 | volta | refaz o máximo: maior entre 11 e 7 = 11 |
+
+Três nós visitados, em vez das quatro folhas e de todo o caminho até elas. Depois do evento, os nós 4, 5, 8, 9, 10 e 11 (abaixo do nó 2) continuam com os valores antigos. Estão **atrasados**, e o recado no nó 2 diz exatamente quanto.
+
+### Empurrar antes de descer
+
+Os nós atrasados só são um problema se alguém precisar deles. No evento `Q 3 6`, a consulta precisa do nó 5 (dias 3 e 4), que está abaixo do nó 2. Antes de descer do nó 2, a consulta **empurra** o recado: cada filho recebe +3 (no máximo e na sua própria pendência), e a pendência do nó 2 volta a 0.
+
+| Nó | Trecho | Situação | O que acontece |
+|---|---|---|---|
+| 1 | 1 a 8 | em parte | desce (sem pendência) |
+| 2 | 1 a 4 | em parte | **empurra +3**: nó 4 vai de 6 a 9, nó 5 vai de 8 a 11; desce |
+| 4 | 1 a 2 | fora | nada |
+| 5 | 3 a 4 | dentro | devolve **11** |
+| 3 | 5 a 8 | em parte | desce |
+| 6 | 5 a 6 | dentro | devolve 5 |
+| 7 | 7 a 8 | fora | nada |
+
+A resposta é o maior entre 11 e 5: **11**. Repare que o recado desceu **um andar só**: agora são os nós 4 e 5 que devem +3 aos seus filhos. Ele só vai descer mais se alguém precisar.
+
+A regra que mantém tudo certo: **antes de descer de um nó, empurre a pendência dele**. Assim, todo nó que a recursão alcança está em dia. Em código, são duas funções pequenas:
+
+```cpp
+// Soma x ao trecho inteiro do nó, sem descer: o máximo sobe x, e os filhos ficam devendo x.
+void aplica(int no, long long x) {
+    arv[no] += x;
+    pend[no] += x;
+}
+
+// Passa a conta pendente do nó para os dois filhos.
+void empurra(int no) {
+    if (pend[no] != 0) {
+        aplica(2 * no, pend[no]);
+        aplica(2 * no + 1, pend[no]);
+        pend[no] = 0;
+    }
+}
+```
+
+A pendência **acumula** (`+=`): se o nó 2 receber +3 e depois +4 antes de empurrar, os filhos devem +7.
+
+<Callout type="tente">
+Logo depois de `S 1 4 3` (pendência +3 no nó 2), imagine que chegasse `S 1 4 5`, o mesmo trecho de novo. Quais nós seriam visitados, e como ficariam o máximo e a pendência do nó 2?
+
+<details>
+<summary>Ver resposta</summary>
+
+Os mesmos três nós: 1 (em parte), 2 (todo dentro) e 3 (fora). O nó 2 está todo dentro, então **não empurra nada**: só soma. O máximo vai de 11 a 16, e a pendência vai de +3 a **+8**. Os filhos continuam com os valores originais, agora atrasados 8 graus. Empurrar só é necessário quando a recursão vai **passar** pelo nó para chegar aos filhos.
+
+</details>
+</Callout>
+
+### Somar num trecho
+
+A soma tem a mesma forma da consulta: fora, dentro ou em parte. No caso "em parte", empurra antes de descer e, na volta, refaz o máximo a partir dos filhos (que agora estão em dia).
+
+```cpp
+void soma(int no, int l, int r, int a, int b, long long x) {
+    if (b < l || r < a) return;                // todo fora: nada a fazer
+    if (a <= l && r <= b) {                    // todo dentro: anota e para aqui
+        aplica(no, x);
+        return;
+    }
+    empurra(no);                               // vai descer: antes, os filhos recebem o que estava pendente
+    int m = (l + r) / 2;
+    soma(2 * no, l, m, a, b, x);
+    soma(2 * no + 1, m + 1, r, a, b, x);
+    arv[no] = max(arv[2 * no], arv[2 * no + 1]);
+}
+```
+
+O trecho somado se decompõe nos mesmos nós de uma consulta, então uma soma visita $O(\log n)$ nós (no máximo cerca de $4 \log_2 n$; com $n = 1024$, nunca mais de 39).
+
+## O exemplo completo, passo a passo
+
+Os sete eventos, com o máximo da raiz e as pendências que ficam nos nós de cima depois de cada um:
+
+| Evento | Nós visitados | Máximo da raiz | Pendências depois | Resposta |
+|---|---|---|---|---|
+| início | | 8 | nenhuma | |
+| `Q 1 8` | 1 | 8 | nenhuma | 8 |
+| `S 1 4 3` | 1, 2, 3 | 11 | nó 2: +3 | |
+| `Q 3 6` | 1, 2, 4, 5, 3, 6, 7 | 11 | nós 4 e 5: +3 | 11 |
+| `S 5 8 -2` | 1, 2, 3 | 11 | nó 3: −2; nós 4 e 5: +3 | |
+| `S 2 7 4` | 11 nós | 15 | nó 5: +7; nó 6: +2 | |
+| `Q 5 8` | 1, 2, 3 | 15 | as mesmas | 7 |
+| `Q 1 2` | 1, 2, 4, 5, 3 | 15 | as mesmas | 13 |
+
+Em `S 2 7 4`, o trecho corta vários nós ao meio, e a soma empurra três recados no caminho: o +3 do nó 4, o −2 do nó 3 e, um andar abaixo, o −2 do nó 7. O nó 5, que já devia +3, recebe +4 inteiro e passa a dever **+7**. Na visualização dá para seguir cada empurrão:
+
+<LazyViz client:visible />
+
+As folhas ficam com valores atrasados o tempo todo, e isso não é erro: como `Q 5 8` cabe inteiro no nó 3, a consulta nem chega perto delas. O valor certo de qualquer folha é o valor guardado nela mais as pendências de todos os nós acima dela.
+
+<Callout type="tente">
+No fim do exemplo, a folha do dia 3 guarda 1 (o valor inicial), mas a temperatura real é 8. Quais pendências, somadas, explicam a diferença?
+
+<details>
+<summary>Ver resposta</summary>
+
+O dia 3 está abaixo dos nós 1, 2, 5 e da própria folha. As pendências dos nós 1 e 2 já foram empurradas (valem 0). Sobra a do nó 5: **+7** (o +3 de `S 1 4 3`, empurrado do nó 2, mais o +4 de `S 2 7 4`). E $1 + 7 = 8$. A pendência que uma folha recebe de um nó é sempre zero ou a soma de tudo o que chegou àquele nó desde o último empurrão.
+
+</details>
+</Callout>
+
+## Três cuidados, cada um com seu contraexemplo
+
+**Esquecer de empurrar na consulta.** Sem o `empurra(no)` em `consulta`, a pergunta `Q 3 6` desce do nó 2 até o nó 5 sem levar o +3, e lê o valor antigo do nó 5: responde **8** em vez de 11. As quatro respostas do exemplo viram 8, 8, 7, 13: só a primeira e as duas últimas acertam, por sorte.
+
+**Esquecer de empurrar na soma.** Sem o `empurra(no)` em `soma`, o erro aparece na volta da recursão: `arv[no] = max(filhos)` usa filhos atrasados e **apaga** o recado que estava no próprio nó. Depois de `S 1 4 3` e `S 2 7 4`, o nó 2 fica com máximo 12 em vez de 15: o +3 sumiu. As respostas do exemplo viram 8, 11, 9, 10 em vez de 8, 11, 7, 13.
+
+**Pendência que não acumula.** Escrever `pend[no] = x` em vez de `pend[no] += x` perde os recados anteriores quando o mesmo nó recebe duas somas seguidas. Com os dias 1, 2, 3, 4, os eventos `S 1 4 10` e `S 1 4 -20` deixam a raiz com pendência −20 em vez de −10. `Q 1 4` responde −6, certo, porque o máximo da raiz foi somado direito. Mas `Q 1 1` desce, empurra −20 e responde **−19** em vez de −9. Um teste só com perguntas do vetor inteiro não pegaria esse erro.
+
+## Outras operações
+
+O par "o que a soma faz com o valor do nó" e "o que a pendência guarda" muda com a operação:
+
+| Atualização no trecho | Pergunta | Como o valor do nó muda | Pendência |
+|---|---|---|---|
+| somar $x$ | máximo (ou mínimo) | `arv += x` | soma acumulada |
+| somar $x$ | soma | `arv += x * tamanho do trecho` | soma acumulada |
+| trocar todos por $v$ | máximo | `arv = v` | o último valor atribuído |
+| trocar todos por $v$ | soma | `arv = v * tamanho do trecho` | o último valor atribuído |
+
+Na árvore de **soma**, o nó precisa saber quantas posições cuida: somar 3 a cada uma de 4 posições aumenta a soma do nó em 12, não em 3. Por isso `aplica` recebe também o tamanho do trecho (ou `l` e `r`).
+
+Quando um problema mistura dois tipos de atualização (somar e trocar, por exemplo), a pendência precisa guardar os dois, e o `aplica` precisa saber combinar um recado novo com um antigo na ordem certa. Pense em qual dos dois "apaga" o outro.
+
+## Versões antigas: segment tree persistente
+
+Uma pergunta diferente: e se, além do vetor atual, você precisasse consultar o vetor **como ele era** depois de cada mudança? Um exemplo com somas, começando de 1, 2, 3, 4:
+
+| Versão | Como foi criada | Vetor | Soma de 1 a 4 |
+|---|---|---|---|
+| v0 | inicial | 1, 2, 3, 4 | 10 |
+| v1 | v0 com a posição 2 trocada por 5 | 1, **5**, 3, 4 | 13 |
+| v2 | v1 com a posição 4 trocada por 0 | 1, 5, 3, **0** | 9 |
+| v3 | v0 com a posição 1 trocada por 9 | **9**, 2, 3, 4 | 18 |
+
+Copiar o vetor inteiro a cada versão custa $O(n)$ por mudança. Mas uma mudança numa segment tree só altera os nós do **caminho** da folha até a raiz: $\log_2 n + 1$ nós. Todo o resto pode ser **compartilhado** entre a versão nova e a antiga.
+
+A técnica: a mudança não altera nenhum nó existente. Ela cria **cópias** dos nós do caminho, e cada cópia aponta para um filho novo (o do caminho) e para o filho antigo do outro lado. A raiz nova é a entrada da versão nova; a raiz antiga continua levando à versão antiga, intacta.
+
+No exemplo, a árvore de v0 tem 7 nós (números 1 a 7). A criação de v1 cria só 3 nós novos (8, 9 e 10):
+
+| Versão | Raiz | Filho esquerdo (posições 1 e 2) | Filho direito (posições 3 e 4) |
+|---|---|---|---|
+| v0 | nó 7 | nó 3 | nó 6 |
+| v1 | nó 10 (novo) | nó 9 (novo) | nó 6, **o mesmo de v0** |
+| v2 | nó 13 (novo) | nó 9, o mesmo de v1 | nó 12 (novo) |
+| v3 | nó 16 (novo) | nó 15 (novo) | nó 6, o mesmo de v0 |
+
+Como os filhos deixam de ser $2 \cdot \text{no}$ e $2 \cdot \text{no} + 1$, cada nó guarda os números dos seus filhos:
+
+```cpp
+const int MAX = 4000000;                       // nós: os da versão inicial mais (log n + 1) por mudança
+int esq[MAX], dir[MAX];                        // filhos de cada nó
+long long val[MAX];                            // soma do trecho do nó
+int criados = 0;
+
+int novo(int e, int d, long long v) {          // cria um nó e devolve o número dele
+    criados++;
+    esq[criados] = e;
+    dir[criados] = d;
+    val[criados] = v;
+    return criados;
+}
+
+// Cria a versão em que a posição k vale x, a partir da versão cuja raiz é "ant". Devolve a raiz nova.
+int muda(int ant, int l, int r, int k, long long x) {
+    if (l == r) return novo(0, 0, x);
+    int m = (l + r) / 2;
+    if (k <= m) {
+        int e = muda(esq[ant], l, m, k, x);    // copia o lado do caminho
+        return novo(e, dir[ant], val[e] + val[dir[ant]]);   // e reaproveita o outro
+    }
+    int d = muda(dir[ant], m + 1, r, k, x);
+    return novo(esq[ant], d, val[esq[ant]] + val[d]);
+}
+```
+
+A consulta é a da segment tree comum, com `esq[no]` e `dir[no]` no lugar de `2 * no` e `2 * no + 1`, começando pela raiz da versão desejada. As raízes ficam num vetor: `raiz[v]` é a entrada da versão $v$. Os arrays são globais e grandes porque o número de nós cresce a cada mudança.
+
+<Callout type="tente">
+Com $n = 8$ posições, quantos nós novos uma mudança cria? E se a mudança for feita a partir de uma versão antiga (como v3, criada a partir de v0), a versão mais nova (v2) é afetada?
+
+<details>
+<summary>Ver resposta</summary>
+
+**4** nós: um por andar da árvore ($\log_2 8 + 1$). E nenhuma versão é afetada: a mudança só cria nós, nunca altera um existente. A v3 reaproveita nós da v0, mas a v0 continua igual, e a v2 não tem nada a ver com essa mudança. No exemplo, a soma de 1 a 4 continua 10 na v0 e 9 na v2 depois de criar a v3.
+
+</details>
+</Callout>
+
+## Código: o problema das frentes de calor completo
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int n;
+vector<long long> t;                           // temperaturas, de 1 a n
+vector<long long> arv;                         // arv[no] = maior temperatura do trecho do nó, já contando o que foi somado nele
+vector<long long> pend;                        // pend[no] = quanto ainda falta somar nos filhos do nó
+
+void monta(int no, int l, int r) {
+    if (l == r) {
+        arv[no] = t[l];
+        return;
+    }
+    int m = (l + r) / 2;
+    monta(2 * no, l, m);
+    monta(2 * no + 1, m + 1, r);
+    arv[no] = max(arv[2 * no], arv[2 * no + 1]);
+}
+
+// Soma x ao trecho inteiro do nó, sem descer: o máximo sobe x, e os filhos ficam devendo x.
+void aplica(int no, long long x) {
+    arv[no] += x;
+    pend[no] += x;
+}
+
+// Passa a conta pendente do nó para os dois filhos.
+void empurra(int no) {
+    if (pend[no] != 0) {
+        aplica(2 * no, pend[no]);
+        aplica(2 * no + 1, pend[no]);
+        pend[no] = 0;
+    }
+}
+
+// Soma x a todas as posições de a a b.
+void soma(int no, int l, int r, int a, int b, long long x) {
+    if (b < l || r < a) return;                // todo fora: nada a fazer
+    if (a <= l && r <= b) {                    // todo dentro: anota e para aqui
+        aplica(no, x);
+        return;
+    }
+    empurra(no);                               // vai descer: antes, os filhos recebem o que estava pendente
+    int m = (l + r) / 2;
+    soma(2 * no, l, m, a, b, x);
+    soma(2 * no + 1, m + 1, r, a, b, x);
+    arv[no] = max(arv[2 * no], arv[2 * no + 1]);
+}
+
+// Maior valor entre as posições a e b.
+long long consulta(int no, int l, int r, int a, int b) {
+    if (b < l || r < a) return LLONG_MIN;      // todo fora: nunca ganha um máximo
+    if (a <= l && r <= b) return arv[no];      // todo dentro: o valor já está certo
+    empurra(no);                               // vai descer: os filhos precisam estar em dia
+    int m = (l + r) / 2;
+    return max(consulta(2 * no, l, m, a, b), consulta(2 * no + 1, m + 1, r, a, b));
+}
+
+int main() {
+    int q;
+    cin >> n >> q;
+    t.resize(n + 1);
+    arv.assign(4 * n, 0);
+    pend.assign(4 * n, 0);
+    for (int i = 1; i <= n; i++) cin >> t[i];
+    monta(1, 1, n);
+
+    while (q--) {
+        char tipo;
+        cin >> tipo;
+        if (tipo == 'S') {                     // S a b x: soma x graus aos dias a..b
+            int a, b;
+            long long x;
+            cin >> a >> b >> x;
+            soma(1, 1, n, a, b, x);
+        } else {                               // Q a b: maior temperatura entre os dias a e b
+            int a, b;
+            cin >> a >> b;
+            cout << consulta(1, 1, n, a, b) << "\n";
+        }
+    }
+}
+```
+
+`LLONG_MIN` é o menor valor que cabe num `long long`: o elemento neutro do máximo, como o `INT_MAX` era o do mínimo. Uma folha também recebe pendência quando está toda dentro de uma soma, mas ela nunca é empurrada (a recursão nunca desce de uma folha), então não atrapalha.
+
+**Entrada:**
+
+```
+8 7
+2 6 1 8 3 5 4 7
+Q 1 8
+S 1 4 3
+Q 3 6
+S 5 8 -2
+S 2 7 4
+Q 5 8
+Q 1 2
+```
+
+**Saída:**
+
+```
+8
+11
+7
+13
+```
+
+São as quatro perguntas da tabela da motivação, na ordem.
+
+- **Tempo:** $O(n + q \log n)$: cada soma e cada consulta visitam $O(\log n)$ nós, e `aplica` e `empurra` custam $O(1)$.
+- **Memória:** $O(n)$: dois vetores de $4n$ casas.
+
+### O mesmo código no formato de contest
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+typedef long long ll;
+typedef vector<ll> vl;
+#define rep(i,a,b) for(int i=(a);i<(b);i++)
+void fastio(){ ios::sync_with_stdio(false); cin.tie(nullptr); }
+
+struct Lazy {
+    int n; vl t, lz;
+    Lazy(const vl& v) : n(v.size() - 1), t(4 * v.size()), lz(4 * v.size(), 0) { build(1, 1, n, v); }
+    void build(int no, int l, int r, const vl& v) {
+        if (l == r) { t[no] = v[l]; return; }
+        int m = (l + r) / 2;
+        build(2*no, l, m, v); build(2*no+1, m+1, r, v);
+        t[no] = max(t[2*no], t[2*no+1]);
+    }
+    void app(int no, ll x) { t[no] += x; lz[no] += x; }
+    void push(int no) { if (lz[no]) { app(2*no, lz[no]); app(2*no+1, lz[no]); lz[no] = 0; } }
+    void add(int a, int b, ll x, int no, int l, int r) {
+        if (b < l || r < a) return;
+        if (a <= l && r <= b) { app(no, x); return; }
+        push(no);
+        int m = (l + r) / 2;
+        add(a, b, x, 2*no, l, m); add(a, b, x, 2*no+1, m+1, r);
+        t[no] = max(t[2*no], t[2*no+1]);
+    }
+    ll qry(int a, int b, int no, int l, int r) {
+        if (b < l || r < a) return LLONG_MIN;
+        if (a <= l && r <= b) return t[no];
+        push(no);
+        int m = (l + r) / 2;
+        return max(qry(a, b, 2*no, l, m), qry(a, b, 2*no+1, m+1, r));
+    }
+    void add(int a, int b, ll x) { add(a, b, x, 1, 1, n); }
+    ll qry(int a, int b) { return qry(a, b, 1, 1, n); }
+};
+
+int main(){
+    fastio();
+    int n, q; cin >> n >> q;
+    vl v(n + 1);
+    rep(i,1,n+1) cin >> v[i];
+    Lazy s(v);
+    while (q--) {
+        char c; int a, b; cin >> c >> a >> b;
+        if (c == 'S') { ll x; cin >> x; s.add(a, b, x); }
+        else cout << s.qry(a, b) << "\n";
+    }
+}
+```
+
+É a `Seg` da aula de segment tree com o vetor `lz` e as funções `app` (aplica) e `push` (empurra). `if (lz[no])` é o mesmo que `if (lz[no] != 0)`: um número diferente de zero conta como verdadeiro.
+
+## Armadilhas comuns
+
+- **Não empurrar antes de descer**, na consulta ou na atualização. Na consulta, lê valores atrasados; na atualização, o `max` da volta apaga o recado.
+- **`pend = x` em vez de `pend += x`.** Recados seguidos no mesmo nó se acumulam.
+- **Atualizar a pendência e esquecer o valor do nó** (ou o contrário). `aplica` muda os dois: o valor do próprio nó fica certo na hora, a pendência é para os filhos.
+- **Esquecer o tamanho do trecho na árvore de soma.** Somar $x$ a um nó de $k$ posições aumenta a soma dele em $k \cdot x$.
+- **Empurrar numa folha.** Os índices $2 \cdot \text{no}$ de uma folha podem passar do vetor. A recursão desta aula nunca empurra numa folha, porque uma folha está sempre toda dentro ou toda fora; não mude a ordem dos testes.
+- **`int` nos valores.** Somas repetidas crescem: `long long` no valor e na pendência.
+- **Na persistente, alterar um nó existente.** A mudança só pode criar nós. Um `val[ant] = ...` estraga todas as versões que compartilham aquele nó.
+- **Na persistente, vetor pequeno demais.** Reserve os nós da versão inicial mais $\log_2 n + 1$ (arredondado para cima) por mudança.
+
+<details class="para-depois">
+<summary>Para depois: combinações de recados e árvores que crescem sob demanda</summary>
+
+**Dois tipos de recado no mesmo nó.** Com "somar $x$" e "trocar tudo por $v$" no mesmo problema, a pendência guarda as duas coisas. Uma troca apaga qualquer soma anterior; uma soma depois de uma troca só ajusta o valor da troca. Escreva a função que combina um recado novo com o que já está no nó e teste-a contra uma força bruta antes de usar.
+
+**Recados que dependem da posição.** Se a atualização soma 1 no primeiro dia do trecho, 2 no segundo, 3 no terceiro e assim por diante, o recado é uma progressão aritmética: guarde o primeiro termo e a razão. Ao empurrar, o filho direito recebe uma progressão que começa mais adiante.
+
+**Árvores dinâmicas.** Quando as posições vão até $10^9$ e não dá para comprimir, os nós podem ser criados só quando alguém chega até eles, com os mesmos `esq` e `dir` da árvore persistente. É o assunto da seção 28.2 do CPH.
+
+**Persistente com lazy.** Dá para combinar as duas técnicas, mas o `empurra` também precisa criar cópias dos filhos (senão alteraria nós compartilhados). Custa mais memória.
+
+</details>
+
+## Referências
+
+- **CPH, capítulo 28 — Segment trees revisited, seção 28.1 *Lazy propagation*:** a mesma ideia, com os casos de soma e atribuição em trecho e com atualizações em progressão aritmética. **Seção 28.2 *Dynamic trees*:** árvores com nós criados sob demanda e a estrutura persistente.
+- [USACO Guide — Range Update Range Query](https://usaco.guide/plat/RURQ), com lazy propagation e problemas para praticar.
+- [cp-algorithms — Segment Tree](https://cp-algorithms.com/data_structures/segment_tree.html), seções *Range updates (Lazy Propagation)* e *Persistent Segment Tree*.
+
+## Mini-quiz
+
+<Quiz
+  client:visible
+  questions={[
+    {
+      q: 'Uma árvore de máximo sobre 1, 2, 3, 4 recebe `S 1 2 5`. Como ficam o máximo e a pendência do nó 2 (posições 1 e 2), e o que acontece com as folhas 1 e 2?',
+      code: 'void soma(int no, int l, int r, int a, int b, long long x) {\n    if (b < l || r < a) return;\n    if (a <= l && r <= b) { aplica(no, x); return; }\n    empurra(no);\n    // ... desce e refaz o máximo\n}',
+      options: [
+        'Máximo 7, pendência +5; as folhas continuam 1 e 2',
+        'Máximo 7, pendência 0; as folhas viram 6 e 7',
+        'Máximo 2, pendência +5; as folhas continuam 1 e 2',
+        'Máximo 12, pendência +5; as folhas continuam 1 e 2',
+      ],
+      answer: 0,
+      why: 'O nó 2 está todo dentro: aplica soma 5 ao máximo (2 → 7) e anota +5, sem descer. As folhas ficam atrasadas até alguém precisar delas. 12 seria somar 5 duas vezes, como numa árvore de soma.',
+    },
+    {
+      q: 'Continuando (pendência +5 no nó 2), quanto `Q 2 3` responde?',
+      code: 'long long consulta(int no, int l, int r, int a, int b) {\n    if (b < l || r < a) return LLONG_MIN;\n    if (a <= l && r <= b) return arv[no];\n    empurra(no);\n    int m = (l + r) / 2;\n    return max(consulta(2 * no, l, m, a, b), consulta(2 * no + 1, m + 1, r, a, b));\n}',
+      options: ['3', '2', '7', '8'],
+      answer: 2,
+      why: 'No nó 2 a consulta empurra +5: a folha 2 vira 7. Do outro lado, a folha 3 vale 3. O maior é 7.',
+    },
+    {
+      q: 'Mesma situação, mas numa versão de `consulta` sem a linha `empurra(no)`. O que `Q 2 3` responde?',
+      code: 'long long consulta(int no, int l, int r, int a, int b) {\n    if (b < l || r < a) return LLONG_MIN;\n    if (a <= l && r <= b) return arv[no];\n    int m = (l + r) / 2;\n    return max(consulta(2 * no, l, m, a, b), consulta(2 * no + 1, m + 1, r, a, b));\n}',
+      options: ['7', '2', '5', '3'],
+      answer: 3,
+      why: 'Sem empurrar, a folha 2 ainda vale 2 (o +5 ficou preso no nó 2). O maior entre 2 e 3 é 3. A resposta certa é 7.',
+    },
+    {
+      q: 'Uma árvore de máximo sobre 1, 2, 3, 4 recebe `S 1 4 10` e depois `S 3 4 -20`. Quanto `Q 1 4` responde?',
+      code: 'soma(1, 1, 4, 1, 4, 10);\nsoma(1, 1, 4, 3, 4, -20);\ncout << consulta(1, 1, 4, 1, 4);',
+      options: ['14', '12', '-6', '4'],
+      answer: 1,
+      why: 'Os valores reais ficam 11, 12, −7, −6. Na árvore: a raiz recebe +10 (pendência +10); a segunda soma empurra o +10 para os nós 2 e 3, soma −20 no nó 3 e refaz a raiz: maior entre 12 e −6 = 12.',
+    },
+    {
+      q: 'Numa árvore de **soma** com lazy, um nó cuida de 4 posições e está todo dentro de uma atualização "some 3". Quanto a soma guardada nesse nó aumenta?',
+      options: ['3', '7', '12', 'Depende das pendências dos filhos'],
+      answer: 2,
+      why: 'Cada uma das 4 posições sobe 3: a soma do trecho sobe 4 × 3 = 12. Na árvore de máximo seria 3. É por isso que o aplica da árvore de soma precisa saber o tamanho do trecho.',
+    },
+    {
+      q: 'Uma segment tree persistente sobre 8 posições já tem 15 nós na versão inicial. Quantos nós existem depois de criar mais 3 versões, cada uma com uma mudança de posição?',
+      options: ['15', '27', '60', '24'],
+      answer: 1,
+      why: 'Cada mudança cria um nó por andar: log₂ 8 + 1 = 4. São 15 + 3 × 4 = 27. Copiar a árvore inteira a cada versão daria 60.',
+    },
+  ]}
+/>
