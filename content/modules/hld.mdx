@@ -1,0 +1,443 @@
+---
+title: Heavy-light decomposition
+description: Cortando a árvore em cadeias de "filhos pesados", todo caminho atravessa no máximo O(log n) cadeias, e cada cadeia é um trecho contínuo de um vetor. Uma pergunta sobre um caminho vira poucas perguntas a uma segment tree, mesmo com mudanças no meio.
+---
+import Callout from '../../src/components/mdx/Callout.astro';
+import Quiz from '../../src/components/mdx/Quiz.tsx';
+import HldViz from '../../src/components/mdx/viz/HldViz.tsx';
+
+## Motivação: a trilha mais cara do caminho
+
+O problema desta aula, do começo ao fim:
+
+> Um parque tem $n$ clareiras e $n - 1$ trilhas numeradas, formando uma árvore; cada trilha tem um custo. Chegam $q$ eventos. `M i c`: a trilha $i$ passa a custar $c$. `Q a b`: qual é o custo da trilha mais cara no caminho entre as clareiras $a$ e $b$? (Se $a = b$, o caminho não tem trilhas, e a resposta é 0.)
+
+O exemplo usa o parque de 12 clareiras da aula de LCA, com os comprimentos de lá como custos:
+
+| Trilha | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Liga | 1–2 | 2–3 | 3–4 | 4–5 | 5–6 | 6–7 | 3–8 | 8–9 | 5–10 | 10–11 | 1–12 |
+| Custo | 4 | 1 | 3 | 2 | 5 | 1 | 2 | 6 | 3 | 2 | 7 |
+
+| Evento | `Q 7 9` | `Q 11 12` | `M 8 1` | `Q 7 9` | `M 5 8` | `Q 6 10` | `Q 4 4` |
+|---|---|---|---|---|---|---|---|
+| Resposta | **6** | **7** | | **5** | | **8** | **0** |
+
+Na primeira pergunta, o caminho 7 – 6 – 5 – 4 – 3 – 8 – 9 usa trilhas de custo 1, 5, 2, 3, 2 e 6: a mais cara custa 6. Depois que a trilha 8 (de 8 a 9) passa a custar 1, a mesma pergunta responde 5.
+
+As ferramentas das aulas anteriores não bastam:
+
+- **Uma busca por pergunta** custa $O(n)$: com $2 \cdot 10^5$ perguntas, $4 \cdot 10^{10}$ passos.
+- **Binary lifting com o máximo dos saltos** (o "para depois" da aula de LCA) responde em $O(\log n)$, mas a tabela é montada uma vez. Mudar o custo de uma trilha alteraria a tabela de todos os vértices abaixo dela, em todos os saltos.
+- **Euler tour** transforma subárvores em trechos, mas um caminho entre dois vértices não é um trecho daquela numeração.
+
+O que falta é uma numeração em que **caminhos** se quebrem em poucos trechos. Aí a segment tree, que aceita mudanças, faz o resto.
+
+## A ideia: cortar a árvore em cadeias
+
+Enraíze na clareira 1 e calcule o tamanho de cada subárvore. Para cada vértice, o filho de **maior** subárvore é o **filho pesado**; os outros filhos são **leves**. A trilha até o filho pesado é **pesada**; as outras são **leves**.
+
+| Vértice | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Tamanho da subárvore | 12 | 10 | 9 | 6 | 5 | 2 | 1 | 2 | 1 | 2 | 1 | 1 |
+| Filho pesado | 2 | 3 | 4 | 5 | 6 | 7 | — | 9 | — | 11 | — | — |
+
+O 5 tem dois filhos de tamanho 2 (o 6 e o 10); no empate, fica o primeiro encontrado, o 6.
+
+Seguindo só trilhas pesadas, a árvore se divide em **cadeias**:
+
+- 1 → 2 → 3 → 4 → 5 → 6 → 7;
+- 8 → 9;
+- 10 → 11;
+- 12.
+
+Cada cadeia começa num vértice que é filho leve (ou na raiz). O fato que faz tudo funcionar: **descendo da raiz até qualquer vértice, troca-se de cadeia no máximo $\log_2 n$ vezes.** Cada troca usa uma trilha leve, e uma trilha leve leva a uma subárvore com no máximo metade dos vértices da subárvore de cima (se tivesse mais da metade, seria a pesada). Depois de $\log_2 n$ metades, sobra um vértice só.
+
+## Numerar com o filho pesado primeiro
+
+Agora faça uma DFS que sempre visita o **filho pesado primeiro** e dê a cada vértice uma posição, na ordem em que a DFS entra nele (como no Euler tour). Indo para o filho pesado, a DFS continua na mesma cadeia; então cada cadeia ocupa **posições seguidas**:
+
+| Posição | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Vértice | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 10 | 11 | 8 | 9 | 12 |
+| Custo da trilha acima | 0 | 4 | 1 | 3 | 2 | 5 | 1 | 3 | 2 | 2 | 6 | 7 |
+
+A cadeia do 1 ocupa as posições 1 a 7; a do 10, as 8 e 9; a do 8, as 10 e 11; a do 12, a 12.
+
+A última linha responde outra questão: os valores estão nas **trilhas**, e as posições são dos **vértices**. Numa árvore enraizada, cada vértice (menos a raiz) tem exatamente uma trilha acima dele. Então guarde o custo de cada trilha no vértice de **baixo**. A raiz fica com 0, que nunca ganha um máximo.
+
+São duas DFS: a primeira calcula pai, profundidade, tamanhos e filho pesado; a segunda numera e anota o topo da cadeia de cada vértice (`cabeca`).
+
+```cpp
+void dfs1(int v, int p) {                      // pai, profundidade, tamanho e filho pesado
+    pai[v] = p;
+    tam[v] = 1;
+    for (auto [u, id] : adj[v]) {
+        if (u == p) continue;
+        prof[u] = prof[v] + 1;
+        trilhaAcima[u] = id;
+        dfs1(u, v);
+        tam[v] += tam[u];
+        if (pesado[v] == 0 || tam[u] > tam[pesado[v]]) pesado[v] = u;
+    }
+}
+
+void dfs2(int v, int c) {                      // numera as posições, o filho pesado primeiro
+    cabeca[v] = c;
+    pos[v] = ++proxPos;
+    if (pesado[v]) dfs2(pesado[v], c);         // o filho pesado continua a mesma cadeia
+    for (auto [u, id] : adj[v])
+        if (u != pai[v] && u != pesado[v]) dfs2(u, u);   // cada filho leve começa uma cadeia nova
+}
+```
+
+<Callout type="tente">
+Em que posições está a cadeia do 8? E por que o 10 recebe uma posição menor que a do 8, se o 8 aparece antes na lista de trilhas?
+
+<details>
+<summary>Ver resposta</summary>
+
+A cadeia 8 → 9 ocupa as posições **10 e 11**. O 10 vem antes porque está mais abaixo na cadeia principal: a DFS desce pela cadeia do 1 até o 7 (posições 1 a 7) e, na volta, encontra primeiro os filhos leves dos vértices mais fundos. O filho leve do 5 é o 10 (posições 8 e 9); só depois, voltando ao 3, vem o 8. A ordem das trilhas na entrada não importa: importa a ordem da DFS.
+
+</details>
+</Callout>
+
+## Perguntar um caminho
+
+Com a numeração, o caminho entre $a$ e $b$ é subido em pedaços, uma cadeia de cada vez:
+
+1. Enquanto $a$ e $b$ estão em cadeias diferentes, pegue o que está na cadeia cujo **topo** é mais fundo. O trecho do topo da cadeia até ele é contínuo no vetor: pergunte à segment tree o máximo desse trecho. Ele inclui a trilha que sai do topo para cima, que também está no caminho. Depois, pule para o pai do topo.
+2. Quando os dois estiverem na mesma cadeia, o mais alto é o LCA. Pergunte o trecho de **uma posição depois** do LCA até o outro: o valor guardado no próprio LCA é a trilha acima dele, que não faz parte do caminho.
+
+Para `Q 7 9`:
+
+| Passo | Situação | Trecho consultado | Máximo |
+|---|---|---|---|
+| 1 | 7 na cadeia do 1 (topo na profundidade 0); 9 na cadeia do 8 (topo na profundidade 3) | o do 9: posições 10 e 11 (vértices 8 e 9) | 6 |
+| — | o 9 pula para o pai do 8, que é o 3 | | |
+| 2 | 7 e 3 na mesma cadeia; o 3 é o LCA | posições 4 a 7 (de uma depois do 3 até o 7) | 5 |
+
+A resposta é o maior dos dois: 6. Para `Q 11 12` são três trechos: posições 8 e 9 (o 11 sobe até o topo 10, máximo 3), posição 12 (o 12, máximo 7) e posições 2 a 5 (do 2 até o 5, depois do LCA 1, máximo 4). Resposta: 7.
+
+Cada pergunta usa no máximo um trecho por troca de cadeia, mais o último: $O(\log n)$ trechos, cada um custando $O(\log n)$ na segment tree. Medindo numa árvore aleatória de $2 \cdot 10^5$ vértices, nenhuma pergunta usou mais de 16 trechos; numa árvore binária completa de 131 071 vértices, o pior caso foi 27.
+
+```cpp
+int maiorNoCaminho(int a, int b) {
+    int res = 0;
+    while (cabeca[a] != cabeca[b]) {           // enquanto estão em cadeias diferentes
+        if (prof[cabeca[a]] < prof[cabeca[b]]) swap(a, b);   // a é o da cadeia cujo topo é mais fundo
+        res = max(res, consulta(1, 1, n, pos[cabeca[a]], pos[a]));   // o trecho de a até o topo da cadeia
+        a = pai[cabeca[a]];                    // sobe para a cadeia de cima
+    }
+    if (prof[a] > prof[b]) swap(a, b);         // agora estão na mesma cadeia; a é o mais alto (o LCA)
+    if (a != b) res = max(res, consulta(1, 1, n, pos[a] + 1, pos[b]));   // pos[a] + 1: a trilha acima do LCA não está no caminho
+    return res;
+}
+```
+
+Mudar o custo de uma trilha é mudar uma posição só: a do vértice de baixo dela.
+
+<HldViz client:visible />
+
+<Callout type="tente">
+Depois de `M 5 8` (a trilha de 5 a 6 passa a custar 8), quais trechos a pergunta `Q 6 10` consulta?
+
+<details>
+<summary>Ver resposta</summary>
+
+O 6 está na cadeia do 1 e o 10 na cadeia do 10 (topo mais fundo). Primeiro, o trecho do 10 até o topo da cadeia dele, que é ele mesmo: posição 8, custo 3 (a trilha de 5 a 10). O 10 pula para o pai, o 5. Agora 6 e 5 estão na mesma cadeia, e o 5 é o LCA: posição 6 (uma depois da do 5), custo **8**. Resposta: 8.
+
+</details>
+</Callout>
+
+## Três cuidados, cada um com seu contraexemplo
+
+**Começar o último trecho no LCA.** Sem o `+ 1`, o último trecho inclui o valor guardado no LCA, que é a trilha **acima** dele, fora do caminho. Antes de qualquer mudança, `Q 2 3` (cujo caminho é só a trilha de custo 1) responderia **4**, o custo da trilha de 1 a 2. E `Q 4 4` responderia 3 em vez de 0.
+
+**Comparar a profundidade dos vértices em vez da dos topos.** A regra é subir o vértice cuja cadeia tem o **topo** mais fundo. Comparando a profundidade dos próprios vértices, em `Q 4 8` (os dois na profundidade 3) o 4 seria escolhido para subir: o trecho dele vai até o topo da cadeia, a raiz 1, e o "pai do topo" já não existe. O programa lê lixo, ou fica em laço, em vez de responder 3.
+
+**Visitar o filho pesado primeiro.** Sem isso, as cadeias deixam de ser contínuas. Num parque de 4 clareiras com trilhas 1–2 (custo 2), 1–3 (custo 1) e 3–4 (custo 4), o filho pesado do 1 é o 3. Se a DFS visitar o 2 primeiro, a cadeia 1 → 3 → 4 fica com as posições 1, 3 e 4. `Q 1 3` consulta as posições 2 a 3, que incluem a do 2 (fora da cadeia), e responde **2** em vez de 1.
+
+## Código: o problema das trilhas completo
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int n;
+vector<vector<pair<int, int>>> adj;            // (vizinho, número da trilha)
+vector<int> custo;                             // custo de cada trilha
+vector<int> pai, prof, tam, pesado;            // pesado[v] = o filho de v com a maior subárvore (0 se não tem)
+vector<int> cabeca, pos;                       // cabeca[v] = o topo da cadeia de v; pos[v] = a posição de v no vetor
+vector<int> trilhaAcima;                       // trilhaAcima[v] = a trilha entre v e o pai dele
+vector<int> arv;                               // segment tree de máximo sobre as posições
+int proxPos = 0;
+
+void dfs1(int v, int p) {                      // pai, profundidade, tamanho e filho pesado
+    pai[v] = p;
+    tam[v] = 1;
+    for (auto [u, id] : adj[v]) {
+        if (u == p) continue;
+        prof[u] = prof[v] + 1;
+        trilhaAcima[u] = id;
+        dfs1(u, v);
+        tam[v] += tam[u];
+        if (pesado[v] == 0 || tam[u] > tam[pesado[v]]) pesado[v] = u;
+    }
+}
+
+void dfs2(int v, int c) {                      // numera as posições, o filho pesado primeiro
+    cabeca[v] = c;
+    pos[v] = ++proxPos;
+    if (pesado[v]) dfs2(pesado[v], c);         // o filho pesado continua a mesma cadeia
+    for (auto [u, id] : adj[v])
+        if (u != pai[v] && u != pesado[v]) dfs2(u, u);   // cada filho leve começa uma cadeia nova
+}
+
+void muda(int no, int l, int r, int k, int x) {
+    if (l == r) {
+        arv[no] = x;
+        return;
+    }
+    int m = (l + r) / 2;
+    if (k <= m) muda(2 * no, l, m, k, x);
+    else muda(2 * no + 1, m + 1, r, k, x);
+    arv[no] = max(arv[2 * no], arv[2 * no + 1]);
+}
+
+int consulta(int no, int l, int r, int a, int b) {
+    if (b < l || r < a) return 0;              // custos são positivos: 0 nunca ganha o máximo
+    if (a <= l && r <= b) return arv[no];
+    int m = (l + r) / 2;
+    return max(consulta(2 * no, l, m, a, b), consulta(2 * no + 1, m + 1, r, a, b));
+}
+
+// Maior custo de trilha no caminho entre a e b.
+int maiorNoCaminho(int a, int b) {
+    int res = 0;
+    while (cabeca[a] != cabeca[b]) {           // enquanto estão em cadeias diferentes
+        if (prof[cabeca[a]] < prof[cabeca[b]]) swap(a, b);   // a é o da cadeia cujo topo é mais fundo
+        res = max(res, consulta(1, 1, n, pos[cabeca[a]], pos[a]));   // o trecho de a até o topo da cadeia
+        a = pai[cabeca[a]];                    // sobe para a cadeia de cima
+    }
+    if (prof[a] > prof[b]) swap(a, b);         // agora estão na mesma cadeia; a é o mais alto (o LCA)
+    if (a != b) res = max(res, consulta(1, 1, n, pos[a] + 1, pos[b]));   // pos[a] + 1: a trilha acima do LCA não está no caminho
+    return res;
+}
+
+int main() {
+    int q;
+    cin >> n >> q;
+    adj.resize(n + 1);
+    custo.resize(n);
+    for (int i = 1; i <= n - 1; i++) {
+        int a, b;
+        cin >> a >> b >> custo[i];
+        adj[a].push_back({b, i});
+        adj[b].push_back({a, i});
+    }
+    pai.assign(n + 1, 0); prof.assign(n + 1, 0); tam.assign(n + 1, 0); pesado.assign(n + 1, 0);
+    cabeca.assign(n + 1, 0); pos.assign(n + 1, 0); trilhaAcima.assign(n + 1, 0);
+    dfs1(1, 0);
+    dfs2(1, 1);
+    arv.assign(4 * n, 0);
+    for (int v = 2; v <= n; v++) muda(1, 1, n, pos[v], custo[trilhaAcima[v]]);   // cada trilha mora no vértice de baixo
+
+    // a qual vértice cada trilha pertence: o de baixo
+    vector<int> baixo(n);
+    for (int v = 2; v <= n; v++) baixo[trilhaAcima[v]] = v;
+
+    while (q--) {
+        char tipo;
+        int x, y;
+        cin >> tipo >> x >> y;
+        if (tipo == 'M') muda(1, 1, n, pos[baixo[x]], y);      // M i c: a trilha i passa a custar c
+        else cout << maiorNoCaminho(x, y) << "\n";             // Q a b: a trilha mais cara entre a e b
+    }
+}
+```
+
+A segment tree é a da aula de segment tree, com o máximo no lugar do mínimo.
+
+**Entrada:**
+
+```
+12 7
+1 2 4
+2 3 1
+3 4 3
+4 5 2
+5 6 5
+6 7 1
+3 8 2
+8 9 6
+5 10 3
+10 11 2
+1 12 7
+Q 7 9
+Q 11 12
+M 8 1
+Q 7 9
+M 5 8
+Q 6 10
+Q 4 4
+```
+
+**Saída:**
+
+```
+6
+7
+5
+8
+0
+```
+
+São as cinco perguntas da tabela da motivação. A última, `Q 4 4`, não consulta nenhum trecho: os dois já estão na mesma cadeia e são o mesmo vértice.
+
+- **Tempo:** $O(n)$ para as duas DFS, $O(n \log n)$ para montar a árvore, $O(\log n)$ por mudança e $O(\log^2 n)$ por pergunta.
+- **Memória:** $O(n)$.
+
+### O mesmo código no formato de contest
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+typedef vector<int> vi;
+#define rep(i,a,b) for(int i=(a);i<(b);i++)
+void fastio(){ ios::sync_with_stdio(false); cin.tie(nullptr); }
+
+int n;
+vi t;
+void upd(int k, int x, int no, int l, int r) {
+    if (l == r) { t[no] = x; return; }
+    int m = (l + r) / 2;
+    if (k <= m) upd(k, x, 2*no, l, m); else upd(k, x, 2*no+1, m+1, r);
+    t[no] = max(t[2*no], t[2*no+1]);
+}
+int qry(int a, int b, int no, int l, int r) {
+    if (b < l || r < a) return 0;
+    if (a <= l && r <= b) return t[no];
+    int m = (l + r) / 2;
+    return max(qry(a, b, 2*no, l, m), qry(a, b, 2*no+1, m+1, r));
+}
+
+int main(){
+    fastio();
+    int q; cin >> n >> q;
+    vector<vector<pair<int,int>>> adj(n + 1); vi c(n);
+    rep(i,1,n) { int a, b; cin >> a >> b >> c[i]; adj[a].push_back({b, i}); adj[b].push_back({a, i}); }
+    vi par(n + 1), dep(n + 1), sz(n + 1), hv(n + 1, 0), hd(n + 1), ps(n + 1), up(n + 1), low(n);
+    auto d1 = [&](auto& self, int v, int p) -> void {
+        par[v] = p; sz[v] = 1;
+        for (auto [u, id] : adj[v]) if (u != p) { dep[u] = dep[v] + 1; up[u] = id; self(self, u, v); sz[v] += sz[u]; if (!hv[v] || sz[u] > sz[hv[v]]) hv[v] = u; }
+    };
+    int cur = 0;
+    auto d2 = [&](auto& self, int v, int h) -> void {
+        hd[v] = h; ps[v] = ++cur;
+        if (hv[v]) self(self, hv[v], h);
+        for (auto [u, id] : adj[v]) if (u != par[v] && u != hv[v]) self(self, u, u);
+    };
+    d1(d1, 1, 0); d2(d2, 1, 1);
+    t.assign(4 * n, 0);
+    rep(v,2,n+1) { upd(ps[v], c[up[v]], 1, 1, n); low[up[v]] = v; }
+    auto path = [&](int a, int b) {
+        int r = 0;
+        for (; hd[a] != hd[b]; a = par[hd[a]]) {
+            if (dep[hd[a]] < dep[hd[b]]) swap(a, b);
+            r = max(r, qry(ps[hd[a]], ps[a], 1, 1, n));
+        }
+        if (dep[a] > dep[b]) swap(a, b);
+        if (a != b) r = max(r, qry(ps[a] + 1, ps[b], 1, 1, n));
+        return r;
+    };
+    while (q--) {
+        char tp; int x, y; cin >> tp >> x >> y;
+        if (tp == 'M') upd(ps[low[x]], y, 1, 1, n);
+        else cout << path(x, y) << "\n";
+    }
+}
+```
+
+O laço do caminho virou um `for` em que a terceira parte (`a = par[hd[a]]`) é o pulo para a cadeia de cima: ela roda **depois** do corpo, como no `while` da versão didática.
+
+## Armadilhas comuns
+
+- **Não visitar o filho pesado primeiro** na segunda DFS: as cadeias deixam de ser trechos contínuos.
+- **Comparar a profundidade dos vértices** em vez da dos topos das cadeias: o vértice errado sobe e pode passar da raiz.
+- **Incluir o LCA** quando os valores estão nas arestas: o último trecho começa em `pos[lca] + 1`.
+- **Esquecer o caso $a = b$** no último trecho (o `if (a != b)`): sem ele, o trecho `pos[a] + 1 .. pos[a]` é vazio, e uma segment tree que não trata trechos vazios pode responder errado.
+- **Valores nos vértices** (em vez das arestas): aí o LCA entra, e o último trecho começa em `pos[lca]`. Leia o enunciado.
+- **Neutro errado.** Com custos que podem ser negativos ou zero, o "fora do trecho" da segment tree de máximo precisa ser um valor menor que todos, não 0.
+- **Recursão funda.** As duas DFS empilham até $n$ chamadas numa árvore em forma de caminho.
+
+<details class="para-depois">
+<summary>Para depois: o que mais a decomposição faz</summary>
+
+**Subárvores de graça.** A numeração com o filho pesado primeiro também é uma ordem de DFS: a subárvore de $v$ continua sendo o trecho de `pos[v]` a `pos[v] + tam[v] - 1`, como no Euler tour. A mesma segment tree responde perguntas sobre caminhos **e** sobre subárvores.
+
+**Mudanças em caminhos.** "Somar $x$ a todas as trilhas do caminho de $a$ a $b$" se quebra nos mesmos $O(\log n)$ trechos. Com lazy propagation em cada trecho, mudanças e perguntas em caminhos custam $O(\log^2 n)$.
+
+**LCA.** O laço da pergunta, sem consultar nada, termina com o mais alto dos dois sendo o LCA: é outra forma de calcular o LCA em $O(\log n)$, sem tabela de saltos.
+
+**Operações que não comutam.** Se a combinação depende da ordem (por exemplo, compor funções ao longo do caminho), os trechos de $a$ e de $b$ precisam ser guardados separadamente e juntados na ordem certa: os de $a$ subindo, os de $b$ descendo.
+
+</details>
+
+## Referências
+
+- O CPH não trata da heavy-light decomposition; a aula se baseia nas duas referências abaixo.
+- [cp-algorithms — Heavy-light decomposition](https://cp-algorithms.com/graph/hld.html), com a prova do limite de cadeias e as variações para arestas e para mudanças em caminhos.
+- [USACO Guide — Heavy-Light Decomposition](https://usaco.guide/plat/hld), com implementações e problemas.
+
+## Mini-quiz
+
+<Quiz
+  client:visible
+  questions={[
+    {
+      q: 'No exemplo, o 5 tem dois filhos com subárvore de tamanho 2: o 6 e o 10. Qual vira o filho pesado?',
+      code: 'if (pesado[v] == 0 || tam[u] > tam[pesado[v]]) pesado[v] = u;',
+      options: ['O 10, porque tem número maior', 'O 6, o primeiro encontrado', 'Os dois', 'Nenhum: só há pesado quando um é estritamente maior'],
+      answer: 1,
+      why: 'O 6 é encontrado primeiro (trilha 5 aparece antes da 9 na lista do 5) e vira pesado. Quando o 10 chega, 2 > 2 é falso, e o pesado continua o 6. Qualquer um dos dois serviria; o limite de cadeias vale do mesmo jeito.',
+    },
+    {
+      q: 'Qual é a posição do vértice 10 na numeração?',
+      code: 'void dfs2(int v, int c) {\n    cabeca[v] = c; pos[v] = ++proxPos;\n    if (pesado[v]) dfs2(pesado[v], c);\n    for (cada filho u que não é o pai nem o pesado) dfs2(u, u);\n}',
+      options: ['5', '8', '10', '12'],
+      answer: 1,
+      why: 'A cadeia do 1 ocupa as posições 1 a 7 (até o 7). Voltando, o primeiro filho leve encontrado é o 10, filho do 5: posição 8. O 11 fica com a 9.',
+    },
+    {
+      q: 'Quantos trechos a pergunta `Q 11 12` consulta, e qual é a resposta (antes de qualquer mudança)?',
+      code: 'while (cabeca[a] != cabeca[b]) {\n    if (prof[cabeca[a]] < prof[cabeca[b]]) swap(a, b);\n    res = max(res, consulta(..., pos[cabeca[a]], pos[a]));\n    a = pai[cabeca[a]];\n}\nif (prof[a] > prof[b]) swap(a, b);\nif (a != b) res = max(res, consulta(..., pos[a] + 1, pos[b]));',
+      options: ['2 trechos, resposta 4', '3 trechos, resposta 7', '3 trechos, resposta 4', '4 trechos, resposta 7'],
+      answer: 1,
+      why: 'Posições 8 e 9 (o 11 até o topo 10, máximo 3), depois a 12 (o 12 sozinho, custo 7), depois 2 a 5 (do 2 ao 5, máximo 4). A trilha de 1 a 12 custa 7.',
+    },
+    {
+      q: 'Uma versão começa o último trecho em `pos[a]` (sem o `+ 1`). O que ela responde para `Q 2 3`, antes de qualquer mudança?',
+      options: ['1', '4', '0', '3'],
+      answer: 1,
+      why: 'O 2 é o LCA e o trecho vira as posições 2 a 3, incluindo o valor guardado no 2: a trilha de 1 a 2, de custo 4, que não está no caminho. O certo é 1, a única trilha entre 2 e 3.',
+    },
+    {
+      q: 'Por que, descendo da raiz até um vértice, se troca de cadeia no máximo log₂ n vezes?',
+      options: [
+        'Porque a árvore tem altura log₂ n',
+        'Porque cada trilha leve leva a uma subárvore com no máximo metade dos vértices da subárvore de cima',
+        'Porque cada cadeia tem no máximo log₂ n vértices',
+        'Porque a segment tree tem log₂ n andares',
+      ],
+      answer: 1,
+      why: 'Se o filho leve tivesse mais da metade, ele seria o pesado. Cada troca de cadeia pelo menos divide o tamanho da subárvore por 2. A altura da árvore, ao contrário, pode ser n.',
+    },
+    {
+      q: 'Quanto custa uma pergunta de caminho?',
+      options: ['O(1)', 'O(log n)', 'O(log² n)', 'O(n)'],
+      answer: 2,
+      why: 'São O(log n) trechos (um por troca de cadeia), e cada consulta à segment tree custa O(log n).',
+    },
+  ]}
+/>

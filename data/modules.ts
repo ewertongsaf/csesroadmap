@@ -48,7 +48,7 @@ export const modules: ModuleRef[] = [
   { slug: 'grafos-funcionais', title: 'Grafos funcionais (successor graphs)', cph: ['16.3', '16.4'], status: 'written' },
   { slug: 'euler-tour', title: 'Euler tour: subárvores e caminhos como intervalos', cph: ['18.2'], status: 'written' },
   { slug: 'small-to-large', title: 'Small-to-large', cph: ['18.4'], status: 'written' },
-  { slug: 'hld', title: 'Heavy-light decomposition', cph: [], basedOn: CPA, status: 'planned' },
+  { slug: 'hld', title: 'Heavy-light decomposition', cph: [], basedOn: CPA, status: 'written' },
   { slug: 'centroid-decomposition', title: 'Centroid decomposition', cph: [], basedOn: CPA, status: 'planned' },
 
   // Fase 4 — DP II e matemática
