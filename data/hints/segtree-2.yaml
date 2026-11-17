@@ -1,0 +1,151 @@
+# Dicas do milestone 14 — segment tree com nós compostos, queries offline e lazy propagation.
+problems:
+  2166: # Prefix Sum Queries
+    hints:
+      - >-
+        A pergunta é sobre os prefixos do **trecho** $[a, b]$, não do vetor inteiro. Tente a receita da aula de nós compostos: com a resposta das duas metades, dá para calcular a do trecho todo?
+      - >-
+        O melhor prefixo do trecho todo ou fica inteiro na esquerda, ou pega a esquerda **inteira** e continua num prefixo da direita. Que outro número da esquerda você precisa guardar para a segunda opção?
+      - >-
+        A soma total do trecho. Cada nó guarda (soma, melhor prefixo), e o `junta` combina os dois.
+    pitfalls:
+      - >-
+        O prefixo vazio (soma 0) vale: o melhor prefixo de uma folha negativa é 0. Somas em `long long`. A consulta precisa juntar os pedaços na ordem, da esquerda para a direita.
+
+  1190: # Subarray Sum Queries
+    hints:
+      - >-
+        Depois de cada mudança, a maior soma de um trecho contíguo do vetor inteiro. Pela receita da aula de nós compostos: onde pode estar o melhor trecho do pai?
+      - >-
+        Inteiro na esquerda, inteiro na direita, ou atravessando o meio. O que atravessa é "o melhor sufixo da esquerda" mais "o melhor prefixo da direita".
+      - >-
+        Guarde em cada nó a soma, o melhor prefixo, o melhor sufixo e a melhor resposta. Para atualizar o prefixo do pai, você vai precisar da soma da esquerda inteira.
+    pitfalls:
+      - >-
+        O trecho vazio vale 0: prefixos, sufixos e respostas nunca ficam negativos numa folha. A pergunta é sempre o vetor inteiro: a resposta é a raiz.
+
+  3226: # Subarray Sum Queries II
+    hints:
+      - >-
+        É o mesmo nó do problema anterior (soma, melhor prefixo, melhor sufixo, melhor trecho), sem mudanças, mas com perguntas sobre um trecho qualquer.
+      - >-
+        A consulta devolve o **pacote** do trecho pedido, juntando os pedaços da esquerda para a direita. A resposta é o campo "melhor trecho" do pacote final.
+    pitfalls:
+      - >-
+        A ordem dos pedaços importa no `junta`. O trecho vazio vale 0, e as somas pedem `long long`.
+
+  2206: # Pizzeria Queries
+    hints:
+      - >-
+        O preço de pedir do prédio $a$ estando em $k$ é $p_a + |a - k|$. Separe os prédios à esquerda de $k$ dos que estão à direita: como fica o módulo em cada lado?
+      - >-
+        À esquerda ($a \le k$), o preço é $(p_a - a) + k$. À direita ($a \ge k$), é $(p_a + a) - k$. Repare que $k$ saiu de dentro da parte que depende de $a$.
+      - >-
+        Duas segment trees de mínimo: uma com $p_a - a$, outra com $p_a + a$. A resposta é o menor entre o mínimo de uma num prefixo e o da outra num sufixo, cada um corrigido por $k$.
+    pitfalls:
+      - >-
+        Ao mudar o preço de um prédio, atualize as duas árvores. O prédio $k$ entra nos dois lados, e não há problema nisso.
+
+  1734: # Distinct Values Queries
+    hints:
+      - >-
+        Contar valores distintos é contar cada valor **uma vez só**. Se você escolher um representante de cada valor dentro do trecho, qual escolha facilita contar?
+      - >-
+        A **última** ocorrência de cada valor até a ponta direita $b$. Se as perguntas forem respondidas em ordem crescente de $b$, dá para manter "acesa" só a última ocorrência de cada valor vista até agora.
+      - >-
+        Varra as posições da esquerda para a direita (queries offline, ordenadas pela ponta direita). Ao ver um valor, apague a ocorrência anterior dele e acenda a atual numa Fenwick tree. A pergunta $[a, b]$ é a soma dos acesos de $a$ a $b$.
+    pitfalls:
+      - >-
+        Valores até $10^9$: use `map` (ou compressão) para lembrar a última posição de cada um. Imprima na ordem da entrada.
+
+  3163: # Range Interval Queries
+    hints:
+      - >-
+        Com um limite só ("valores no máximo $d$"), seria a varredura offline da aula: perguntas e valores ordenados juntos. E com dois limites?
+      - >-
+        Os que estão entre $c$ e $d$ são os que valem no máximo $d$ menos os que valem no máximo $c - 1$. Cada pergunta vira duas perguntas de um limite só.
+      - >-
+        Faça uma varredura só, com as $2q$ perguntas meio-prontas, acendendo as posições em ordem de valor e contando os acesos de $a$ a $b$ com uma Fenwick tree.
+    pitfalls:
+      - >-
+        Empate: com "no máximo", o valor igual ao limite acende antes da pergunta ser respondida. Guarde de qual pergunta original cada metade veio e com que sinal.
+
+  3356: # Distinct Values Queries II
+    hints:
+      - >-
+        Um trecho tem valores repetidos exatamente quando alguma posição dele tem uma **cópia** do seu valor mais adiante, ainda dentro do trecho. Que número por posição captura isso?
+      - >-
+        Para cada posição $i$, guarde a posição da **próxima** ocorrência do mesmo valor (ou infinito). O trecho $[a, b]$ não tem repetidos se e só se o menor desses números, entre $a$ e $b$, passa de $b$.
+      - >-
+        Segment tree de mínimo sobre esse vetor. Uma mudança de valor altera o "próximo" de no máximo três posições: a própria, a ocorrência anterior do valor antigo e a anterior do valor novo. Um `set` de posições por valor acha essas vizinhas.
+    pitfalls:
+      - >-
+        Na mudança, conserte os vizinhos do valor **antigo** (que deixam de apontar para $k$) e os do **novo** (que passam a apontar). Se o valor novo é igual ao antigo, nada muda.
+
+  1735: # Range Updates and Sums
+    hints:
+      - >-
+        Lazy propagation numa árvore de soma, como na aula, mas com dois tipos de recado: "somar $x$" e "trocar tudo por $x$". O que a pendência de um nó precisa guardar?
+      - >-
+        Guarde os dois: um valor de troca (ou "nenhuma") e uma soma a acrescentar. Pense no que acontece quando chega um recado novo num nó que já tem um: uma troca **apaga** tudo o que estava pendente; uma soma depois de uma troca só ajusta o valor da troca (ou se acumula na soma).
+      - >-
+        No `aplica`, a soma do nó muda pelo tamanho do trecho: trocar por $x$ dá $x \cdot$ tamanho; somar $x$ acrescenta $x \cdot$ tamanho.
+    pitfalls:
+      - >-
+        Escreva e teste a função que combina dois recados contra uma força bruta antes de usar. Somas em `long long`.
+
+  1736: # Polynomial Queries
+    hints:
+      - >-
+        A atualização soma 1, 2, 3… ao trecho: é uma progressão aritmética. Quanto ela acrescenta à soma de um nó que está todo dentro do trecho?
+      - >-
+        Se o nó cobre as posições $l$ a $r$ e a atualização começou em $a$, a posição $l$ recebe $l - a + 1$ e cada posição seguinte recebe 1 a mais. A soma acrescentada é a soma dessa progressão.
+      - >-
+        Guarde como pendência a progressão que os filhos ainda devem receber (primeiro termo e razão; várias progressões somadas continuam sendo uma progressão). Ao empurrar, o filho direito recebe a progressão começando mais adiante.
+    pitfalls:
+      - >-
+        O primeiro termo do filho direito é o do pai mais (tamanho do filho esquerdo) × razão. Somas em `long long`.
+
+  1737: # Range Queries and Copies
+    hints:
+      - >-
+        Copiar o vetor inteiro a cada cópia custa $O(n)$ e, com $2 \cdot 10^5$ cópias, não passa. Uma cópia nova só passa a ser diferente da original quando alguém a muda. O que dá para compartilhar?
+      - >-
+        Segment tree persistente: cada vetor é só uma **raiz**. Copiar é guardar a mesma raiz de novo; mudar um valor cria um caminho novo de nós e troca a raiz daquele vetor.
+    pitfalls:
+      - >-
+        Reserve memória para os nós iniciais mais cerca de $\log_2 n + 1$ por mudança (alguns milhões). Nunca altere um nó existente, porque ele pode estar em outras cópias.
+
+  1188: # Bit Inversions
+    hints:
+      - >-
+        Depois de cada inversão de bit, o maior trecho de bits iguais. Isso lembra a "maior subida" da aula de nós compostos: o que muda é a condição de encaixe no meio.
+      - >-
+        Cada nó guarda o tamanho, o maior trecho que começa no primeiro bit, o maior que termina no último, o maior de todos, e o primeiro e o último bit. Os dois lados se encaixam quando o último bit da esquerda é **igual** ao primeiro da direita.
+    pitfalls:
+      - >-
+        O prefixo do pai só cresce para dentro da direita se a esquerda inteira for de bits iguais (mesmo cuidado da aula). A resposta é sempre a raiz.
+
+  2425: # Stack Weights
+    hints:
+      - >-
+        Você não sabe os pesos, só a ordem. Quando dá para ter **certeza** de que a pilha da esquerda pesa mais? Compare as moedas da mais pesada para a mais leve.
+      - >-
+        Marque cada moeda colocada com +1 (esquerda) ou −1 (direita). Olhe as somas das marcas "da moeda mais pesada até a moeda $j$", para cada $j$. Se nenhuma dessas somas for negativa (e alguma for positiva), cada moeda da direita pode ser emparelhada com uma mais pesada da esquerda.
+      - >-
+        Então: todas essas somas $\ge 0$ e alguma $> 0$ dá `>`; todas $\le 0$ e alguma $< 0$ dá `<`; senão, `?`. Colocar a moeda $c$ soma $\pm 1$ a todas as somas de $j = 1$ até $c$: lazy propagation com soma em trecho e mínimo e máximo do vetor inteiro.
+    pitfalls:
+      - >-
+        As somas são das moedas **mais pesadas até $j$**, isto é, um sufixo por número de moeda: a moeda $c$ entra nas somas de $j = 1$ a $c$. Moedas ainda não colocadas valem 0.
+
+  3314: # Mountain Range
+    hints:
+      - >-
+        De uma montanha, o planador só alcança o trecho entre as montanhas mais altas (ou iguais) mais próximas de cada lado. Como achar esses dois limites para todas as montanhas?
+      - >-
+        Com a pilha monotônica do milestone 6. Agora pense numa DP: o melhor caminho que começa numa montanha é 1 mais o melhor caminho começando em alguma montanha do trecho que ela alcança.
+      - >-
+        As montanhas alcançadas são sempre mais baixas. Calcule a DP em ordem crescente de altura, e a pergunta "melhor DP no trecho entre os limites" é um máximo de trecho numa segment tree.
+    pitfalls:
+      - >-
+        Montanhas de mesma altura bloqueiam o voo (precisa ser estritamente mais alta que tudo no caminho): use "maior ou igual" ao procurar os limites. O trecho é aberto: os limites não entram.

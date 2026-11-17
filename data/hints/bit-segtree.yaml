@@ -1,0 +1,157 @@
+# Dicas do milestone 13 — Fenwick tree, segment tree e ordered_set.
+problems:
+  1648: # Dynamic Range Sum Queries
+    hints:
+      - >-
+        Mudar um valor e somar um trecho, os dois muitas vezes. É exatamente o problema da aula de Fenwick tree.
+      - >-
+        O evento diz que a posição $k$ **passa a valer** $u$, e a Fenwick tree só sabe **somar** a uma posição. O que você precisa guardar para saber quanto somar?
+    pitfalls:
+      - >-
+        Guarde o vetor original ao lado e some a diferença `u - valor antigo`, atualizando o vetor depois. As somas passam de $10^{14}$: `long long`.
+
+  1649: # Dynamic Range Minimum Queries
+    hints:
+      - >-
+        O mínimo de um trecho não sai de dois prefixos (não existe "subtração" de mínimos). Que estrutura monta o trecho **juntando** pedaços?
+      - >-
+        Segment tree de mínimo, com mudança de um valor e consulta de trecho, como na aula.
+    pitfalls:
+      - >-
+        O nó fora do trecho precisa devolver um valor que nunca ganha o mínimo (infinito), não 0. Reserve $4n$ casas para a árvore.
+
+  1651: # Range Update Queries
+    hints:
+      - >-
+        Aqui é o contrário do de sempre: a mudança é num trecho inteiro e a pergunta é sobre uma posição só.
+      - >-
+        Guarde as **diferenças** entre posições vizinhas. Somar $u$ ao trecho de $a$ a $b$ muda só duas diferenças. E o valor da posição $k$ é a soma das diferenças de 1 a $k$: uma soma de prefixo numa Fenwick tree.
+    pitfalls:
+      - >-
+        Não esqueça o valor inicial de cada posição (some-o à resposta ou coloque-o nas diferenças no começo). As somas passam de `int`.
+
+  1143: # Hotel Queries
+    hints:
+      - >-
+        Cada grupo quer o **primeiro** hotel com quartos suficientes. Que informação sobre um trecho de hotéis diz se existe algum que serve ali dentro?
+      - >-
+        O **maior** número de quartos livres do trecho. Com uma segment tree de máximo, desça da raiz: se o filho da esquerda tem máximo suficiente, a resposta está lá; senão, está na direita.
+      - >-
+        Depois de escolher o hotel, diminua os quartos dele: é uma mudança de um valor, que refaz o máximo no caminho até a raiz.
+    pitfalls:
+      - >-
+        Confira a raiz antes de descer: se nem o maior hotel tem quartos suficientes, a resposta é 0 e nada muda.
+
+  1749: # List Removals
+    hints:
+      - >-
+        Apagar do meio de um `vector` custa $O(n)$ por remoção. Em vez de apagar de verdade, que tal só **marcar** o elemento como removido?
+      - >-
+        Ponha 1 em cada posição ainda presente. O elemento que está agora na posição $p$ da lista é o $p$-ésimo 1. Que estrutura acha o $p$-ésimo 1 e permite trocar um 1 por 0?
+      - >-
+        Uma segment tree de soma com descida (se a esquerda tem pelo menos $p$ uns, desça para lá; senão, desça para a direita procurando o de número $p$ menos a quantidade da esquerda). Ou um `ordered_set` com as posições originais.
+    pitfalls:
+      - >-
+        As posições do enunciado são da lista **atual**, não da original. Depois de achar, imprima o valor e zere aquela posição.
+
+  2163: # Josephus Problem II
+    hints:
+      - >-
+        Numere as crianças que ainda estão no círculo como 0, 1, 2… na ordem. Se a última removida estava na posição $c$ dessa numeração, em que posição está a próxima a sair?
+      - >-
+        Depois de uma remoção, a criança que estava na posição seguinte passa a ocupar a posição $c$. Então a próxima a sair está na posição $(c + k) \bmod t$, em que $t$ é quantas crianças restam.
+      - >-
+        Falta achar "a criança na posição $i$ do círculo atual" e removê-la, várias vezes: é o $k$-ésimo elemento de um conjunto que perde elementos. `ordered_set` ou segment tree com descida.
+    pitfalls:
+      - >-
+        $k$ vai até $10^9$: use o resto da divisão, nunca simule os pulos um por um. Com $k = 0$, as crianças saem na ordem 1, 2, 3…
+
+  1144: # Salary Queries
+    hints:
+      - >-
+        Conte salários **por valor**: se cada valor possível fosse uma posição, "quantos salários entre $a$ e $b$" seria uma soma de trecho, e mudar um salário seria tirar 1 de uma posição e somar 1 em outra.
+      - >-
+        Os salários vão até $10^9$, então não dá para ter uma posição por valor. Mas só aparecem até $n + q$ valores diferentes ao todo. Leia tudo antes e comprima.
+    pitfalls:
+      - >-
+        A compressão precisa incluir os salários iniciais, os novos salários **e** as pontas $a$ e $b$ das perguntas (ou use `lower_bound` e `upper_bound` para achar as posições comprimidas delas). Um `ordered_set` de pares (salário, funcionário) também resolve, sem comprimir.
+
+  2168: # Nested Ranges Check
+    hints:
+      - >-
+        Ordene os intervalos pelo começo. Quem pode conter o intervalo atual precisa começar antes (ou junto). O que mais ele precisa ter?
+      - >-
+        Precisa terminar depois (ou junto). Então "algum intervalo contém o atual" vira "entre os que vêm antes na ordenação, o maior fim é pelo menos o fim do atual". E o contrário vale para "contém algum": olhe para os que vêm depois e para o menor fim.
+      - >-
+        Cuidado com começos iguais: ordene pelo começo crescente e, no empate, pelo fim **decrescente**. Assim, o maior vem antes do menor que ele contém.
+    pitfalls:
+      - >-
+        Sem o desempate pelo fim decrescente, [2, 5] e [2, 8] podem sair na ordem errada e a contenção não é percebida. As respostas são impressas na ordem da entrada: guarde o índice.
+
+  2169: # Nested Ranges Count
+    hints:
+      - >-
+        É o problema anterior contando em vez de só detectar: depois da mesma ordenação (começo crescente, fim decrescente), quantos dos anteriores terminam depois ou junto com o atual?
+      - >-
+        Percorra na ordem e registre o fim de cada intervalo numa estrutura que conta "quantos fins registrados são pelo menos $y$". Os fins vão até $10^9$: comprima. Para "quantos o atual contém", faça a varredura de trás para a frente contando fins menores ou iguais.
+    pitfalls:
+      - >-
+        Conte só os **outros** intervalos: consulte antes de registrar o atual. Fins iguais contam (contenção usa $\le$).
+
+  1739: # Forest Queries II
+    hints:
+      - >-
+        Sem mudanças, seria a soma de retângulo com prefixos 2D. O que estraga a tabela de prefixos quando uma casa muda?
+      - >-
+        Uma Fenwick tree em duas dimensões: um laço de `i` dentro de um laço de `j`, os dois andando como na Fenwick comum. A soma de um retângulo sai de quatro prefixos, como no 2D estático.
+    pitfalls:
+      - >-
+        A mudança **inverte** a casa (árvore vira vazio e vice-versa): some +1 ou −1 conforme o estado atual, que você precisa guardar. Atenção à ordem das coordenadas na entrada (linha, depois coluna).
+
+  3223: # Sliding Window Inversions
+    hints:
+      - >-
+        Recontar as inversões de cada janela do zero é caro. Quando a janela anda uma casa, sai um elemento da esquerda e entra um na direita. Quais inversões somem e quais aparecem?
+      - >-
+        O que sai, $x$, estava à esquerda de todos: as inversões dele são com os elementos da janela **menores** que $x$. O que entra, $y$, fica à direita de todos: ganha uma inversão para cada elemento da janela **maior** que $y$.
+      - >-
+        Mantenha as quantidades dos valores da janela numa Fenwick tree (com os valores comprimidos). Cada passo é uma remoção, uma inserção e duas contagens.
+    pitfalls:
+      - >-
+        Valores iguais não formam inversão: "menores" e "maiores" são estritos. Calcule a primeira janela inteira antes (são inversões comuns). Tire $x$ da estrutura antes de contar para ele.
+
+  1748: # Increasing Subsequence II
+    hints:
+      - >-
+        Conte, para cada posição $i$, quantas subsequências crescentes **terminam** nela. Como esse número se relaciona com os das posições anteriores?
+      - >-
+        Uma subsequência que termina em $i$ é o próprio $x_i$ sozinho ou uma que termina num $j$ anterior com $x_j < x_i$, mais o $x_i$. Então a conta de $i$ é 1 mais a soma das contas desses $j$.
+      - >-
+        Essa soma é "soma das contas dos valores menores que $x_i$ já vistos": uma soma de prefixo numa Fenwick tree indexada por valor comprimido.
+    pitfalls:
+      - >-
+        Tudo módulo $10^9 + 7$, inclusive dentro da Fenwick tree. Valores iguais não podem se encadear (é estritamente crescente): consulte só os menores, estritamente.
+
+  1747: # Pyramid Array
+    hints:
+      - >-
+        Pense no **menor** elemento. Na pirâmide final, onde ele pode estar? E quantas trocas custa levá-lo até lá?
+      - >-
+        Ele só pode ficar numa das pontas. Levá-lo para a esquerda custa a quantidade de elementos à esquerda dele; para a direita, a quantidade à direita. Escolha o mais barato e esqueça esse elemento: o resto do problema é igual, sem ele.
+      - >-
+        Repetindo para cada elemento, do menor para o maior: o custo de um elemento é o mínimo entre "quantos **maiores** estão à esquerda dele" e "quantos maiores estão à direita" no vetor original. Conte com uma Fenwick tree.
+    pitfalls:
+      - >-
+        A resposta passa de `int` ($n$ até $2 \cdot 10^5$ dá até cerca de $10^{10}$). Os valores são distintos e vão até $10^9$: comprima ou ordene as posições pelo valor.
+
+  1162: # Sorting Methods
+    hints:
+      - >-
+        São quatro problemas. Trocar vizinhos: cada troca desfaz exatamente uma inversão. Trocar dois quaisquer: pense nos **ciclos** da permutação (um ciclo de tamanho $c$ precisa de $c - 1$ trocas).
+      - >-
+        Mover um elemento para qualquer lugar: os que **não** são movidos ficam na ordem em que estavam, e precisam já estar crescentes. Mantenha o maior número possível parado.
+      - >-
+        Mover para a frente: quem não é movido acaba no fim do vetor, então são os **maiores** valores, e precisam já aparecer em ordem crescente. Veja quantos dos maiores ($n$, $n - 1$, …) já estão em ordem de posição.
+    pitfalls:
+      - >-
+        Inversões em $O(n \log n)$ com Fenwick tree e em `long long`. A maior sequência crescente precisa ser a versão $O(n \log n)$ da aula de LIS.
