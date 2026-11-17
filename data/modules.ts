@@ -43,7 +43,7 @@ export const modules: ModuleRef[] = [
   { slug: 'queries-offline', title: 'Queries offline (ordenar queries e eventos)', cph: ['18.4', '27.3'], status: 'written' },
   { slug: 'lazy-propagation', title: 'Lazy propagation e segment tree persistente', cph: ['28.1', '28.2'], status: 'written' },
   { slug: 'arvores-basico', title: 'Árvores: DFS, subárvores e diâmetro', cph: ['14.1', '14.2', '14.3'], status: 'written' },
-  { slug: 'dp-em-arvore', title: 'DP em árvore e rerooting', cph: ['14.3'], status: 'planned' },
+  { slug: 'dp-em-arvore', title: 'DP em árvore e rerooting', cph: ['14.1', '14.3'], status: 'written' },
   { slug: 'binary-lifting-lca', title: 'Binary lifting e LCA', cph: ['18.1', '18.3'], status: 'planned' },
   { slug: 'grafos-funcionais', title: 'Grafos funcionais (successor graphs)', cph: ['16.3', '16.4'], status: 'planned' },
   { slug: 'euler-tour', title: 'Euler tour: subárvores e caminhos como intervalos', cph: ['18.2'], status: 'planned' },

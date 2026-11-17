@@ -1,0 +1,393 @@
+---
+title: DP em árvore e rerooting
+description: Numa árvore enraizada, cada subárvore é um subproblema, e o pai combina as respostas dos filhos. Com uma segunda passagem de cima para baixo, a resposta para uma raiz vira a resposta para todas as raízes ao mesmo tempo.
+---
+import Callout from '../../src/components/mdx/Callout.astro';
+import Quiz from '../../src/components/mdx/Quiz.tsx';
+import RerootViz from '../../src/components/mdx/viz/RerootViz.tsx';
+
+## Motivação: o ponto de encontro do parque
+
+O problema desta aula, do começo ao fim:
+
+> O parque da aula anterior tem $n$ clareiras e $n - 1$ trilhas com comprimentos. Na clareira $v$ moram $p_v$ pessoas. Se todos os moradores se encontrassem na clareira $v$, cada pessoa andaria a distância da sua clareira até $v$. Para **cada** clareira $v$, calcule o **custo** de um encontro ali: a soma, sobre todos os moradores, das distâncias que eles andam. (Moradores e comprimentos vão até 1000.)
+
+Em fórmula:
+
+$$
+\text{custo}(v) = \sum_{u} p_u \cdot \text{dist}(u, v)
+$$
+
+A soma passa por todas as clareiras $u$; $p_u$ é o número de moradores de $u$, e $\text{dist}(u, v)$ é a distância pelas trilhas.
+
+O exemplo usa as mesmas trilhas da aula anterior (1–2: 3, 1–3: 2, 2–4: 4, 2–5: 1, 3–6: 5, 6–7: 2, 6–8: 1), agora com moradores:
+
+| Clareira | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+|---|---|---|---|---|---|---|---|---|
+| Moradores | 2 | 1 | 3 | 1 | 2 | 1 | 4 | 1 |
+| **Custo** | 75 | 96 | **69** | 148 | 107 | 84 | 98 | 97 |
+
+O melhor ponto de encontro é a clareira 3. Não é a 1, o centro da aula anterior: os 4 moradores da clareira 7 puxam o encontro para o lado dela.
+
+Uma busca a partir de cada clareira calcula tudo, mas são $n$ buscas: com $2 \cdot 10^5$ clareiras, $4 \cdot 10^{10}$ passos. Não passa. A aula mostra como fazer com **duas** buscas.
+
+## Parte 1: o que cada subárvore sabe sozinha
+
+Enraíze a árvore na clareira 1. Para calcular só o custo da clareira 1, pense em cada subárvore como um problema menor, com duas perguntas sobre ela:
+
+- **P[v]**: quantos moradores há na subárvore de $v$;
+- **C[v]**: quanto custa levar todos eles até $v$.
+
+Numa folha, $P$ é o número de moradores dela e $C$ é 0: ninguém precisa andar. Na clareira 6, com filhos 7 (trilha 2) e 8 (trilha 1):
+
+- $P[6] = 1 + 4 + 1 = 6$: os moradores da própria 6, mais os das subárvores dos filhos.
+- $C[6]$: os 4 moradores da 7 andam a trilha de comprimento 2 até a 6, e o morador da 8 anda 1. Custo $0 + 4 \cdot 2 + 0 + 1 \cdot 1 = 9$.
+
+O que aconteceu com cada filho foi: "o custo para chegar até o filho" (que já estava calculado) mais "todos os moradores da subárvore do filho andando mais uma trilha".
+
+$$
+P[v] = p_v + \sum_{c} P[c] \qquad C[v] = \sum_{c} \big( C[c] + P[c] \cdot w_c \big)
+$$
+
+As somas passam pelos filhos $c$ de $v$, e $w_c$ é o comprimento da trilha entre $v$ e o filho $c$.
+
+Isso é **programação dinâmica em árvore**: o estado é "a subárvore de $v$", e a resposta de cada estado sai das respostas dos filhos. A ordem certa de calcular é a da **volta** da DFS (os filhos ficam prontos antes do pai), exatamente como o tamanho da subárvore na aula anterior.
+
+```cpp
+void desce(int v, int pai) {
+    P[v] = pop[v];
+    C[v] = 0;
+    for (auto [u, w] : adj[v]) {
+        if (u == pai) continue;
+        desce(u, v);                           // primeiro o filho fica pronto
+        P[v] += P[u];
+        C[v] += C[u] + P[u] * w;               // quem já chegava em u anda mais w até v
+    }
+}
+```
+
+A ordem em que as clareiras ficam prontas é 4, 5, 2, 7, 8, 6, 3, 1:
+
+| Clareira | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+|---|---|---|---|---|---|---|---|---|
+| $P$ | 15 | 4 | 9 | 1 | 2 | 6 | 4 | 1 |
+| $C$ | **75** | 6 | 39 | 0 | 0 | 9 | 0 | 0 |
+
+Na raiz, a subárvore é o parque inteiro: $C[1] = 75$ é a resposta para a clareira 1. Para as outras clareiras, $C[v]$ **não** é a resposta: ele só conta os moradores **abaixo** de $v$.
+
+<Callout type="tente">
+Confira $P[3]$ e $C[3]$ a partir dos valores da clareira 6. A clareira 3 tem um filho só, a 6, pela trilha de comprimento 5.
+
+<details>
+<summary>Ver resposta</summary>
+
+$P[3] = 3 + P[6] = 3 + 6 = 9$. $C[3] = C[6] + P[6] \cdot 5 = 9 + 6 \cdot 5 = 39$: os 6 moradores que já estavam reunidos na clareira 6 (com custo 9 para chegar lá) andam mais 5 cada um. É a mesma conta da clareira 6, um andar acima.
+
+</details>
+</Callout>
+
+## Parte 2: mudar a raiz de lugar
+
+Já se sabe o custo da clareira 1: 75. Quanto custa o encontro na clareira 3, vizinha da 1 pela trilha de comprimento 2?
+
+Mover o encontro da 1 para a 3 atravessa uma trilha. Quem está na **subárvore da 3** (9 moradores) passa a andar 2 a **menos**. Todos os **outros** ($15 - 9 = 6$ moradores) andam 2 a **mais**:
+
+$$
+75 - 9 \cdot 2 + 6 \cdot 2 = 69
+$$
+
+Nada mais muda: a distância de cada pessoa até a 3 é a distância até a 1 com uma trilha a mais ou a menos. Em geral, para um filho $u$ de $v$ pela trilha $w$:
+
+$$
+\text{custo}(u) = \text{custo}(v) - P[u] \cdot w + (T - P[u]) \cdot w
+$$
+
+$T$ é o total de moradores do parque, e $P[u]$ é o calculado na parte 1 (com a raiz em 1).
+
+Uma segunda DFS, agora de **cima para baixo**, aplica essa conta em cada trilha: o custo do pai já está pronto quando o filho é visitado. Isso é o **rerooting** ("trocar a raiz"): a resposta para uma raiz vira a resposta para todas, uma trilha de cada vez.
+
+```cpp
+void sobe(int v, int pai) {
+    for (auto [u, w] : adj[v]) {
+        if (u == pai) continue;
+        resp[u] = resp[v] - P[u] * w + (total - P[u]) * w;   // a subárvore de u chega w mais perto; o resto, w mais longe
+        sobe(u, v);
+    }
+}
+```
+
+O exemplo inteiro, na ordem em que a segunda DFS visita as trilhas:
+
+| Trilha | Comprimento | Conta | Custo do filho |
+|---|---|---|---|
+| 1 → 2 | 3 | $75 - 4 \cdot 3 + 11 \cdot 3$ | 96 |
+| 2 → 4 | 4 | $96 - 1 \cdot 4 + 14 \cdot 4$ | 148 |
+| 2 → 5 | 1 | $96 - 2 \cdot 1 + 13 \cdot 1$ | 107 |
+| 1 → 3 | 2 | $75 - 9 \cdot 2 + 6 \cdot 2$ | 69 |
+| 3 → 6 | 5 | $69 - 6 \cdot 5 + 9 \cdot 5$ | 84 |
+| 6 → 7 | 2 | $84 - 4 \cdot 2 + 11 \cdot 2$ | 98 |
+| 6 → 8 | 1 | $84 - 1 \cdot 1 + 14 \cdot 1$ | 97 |
+
+São os custos da tabela da motivação. Cada trilha foi usada uma vez em cada busca: $O(n)$ no total.
+
+<RerootViz client:visible />
+
+<Callout type="tente">
+O custo da clareira 3 é 69, e a 3 tem $P[3] = 9$ moradores na subárvore. Mover o encontro de volta da 3 para a 1 deveria dar 75. Que conta faz isso?
+
+<details>
+<summary>Ver resposta</summary>
+
+Agora os 9 moradores da subárvore da 3 ficam 2 mais **longe**, e os outros 6 ficam 2 mais **perto**: $69 + 9 \cdot 2 - 6 \cdot 2 = 75$. É a mesma fórmula com os papéis trocados. O rerooting sempre olha a trilha atravessada e divide os moradores entre "do lado de lá" e "do lado de cá".
+
+</details>
+</Callout>
+
+## Dois cuidados, cada um com seu contraexemplo
+
+| Clareira | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+|---|---|---|---|---|---|---|---|---|
+| Custo certo | 75 | 96 | **69** | 148 | 107 | 84 | 98 | 97 |
+| Imprimindo $C[v]$ | 75 | 6 | 39 | 0 | 0 | 9 | 0 | 0 |
+| Contando clareiras | **75** | 81 | **75** | 105 | 87 | 85 | 97 | 91 |
+
+**Usar $C[v]$ como resposta.** $C[v]$ só conta a subárvore de $v$ (com a raiz em 1). Imprimir $C$ no lugar da resposta faz as folhas terem custo 0, como se o parque inteiro morasse nelas. Só na raiz $C$ e a resposta coincidem.
+
+**Contar clareiras em vez de moradores.** Na fórmula do rerooting, quem chega mais perto são as **pessoas**, não as clareiras. Usando o tamanho da subárvore (quantas clareiras) e $n$ no lugar de $P[u]$ e $T$, só o custo da raiz fica certo, e o melhor ponto de encontro parece ser a 1 (empatada com a 3) em vez de só a 3. Quando todas as clareiras têm um morador, as duas contas coincidem, e o erro se esconde.
+
+E um terceiro cuidado, sem contraexemplo bonito: os números crescem rápido. Com $2 \cdot 10^5$ clareiras, 1000 moradores em cada uma e trilhas de 1000, um custo chega a $2 \cdot 10^{16}$. Em `int`, o resultado sai lixo sem nenhum aviso. Use `long long` em $P$, $C$ e na resposta.
+
+## O mesmo molde com dois estados
+
+Nem toda DP em árvore guarda um número só por vértice. Um exemplo clássico:
+
+> Em cada clareira pode ser montada uma barraca, que atende os moradores dela. Duas clareiras **vizinhas** (ligadas por uma trilha) não podem ter barraca ao mesmo tempo. Qual o maior número de moradores atendidos?
+
+A pergunta "qual a melhor escolha na subárvore de $v$?" não basta, porque a escolha do pai depende de o filho ter barraca ou não. Então cada vértice guarda **duas** respostas:
+
+- `dp[v][0]`: o melhor na subárvore de $v$, **sem** barraca em $v$;
+- `dp[v][1]`: o melhor na subárvore de $v$, **com** barraca em $v$.
+
+Sem barraca em $v$, cada filho escolhe livremente o que for melhor para ele. Com barraca em $v$, nenhum filho pode ter barraca.
+
+```cpp
+void calcula(int v, int pai) {
+    dp[v][0] = 0;
+    dp[v][1] = val[v];
+    for (auto [u, w] : adj[v]) {
+        if (u == pai) continue;
+        calcula(u, v);
+        dp[v][0] += max(dp[u][0], dp[u][1]);   // v vazia: o filho escolhe o que for melhor
+        dp[v][1] += dp[u][0];                  // v com barraca: o filho não pode ter
+    }
+}
+```
+
+`array<long long, 2>` (o tipo de cada `dp[v]`) é um vetor de tamanho fixo 2. Com os moradores do exemplo:
+
+| Clareira | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+|---|---|---|---|---|---|---|---|---|
+| `dp[v][0]` (sem) | **11** | 3 | 5 | 0 | 0 | 5 | 0 | 0 |
+| `dp[v][1]` (com) | 10 | 1 | 8 | 1 | 2 | 1 | 4 | 1 |
+
+A resposta é o maior entre os dois estados da raiz: **11**, com barracas em 4, 5, 3, 7 e 8 ($1 + 2 + 3 + 4 + 1$). Na clareira 6, por exemplo: sem barraca, os filhos 7 e 8 ficam com o melhor de cada um ($4 + 1 = 5$); com barraca, só sobra o morador da própria 6 (1).
+
+## Código: o problema do ponto de encontro completo
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int n;
+vector<long long> pop;                         // moradores de cada clareira
+vector<vector<pair<int, int>>> adj;            // (vizinho, comprimento da trilha)
+vector<long long> P, C, resp;
+long long total = 0;
+
+// Na volta da recursão: P[v] = moradores da subárvore de v; C[v] = custo de todos eles irem até v.
+void desce(int v, int pai) {
+    P[v] = pop[v];
+    C[v] = 0;
+    for (auto [u, w] : adj[v]) {
+        if (u == pai) continue;
+        desce(u, v);
+        P[v] += P[u];
+        C[v] += C[u] + P[u] * w;               // quem já chegava em u anda mais w até v
+    }
+}
+
+// Na ida: a resposta do filho sai da resposta do pai.
+void sobe(int v, int pai) {
+    for (auto [u, w] : adj[v]) {
+        if (u == pai) continue;
+        resp[u] = resp[v] - P[u] * w + (total - P[u]) * w;   // a subárvore de u chega w mais perto; o resto, w mais longe
+        sobe(u, v);
+    }
+}
+
+int main() {
+    cin >> n;
+    pop.resize(n + 1);
+    adj.resize(n + 1);
+    for (int v = 1; v <= n; v++) {
+        cin >> pop[v];
+        total += pop[v];
+    }
+    for (int i = 0; i < n - 1; i++) {
+        int a, b, w;
+        cin >> a >> b >> w;
+        adj[a].push_back({b, w});
+        adj[b].push_back({a, w});
+    }
+    P.assign(n + 1, 0);
+    C.assign(n + 1, 0);
+    resp.assign(n + 1, 0);
+
+    desce(1, 0);
+    resp[1] = C[1];                            // com raiz em 1, a subárvore de 1 é todo mundo
+    sobe(1, 0);
+
+    for (int v = 1; v <= n; v++) cout << resp[v] << (v < n ? " " : "\n");
+}
+```
+
+`cond ? x : y` vale `x` se a condição for verdadeira e `y` se não: aqui, imprime um espaço entre os números e uma quebra de linha depois do último.
+
+**Entrada:**
+
+```
+8
+2 1 3 1 2 1 4 1
+1 2 3
+1 3 2
+2 4 4
+2 5 1
+3 6 5
+6 7 2
+6 8 1
+```
+
+**Saída:**
+
+```
+75 96 69 148 107 84 98 97
+```
+
+É a linha de custos da tabela da motivação: o 75 vem direto da parte 1, e os outros sete saem da tabela de trilhas da parte 2.
+
+- **Tempo:** $O(n)$: duas buscas, cada uma usando cada trilha uma vez.
+- **Memória:** $O(n)$.
+
+### O mesmo código no formato de contest
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+typedef long long ll;
+typedef vector<ll> vl;
+#define rep(i,a,b) for(int i=(a);i<(b);i++)
+void fastio(){ ios::sync_with_stdio(false); cin.tie(nullptr); }
+
+int main(){
+    fastio();
+    int n; cin >> n;
+    vl p(n + 1); ll tot = 0;
+    rep(v,1,n+1) { cin >> p[v]; tot += p[v]; }
+    vector<vector<pair<int,int>>> adj(n + 1);
+    rep(i,0,n-1) { int a, b, w; cin >> a >> b >> w; adj[a].push_back({b, w}); adj[b].push_back({a, w}); }
+    vl P(n + 1), C(n + 1), r(n + 1);
+    auto down = [&](auto& self, int v, int pa) -> void {
+        P[v] = p[v];
+        for (auto [u, w] : adj[v]) if (u != pa) { self(self, u, v); P[v] += P[u]; C[v] += C[u] + P[u] * w; }
+    };
+    auto up = [&](auto& self, int v, int pa) -> void {
+        for (auto [u, w] : adj[v]) if (u != pa) { r[u] = r[v] + (tot - 2 * P[u]) * w; self(self, u, v); }
+    };
+    down(down, 1, 0); r[1] = C[1]; up(up, 1, 0);
+    rep(v,1,n+1) cout << r[v] << (v < n ? ' ' : '\n');
+}
+```
+
+As duas buscas viraram lambdas recursivas (o truque `self(self, ...)` da aula de DFS). A fórmula do rerooting aparece simplificada: $-P \cdot w + (T - P) \cdot w = (T - 2P) \cdot w$.
+
+## Armadilhas comuns
+
+- **Imprimir $C[v]$.** Ele só conta a subárvore de $v$; a resposta de cada clareira sai do rerooting.
+- **Calcular o pai antes dos filhos na parte 1.** `P[v]` e `C[v]` usam os valores dos filhos: a recursão vem antes da soma.
+- **Calcular o filho antes do pai na parte 2.** O contrário: `resp[u]` usa `resp[v]`, então a conta vem **antes** de descer.
+- **Clareiras no lugar de moradores** (ou de qualquer que seja o "peso" de cada vértice) na fórmula do rerooting.
+- **Usar $P$ calculado com outra raiz.** O $P[u]$ da fórmula é o da árvore enraizada em 1, a mesma da parte 1.
+- **`int` nas somas.** $P \cdot w$ e os custos passam de $2 \cdot 10^9$ facilmente.
+- **Na DP de dois estados, esquecer um caso.** "Com barraca" precisa somar o valor do próprio vértice; "sem barraca" deixa os filhos livres.
+
+<details class="para-depois">
+<summary>Para depois: rerooting quando a conta não se desfaz</summary>
+
+**Quando não dá para "tirar" um filho.** No rerooting desta aula, a parte do filho sai da resposta do pai com uma subtração. Quando a combinação é um **máximo** (por exemplo, "a maior distância a partir de cada vértice"), não existe subtração. A saída é guardar, para cada vértice, os **dois melhores** valores entre os filhos (se o melhor vier justamente do filho para onde a raiz vai, usa-se o segundo), ou os máximos de prefixo e de sufixo da lista de filhos.
+
+**Diâmetro por DP.** Para cada vértice, guarde a descida mais longa até uma folha da subárvore. O caminho mais longo que tem $v$ como ponto mais alto soma as duas maiores descidas por filhos diferentes. O diâmetro é o maior desses valores, e a conta funciona até com pesos negativos (onde as duas buscas da aula anterior falham).
+
+**Mais estados.** Problemas de escolher arestas (um emparelhamento, por exemplo) costumam ter estados como "$v$ já está usado por uma aresta para um filho ou não". A pergunta-guia é sempre: o que o pai precisa saber do filho para decidir?
+
+**Recursão funda.** Como na aula anterior, uma árvore em forma de caminho empilha $n$ chamadas. Se a pilha for um problema, calcule uma ordem de visita com uma pilha explícita e percorra-a de trás para a frente (parte 1) e de frente para trás (parte 2).
+
+</details>
+
+## Referências
+
+- **CPH, capítulo 14 — Tree algorithms:** seção 14.1 *Tree traversal* (DP sobre subárvores, com o exemplo da contagem de vértices) e seção 14.3 *All longest paths* (a ideia de calcular para cada vértice combinando a parte de baixo com a parte de cima, que é o rerooting).
+- [USACO Guide — DP on Trees: Introduction](https://usaco.guide/gold/dp-trees), com DP de dois estados e problemas para praticar.
+- [USACO Guide — DP on Trees: Solving For All Roots](https://usaco.guide/gold/all-roots), dedicada ao rerooting.
+
+## Mini-quiz
+
+<Quiz
+  client:visible
+  questions={[
+    {
+      q: 'Caminho 1 – 2 – 3, trilhas de comprimento 1, um morador em cada clareira. Com raiz em 1, quanto valem `P[1]` e `C[1]`?',
+      code: 'void desce(int v, int pai) {\n    P[v] = pop[v]; C[v] = 0;\n    for (auto [u, w] : adj[v]) {\n        if (u == pai) continue;\n        desce(u, v);\n        P[v] += P[u];\n        C[v] += C[u] + P[u] * w;\n    }\n}',
+      options: ['P 3 e C 2', 'P 3 e C 3', 'P 2 e C 1', 'P 1 e C 0'],
+      answer: 1,
+      why: 'Na 3 (folha): P 1, C 0. Na 2: P 2, C = 0 + 1·1 = 1. Na 1: P 3, C = 1 + 2·1 = 3. Confere: o morador da 2 anda 1 e o da 3 anda 2.',
+    },
+    {
+      q: 'No mesmo caminho, depois de `resp[1] = C[1]`, quanto vale `resp[2]`?',
+      code: 'resp[u] = resp[v] - P[u] * w + (total - P[u]) * w;',
+      options: ['3', '1', '4', '2'],
+      answer: 3,
+      why: 'resp[2] = 3 − 2·1 + (3 − 2)·1 = 2: os dois moradores da subárvore da 2 (as clareiras 2 e 3) chegam 1 mais perto, e o da 1 fica 1 mais longe.',
+    },
+    {
+      q: 'Mesmo caminho 1 – 2 – 3, mas agora com 5 moradores na clareira 1 e um em cada uma das outras. Os custos são 3, 6 e 11. Qual é o melhor ponto de encontro?',
+      options: ['A clareira 2, o meio do caminho', 'A clareira 1', 'A clareira 3', 'Empate entre 1 e 2'],
+      answer: 1,
+      why: 'O custo da 1 é 0·5 + 1·1 + 2·1 = 3, o menor. O meio geométrico (a 2) custaria 5 + 0 + 1 = 6. Os moradores pesam na escolha.',
+    },
+    {
+      q: 'Uma estrela com centro 1 e folhas 2, 3 e 4, pelas trilhas 1–2 (comprimento 2), 1–3 (1) e 1–4 (3). Os moradores são 1, 2, 3 e 4, e o custo da clareira 1 é 19. Quanto vale o custo da clareira 3?',
+      code: 'resp[u] = resp[v] - P[u] * w + (total - P[u]) * w;',
+      options: ['16', '22', '23', '26'],
+      answer: 2,
+      why: 'O total é 10 e P[3] = 3. resp[3] = 19 − 3·1 + 7·1 = 23. O 16 seria somente tirar os 3 moradores; o 26 seria esquecê-los.',
+    },
+    {
+      q: 'Na DP das barracas do exemplo, quanto valem `dp[2][0]` e `dp[2][1]`? (Moradores: clareira 2 tem 1, a 4 tem 1, a 5 tem 2; a 4 e a 5 são as filhas da 2.)',
+      code: 'dp[v][0] = 0; dp[v][1] = val[v];\nfor (cada filho u) {\n    dp[v][0] += max(dp[u][0], dp[u][1]);\n    dp[v][1] += dp[u][0];\n}',
+      options: ['3 e 1', '1 e 3', '3 e 4', '2 e 1'],
+      answer: 0,
+      why: 'Sem barraca na 2, as filhas escolhem o melhor: 1 + 2 = 3. Com barraca na 2, as filhas não podem ter: só o morador da 2, 1. O 4 seria somar as filhas mesmo com barraca na 2, proibido.',
+    },
+    {
+      q: 'Por que a fórmula do rerooting usa `total - P[u]`?',
+      options: [
+        'Porque é o número de clareiras fora da subárvore de u',
+        'Porque é o número de moradores que ficam do lado do pai e passam a andar a trilha a mais',
+        'Para evitar números negativos',
+        'Porque P[u] já foi contado duas vezes',
+      ],
+      answer: 1,
+      why: 'Mover o encontro de v para u atravessa a trilha entre eles. Os P[u] moradores do lado de u economizam a trilha; todos os outros, total − P[u], passam a andá-la. A primeira opção é o erro de contar clareiras em vez de moradores.',
+    },
+  ]}
+/>
