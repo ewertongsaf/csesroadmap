@@ -39,7 +39,7 @@ export const modules: ModuleRef[] = [
   { slug: 'fenwick', title: 'Fenwick tree (BIT)', cph: ['9.2'], status: 'written' },
   { slug: 'segment-tree', title: 'Segment tree', cph: ['9.3', '9.4'], status: 'written' },
   { slug: 'ordered-set', title: 'ordered_set e k-ésimo elemento', cph: ['4.5'], basedOn: 'CPH 4.5 (menção) + USACO Guide', status: 'written' },
-  { slug: 'segtree-nos-compostos', title: 'Segment tree com nós compostos', cph: ['28.3'], status: 'planned' },
+  { slug: 'segtree-nos-compostos', title: 'Segment tree com nós compostos', cph: ['9.3', '28.3'], status: 'written' },
   { slug: 'queries-offline', title: 'Queries offline (ordenar queries e eventos)', cph: ['18.4'], status: 'planned' },
   { slug: 'lazy-propagation', title: 'Lazy propagation e segment tree persistente', cph: ['28.1', '28.2'], status: 'planned' },
   { slug: 'arvores-basico', title: 'Árvores: DFS, subárvores e diâmetro', cph: ['14.1', '14.2'], status: 'planned' },

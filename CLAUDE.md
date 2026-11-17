@@ -16,6 +16,8 @@ Site **pessoal** de estudos de programação competitiva do Ewerton (ITA, prepar
 
 ## Estrutura de um módulo (content/modules/<slug>.mdx)
 
+**Antes de escrever uma aula, leia `docs/padrao-aulas.md`** (números mínimos, esqueleto, quiz, anatomia das visualizações, testes) e, depois de escrever, meça com `python3 scripts/lesson-metrics.py <slug>` e compare com as aulas de referência dos milestones 8–13.
+
 1. Motivação: problema concreto em que a força bruta não passa, com a complexidade explicada.
 2. Ideia central em linguagem simples, depois formalizada. Fórmulas em KaTeX, cada uma seguida de uma linha explicando os símbolos.
 3. Visualização interativa quando ajudar (componente React com "próximo passo", em `src/components/mdx/viz/`, usando `VizFrame` e `StepControls`; as aulas a partir do milestone 8 têm pelo menos uma).
@@ -40,7 +42,7 @@ O leitor está vendo a técnica **pela primeira vez**: sabe C++ básico (laços,
 
 Cuidado com MDX: `{` e `<` em texto corrido são interpretados como JSX. Use `$\{1, 2\}$` ou crase.
 
-Os 15 módulos dos milestones 1–7, os 4 dos milestones 8–9 (DP), os 2 do milestone 10 (grafos: DFS e BFS) os 3 do milestone 11 (Dijkstra, Bellman-Ford/Floyd-Warshall, ordenação topológica) e os 2 do milestone 12 (DSU, MST) seguem esses princípios, o que fecha as fases 1 e 2; a fase 3 começou pelos 3 do milestone 13 (Fenwick tree, segment tree recursiva com `(no, l, r)`, `ordered_set`), e as próximas aulas de segment tree devem manter essa mesma assinatura; `busca-completa` e `busca-binaria` são as referências de estilo mais completas. Os programas e os números das tabelas das aulas a partir do milestone 8 ficam em `drafts/tests/<slug>/` (`stress.sh` roda tudo). Ao escrever um módulo, mude `status` para `'written'` em `data/modules.ts`.
+Os 15 módulos dos milestones 1–7, os 4 dos milestones 8–9 (DP), os 2 do milestone 10 (grafos: DFS e BFS) os 3 do milestone 11 (Dijkstra, Bellman-Ford/Floyd-Warshall, ordenação topológica) e os 2 do milestone 12 (DSU, MST) seguem esses princípios, o que fecha as fases 1 e 2; a fase 3 começou pelos 3 do milestone 13 (Fenwick tree, segment tree recursiva com `(no, l, r)`, `ordered_set`), e as próximas aulas de segment tree devem manter essa mesma assinatura; o milestone 14 começou por `segtree-nos-compostos`, a primeira aula escrita depois da troca de modelo, já medida contra `docs/padrao-aulas.md`; `busca-completa` e `busca-binaria` são as referências de estilo mais completas. Os programas e os números das tabelas das aulas a partir do milestone 8 ficam em `drafts/tests/<slug>/` (`stress.sh` roda tudo). Ao escrever um módulo, mude `status` para `'written'` em `data/modules.ts`.
 
 Os milestones 1–12 têm dicas em `data/hints/`; as ideias das dicas dos milestones 8–12 foram conferidas contra os exemplos dos enunciados (e, nas menos óbvias, contra força bruta).
 

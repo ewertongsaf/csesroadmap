@@ -1,0 +1,548 @@
+---
+title: Segment tree com nós compostos
+description: Quando a resposta de um trecho não sai das respostas das duas metades, o nó passa a guardar um pequeno pacote de informações. A aula ensina a descobrir o que guardar e a escrever a função que junta dois pacotes.
+---
+import Callout from '../../src/components/mdx/Callout.astro';
+import Quiz from '../../src/components/mdx/Quiz.tsx';
+import SegNodeViz from '../../src/components/mdx/viz/SegNodeViz.tsx';
+
+## Motivação: a maior onda de calor
+
+O problema desta aula, do começo ao fim:
+
+> Um sensor registrou a temperatura de $n$ dias. Chegam $q$ eventos, um de cada vez. `M k x`: a temperatura do dia $k$ é **corrigida** para $x$. `Q a b`: entre os dias $a$ e $b$, qual é a **maior subida**, isto é, o maior número de dias **consecutivos** em que a temperatura aumentou todo dia?
+
+Um dia sozinho conta como uma subida de tamanho 1. Um exemplo com 8 dias, que começam com 3, 5, 7, 4, 6, 8, 9 e 2 graus:
+
+| Evento | Temperaturas depois | Resposta |
+|---|---|---|
+| `Q 1 8` | 3, 5, 7, 4, 6, 8, 9, 2 | **4** (4, 6, 8, 9) |
+| `Q 2 5` | | **2** (5, 7 ou 4, 6) |
+| `M 4 8` | 3, 5, 7, **8**, 6, 8, 9, 2 | |
+| `Q 1 8` | | **4** (3, 5, 7, 8) |
+| `M 5 9` | 3, 5, 7, 8, **9**, 8, 9, 2 | |
+| `Q 1 8` | | **5** (3, 5, 7, 8, 9) |
+| `Q 3 6` | | **3** (7, 8, 9) |
+
+A força bruta percorre o trecho contando quantos dias a subida atual já tem. Com $2 \cdot 10^5$ dias e $2 \cdot 10^5$ perguntas, são até $4 \cdot 10^{10}$ passos. Não passa.
+
+Mudar um valor e perguntar sobre um trecho é o trabalho da segment tree da aula passada. Mas lá cada nó guardava **um número** (o mínimo do trecho), e o pai saía dos filhos com uma conta só: `min(esquerda, direita)`. Aqui a pergunta é mais difícil, e um número por nó não basta. A aula mostra como descobrir **o que** cada nó precisa guardar.
+
+## Aquecimento: dois números por nó
+
+Antes do problema do sensor, um caso mais simples. A pergunta agora é: qual é o menor valor do trecho, e **quantas vezes** ele aparece?
+
+Com o vetor 4, 2, 7, 2, 5, 2, 9, 3, a metade esquerda (posições 1 a 4) tem mínimo 2, que aparece 2 vezes. A metade direita (posições 5 a 8) tem mínimo 2, que aparece 1 vez. O vetor inteiro tem mínimo 2, que aparece **3** vezes.
+
+O resumo de um trecho agora é um **par**: (mínimo, quantidade). E juntar dois pares tem três casos:
+
+| Situação | Resultado |
+|---|---|
+| mínimo da esquerda **menor** | o par da esquerda, inteiro |
+| mínimo da direita **menor** | o par da direita, inteiro |
+| mínimos **iguais** | o mínimo, com as quantidades **somadas** |
+
+Em código, o par vira uma `struct`, e o `min` da aula passada vira uma função `junta`:
+
+```cpp
+struct No {
+    int mn, qtd;                               // menor valor do trecho e quantas vezes ele aparece
+};
+
+No junta(No A, No B) {
+    if (A.mn < B.mn) return A;
+    if (B.mn < A.mn) return B;
+    return {A.mn, A.qtd + B.qtd};              // empate: o mínimo aparece nos dois lados
+}
+```
+
+O resto da segment tree (montar, mudar, consultar) não muda: onde estava `min(arv[2 * no], arv[2 * no + 1])`, passa a estar `junta(arv[2 * no], arv[2 * no + 1])`.
+
+<Callout type="tente">
+No mesmo vetor 4, 2, 7, 2, 5, 2, 9, 3: quanto vale o nó das posições 5 a 8? Monte primeiro os nós 5 a 6 e 7 a 8, e diga qual dos três casos do `junta` aparece em cada passo.
+
+<details>
+<summary>Ver resposta</summary>
+
+O nó 5 a 6 junta (5, 1) e (2, 1): a direita é menor, resultado (2, 1). O nó 7 a 8 junta (9, 1) e (3, 1): a direita é menor, resultado (3, 1). O nó 5 a 8 junta (2, 1) e (3, 1): a esquerda é menor, resultado **(2, 1)**. As quantidades só se somam no empate. Somar sempre daria (2, 2), contando o 3 como se fosse um 2.
+
+</details>
+</Callout>
+
+## A ideia: o que o pai precisa saber dos filhos
+
+Volte ao sensor. A primeira tentativa é guardar em cada nó só a resposta do trecho, a maior subida, e esperar que a resposta do pai saia das respostas dos filhos. Não sai. Veja dois casos:
+
+| Esquerda | Direita | Resposta da esquerda | Resposta da direita | Resposta do trecho todo |
+|---|---|---|---|---|
+| 1, 2 | 3, 4 | 2 | 2 | **4** |
+| 1, 2 | 1, 2 | 2 | 2 | **2** |
+
+Os filhos dão as mesmas respostas (2 e 2), mas os pais são diferentes (4 e 2). Então só a resposta não basta: falta informação.
+
+O que falta é o que acontece **no meio**. A maior subida do trecho todo está num destes três lugares:
+
+1. inteira na metade esquerda;
+2. inteira na metade direita;
+3. **atravessando o meio**: começa perto do fim da esquerda e termina perto do começo da direita.
+
+Os dois primeiros casos são as respostas dos filhos. O terceiro é feito de duas partes: a subida que **termina no último dia** da esquerda e a que **começa no primeiro dia** da direita. E as duas só se encaixam se o último dia da esquerda for **mais frio** que o primeiro da direita.
+
+Então cada nó precisa guardar também:
+
+| Campo | Significado |
+|---|---|
+| `best` | a maior subida em qualquer lugar do trecho (a resposta) |
+| `pre` | a maior subida que **começa** no primeiro dia do trecho |
+| `suf` | a maior subida que **termina** no último dia do trecho |
+| `ini`, `fim` | a temperatura do primeiro e do último dia |
+| `tam` | quantos dias o trecho tem |
+
+Por que `tam`? Porque o pai também precisa calcular **o seu próprio** `pre` e `suf`, para o avô usar. Pense no `pre` do pai: normalmente ele é só o `pre` da esquerda. Mas se a metade esquerda **sobe inteira** (seu `pre` é igual ao seu `tam`) e se encaixa na direita, a subida continua: o `pre` do pai é o tamanho da esquerda inteira mais o `pre` da direita. O `suf` é o espelho disso.
+
+### Um junta feito à mão
+
+O nó dos dias 1 a 4 junta o nó dos dias 1 e 2 (temperaturas 3, 5) com o dos dias 3 e 4 (temperaturas 7, 4):
+
+| Campo | A (3, 5) | B (7, 4) | Conta | Resultado |
+|---|---|---|---|---|
+| liga? | | | último de A (5) < primeiro de B (7): sim | |
+| `best` | 2 | 1 | maior entre 2, 1 e $2 + 1$ | 3 |
+| `pre` | 2 | 1 | A sobe inteiro ($2 = 2$) e liga: $2 + 1$ | 3 |
+| `suf` | 2 | 1 | B não sobe inteiro ($1 \ne 2$): fica o de B | 1 |
+| `ini`, `fim` | 3, 5 | 7, 4 | primeiro de A, último de B | 3, 4 |
+| `tam` | 2 | 2 | soma | 4 |
+
+Confira nas temperaturas 3, 5, 7, 4: a maior subida é 3, 5, 7 (3 dias), ela começa no primeiro dia (`pre` = 3) e a subida que termina no dia 4 é só o próprio dia 4 (`suf` = 1).
+
+Em fórmula, chamando de $A$ a esquerda e de $B$ a direita:
+
+$$
+\text{best} = \max(\text{best}_A,\ \text{best}_B,\ \text{suf}_A + \text{pre}_B)
+$$
+
+$\text{best}_A$ é o campo `best` do nó $A$, e assim por diante. O terceiro termo só entra quando a subida passa pelo meio, isto é, quando $\text{fim}_A < \text{ini}_B$.
+
+### A função `junta` completa
+
+```cpp
+struct No {
+    int tam;                                   // quantos dias o trecho tem
+    int pre;                                   // maior subida que começa no primeiro dia do trecho
+    int suf;                                   // maior subida que termina no último dia do trecho
+    int best;                                  // maior subida em qualquer lugar do trecho
+    int ini, fim;                              // temperatura do primeiro e do último dia
+};
+
+No folha(int t) {                              // um dia sozinho
+    return {1, 1, 1, 1, t, t};
+}
+
+No junta(No A, No B) {                         // o trecho A seguido do trecho B
+    bool liga = A.fim < B.ini;                 // a subida pode passar de A para B?
+    No R;
+    R.tam = A.tam + B.tam;
+    R.ini = A.ini;
+    R.fim = B.fim;
+    R.pre = A.pre;
+    if (A.pre == A.tam && liga) R.pre = A.tam + B.pre;    // A sobe inteiro e continua em B
+    R.suf = B.suf;
+    if (B.suf == B.tam && liga) R.suf = B.tam + A.suf;    // B sobe inteiro e começa ainda em A
+    R.best = max(A.best, B.best);
+    if (liga) R.best = max(R.best, A.suf + B.pre);         // a subida que atravessa o meio
+    return R;
+}
+```
+
+Numa folha, tudo vale 1: o único dia é ao mesmo tempo a maior subida, a que começa no primeiro dia e a que termina no último.
+
+### A receita
+
+O que foi feito aqui serve para qualquer problema do tipo. Para projetar o nó:
+
+1. Escreva a **resposta** que você quer em cada trecho.
+2. Tente calcular a resposta do pai **só** com as respostas dos filhos. Procure dois pares de filhos com as mesmas respostas e pais diferentes: se existirem, falta informação.
+3. Pergunte **o que acontece no meio**: que parte do pai depende dos dois filhos ao mesmo tempo? Acrescente os campos que descrevem as bordas de cada filho.
+4. Os campos novos também precisam sair do `junta`. Se para calcular um deles faltar algo (aqui, o `tam`), acrescente e repita.
+5. Escreva a `folha` e teste o `junta` contra uma força bruta em vetores pequenos, com todos os cortes possíveis.
+
+## A árvore do exemplo
+
+Com o `junta` pronto, a árvore se monta como antes, de baixo para cima. Os nós internos do exemplo, com as temperaturas 3, 5, 7, 4, 6, 8, 9, 2:
+
+| Nó | Dias | `pre` | `suf` | `best` | `ini` | `fim` |
+|---|---|---|---|---|---|---|
+| 4 | 1 a 2 | 2 | 2 | 2 | 3 | 5 |
+| 5 | 3 a 4 | 1 | 1 | 1 | 7 | 4 |
+| 2 | 1 a 4 | 3 | 1 | 3 | 3 | 4 |
+| 6 | 5 a 6 | 2 | 2 | 2 | 6 | 8 |
+| 7 | 7 a 8 | 1 | 1 | 1 | 9 | 2 |
+| 3 | 5 a 8 | 3 | 1 | 3 | 6 | 2 |
+| 1 | 1 a 8 | 3 | 1 | **4** | 3 | 2 |
+
+Na raiz, as duas metades têm `best` 3 (3, 5, 7 e 6, 8, 9). A subida 4, 6, 8, 9 atravessa o meio: o `suf` da esquerda é 1 (só o 4), o `pre` da direita é 3 (6, 8, 9), e $4 < 6$ liga os dois: $1 + 3 = 4$.
+
+## Mudar um valor
+
+Igual à aula passada: troca a folha e refaz o `junta` de cada nó no caminho até a raiz. No evento `M 5 9` (o dia 5 passa de 6 para 9 graus), com as temperaturas 3, 5, 7, 8, **9**, 8, 9, 2:
+
+| Nó | Dias | Conta | `pre` | `suf` | `best` |
+|---|---|---|---|---|---|
+| 12 | 5 | folha nova (9 graus) | 1 | 1 | 1 |
+| 6 | 5 a 6 | 9 ≥ 8: não liga | 1 | 1 | 1 |
+| 3 | 5 a 8 | 8 < 9: liga; maior entre 1, 1 e $1 + 1$ | 1 | 1 | 2 |
+| 1 | 1 a 8 | 8 < 9: liga; esquerda sobe inteira, `pre` = $4 + 1$ | 5 | 1 | 5 |
+
+A nova resposta, 5, é a subida 3, 5, 7, 8, 9: os 4 dias da esquerda (que, depois do `M 4 8`, sobem inteiros) mais o primeiro dia da direita.
+
+<Callout type="tente">
+Logo depois do evento `M 4 8`, o nó dos dias 1 a 4 junta A = (3, 5) e B = (7, 8). Calcule `pre`, `suf` e `best` do resultado.
+
+<details>
+<summary>Ver resposta</summary>
+
+Liga, porque $5 < 7$. `best` = maior entre 2, 2 e $2 + 2$ = **4**. A sobe inteiro, então `pre` = $2 + 2$ = **4**. B também sobe inteiro, então `suf` = $2 + 2$ = **4**. Os três campos coincidem porque o trecho todo (3, 5, 7, 8) é uma subida só. É essa a informação que, no passo seguinte, deixa a raiz estender a subida para o dia 5.
+
+</details>
+</Callout>
+
+## Consultar um trecho: juntar na ordem certa
+
+Aqui aparece a principal diferença em relação à aula passada. Lá, um nó todo **fora** do trecho devolvia o elemento neutro (infinito para o mínimo). Com nós compostos, inventar um nó neutro é arriscado (a seção de cuidados mostra por quê). É mais seguro **nunca visitar** um nó de fora:
+
+- se o trecho pedido cabe inteiro na metade esquerda, pergunte só à esquerda;
+- se cabe inteiro na direita, só à direita;
+- se pega as duas, pergunte às duas e junte **na ordem**: esquerda primeiro.
+
+```cpp
+No consulta(int no, int l, int r, int a, int b) {     // resumo das posições a a b
+    if (a <= l && r <= b) return arv[no];              // o nó está todo dentro
+    int m = (l + r) / 2;
+    if (b <= m) return consulta(2 * no, l, m, a, b);           // só a esquerda interessa
+    if (a > m) return consulta(2 * no + 1, m + 1, r, a, b);    // só a direita
+    No esq = consulta(2 * no, l, m, a, b);
+    No dir = consulta(2 * no + 1, m + 1, r, a, b);
+    return junta(esq, dir);
+}
+```
+
+A consulta `Q 3 6` no fim do exemplo (temperaturas 3, 5, 7, 8, 9, 8, 9, 2):
+
+| Nó | Dias | O que acontece | Devolve |
+|---|---|---|---|
+| 1 | 1 a 8 | o trecho 3 a 6 pega as duas metades | junta dos dois pedaços |
+| 2 | 1 a 4 | 3 a 6 passa do 4: pega a direita (3 a 4) | o nó 5 |
+| 5 | 3 a 4 | todo dentro | 7, 8: `suf` 2, `best` 2 |
+| 3 | 5 a 8 | pega só a esquerda (5 a 6) | o nó 6 |
+| 6 | 5 a 6 | todo dentro | 9, 8: `pre` 1, `best` 1 |
+| 1 | | junta: $8 < 9$ liga, maior entre 2, 1 e $2 + 1$ | **`best` 3** |
+
+A ordem importa: `junta(A, B)` descreve "A **seguido de** B". Trocando os dois pedaços, `junta((9, 8), (7, 8))` daria `best` 2, porque $8 \ge 7$ não liga. No mínimo da aula passada a ordem não fazia diferença; aqui faz.
+
+<SegNodeViz client:visible />
+
+<Callout type="tente">
+No início do exemplo (temperaturas 3, 5, 7, 4, 6, 8, 9, 2), a consulta `Q 2 5` pega pedaços de três nós. Quais são, e em que ordem eles são juntados?
+
+<details>
+<summary>Ver resposta</summary>
+
+O dia 2 sozinho (nó 9), os dias 3 e 4 (nó 5) e o dia 5 sozinho (nó 12). Primeiro, dentro do nó 2, junta o dia 2 (5 graus) com os dias 3 a 4 (7, 4): liga, e a subida 5, 7 dá `best` 2, com `fim` 4. Depois, na raiz, junta isso com o dia 5 (6 graus): $4 < 6$ liga, maior entre 2, 1 e $1 + 1$: **2**. Os pedaços são sempre juntados da esquerda para a direita.
+
+</details>
+</Callout>
+
+## Três cuidados, cada um com seu contraexemplo
+
+**Esquecer a subida que atravessa o meio.** Sem a linha `if (liga) R.best = max(R.best, A.suf + B.pre)`, o `best` de todo nó vira o maior `best` das folhas, que é 1. No exemplo, todas as cinco perguntas respondem **1**.
+
+**Esquecer a condição `A.pre == A.tam`.** Escrever só `if (liga) R.pre = A.tam + B.pre` estende a subida da esquerda mesmo quando ela parou no meio. No exemplo inicial, o nó dos dias 1 a 4 (3, 5, 7, 4) fica com `suf` 4, como se 3, 5, 7, 4 fosse uma subida. Na raiz, $4 < 6$ liga, e a conta $4 + 3$ faz `Q 1 8` responder **7** em vez de 4.
+
+**Usar um "nó vazio" de zeros como neutro.** Parece natural devolver `{0, 0, 0, 0, 0, 0}` para os nós de fora, como o infinito da aula passada. Com temperaturas positivas, às vezes até dá certo. Com temperaturas negativas, não: juntar esse nó vazio com o trecho $-3$, $-1$ testa $0 < -3$, conclui que não liga e devolve `pre` **0** em vez de 2, e `ini` 0, uma temperatura que nem existe.
+
+Por isso a consulta desta aula nunca visita nós de fora. Dá para fazer o nó vazio funcionar, com um teste `if (A.tam == 0) return B;` no começo do `junta`, mas é um detalhe a mais para esquecer.
+
+## O mesmo molde em outros problemas
+
+A receita serve para muitas perguntas. Alguns exemplos, só com o que guardar:
+
+| Pergunta sobre o trecho | O que cada nó guarda |
+|---|---|
+| menor valor e quantas vezes aparece | mínimo, quantidade |
+| o trecho está em ordem crescente? | se está ordenado, primeiro e último valor |
+| quantos pares de vizinhos sobem? | a contagem, primeiro e último valor |
+| maior subida de dias consecutivos | `tam`, `pre`, `suf`, `best`, primeiro e último valor |
+
+Em todos, o raciocínio é o mesmo: a resposta do pai é "o que já estava em cada filho" mais "o que só aparece quando os dois se encostam". As **bordas** de cada trecho (primeiro valor, último valor, melhor prefixo, melhor sufixo) são o que permite calcular a parte do meio. Vários problemas deste milestone pedem exatamente isso: descobrir quais bordas guardar.
+
+## Código: o problema do sensor completo
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+// O resumo de um trecho de dias.
+struct No {
+    int tam;                                   // quantos dias o trecho tem
+    int pre;                                   // maior subida que começa no primeiro dia do trecho
+    int suf;                                   // maior subida que termina no último dia do trecho
+    int best;                                  // maior subida em qualquer lugar do trecho
+    int ini, fim;                              // temperatura do primeiro e do último dia
+};
+
+// O resumo de um dia sozinho.
+No folha(int t) {
+    return {1, 1, 1, 1, t, t};
+}
+
+// O resumo do trecho A seguido do trecho B.
+No junta(No A, No B) {
+    bool liga = A.fim < B.ini;                 // a subida pode passar de A para B?
+    No R;
+    R.tam = A.tam + B.tam;
+    R.ini = A.ini;
+    R.fim = B.fim;
+    R.pre = A.pre;
+    if (A.pre == A.tam && liga) R.pre = A.tam + B.pre;    // A sobe inteiro e continua em B
+    R.suf = B.suf;
+    if (B.suf == B.tam && liga) R.suf = B.tam + A.suf;    // B sobe inteiro e começa ainda em A
+    R.best = max(A.best, B.best);
+    if (liga) R.best = max(R.best, A.suf + B.pre);         // a subida que atravessa o meio
+    return R;
+}
+
+int n;
+vector<int> t;                                 // temperaturas, de 1 a n
+vector<No> arv;
+
+void monta(int no, int l, int r) {
+    if (l == r) {
+        arv[no] = folha(t[l]);
+        return;
+    }
+    int m = (l + r) / 2;
+    monta(2 * no, l, m);
+    monta(2 * no + 1, m + 1, r);
+    arv[no] = junta(arv[2 * no], arv[2 * no + 1]);
+}
+
+void muda(int no, int l, int r, int k, int x) {
+    if (l == r) {
+        arv[no] = folha(x);
+        return;
+    }
+    int m = (l + r) / 2;
+    if (k <= m) muda(2 * no, l, m, k, x);
+    else muda(2 * no + 1, m + 1, r, k, x);
+    arv[no] = junta(arv[2 * no], arv[2 * no + 1]);
+}
+
+// Resumo das posições a a b (o trecho pedido sempre cruza o nó atual).
+No consulta(int no, int l, int r, int a, int b) {
+    if (a <= l && r <= b) return arv[no];      // o nó está todo dentro
+    int m = (l + r) / 2;
+    if (b <= m) return consulta(2 * no, l, m, a, b);           // só a metade esquerda interessa
+    if (a > m) return consulta(2 * no + 1, m + 1, r, a, b);    // só a direita
+    No esq = consulta(2 * no, l, m, a, b);                     // as duas: junta na ordem
+    No dir = consulta(2 * no + 1, m + 1, r, a, b);
+    return junta(esq, dir);
+}
+
+int main() {
+    int q;
+    cin >> n >> q;
+    t.resize(n + 1);
+    arv.resize(4 * n);
+    for (int i = 1; i <= n; i++) cin >> t[i];
+    monta(1, 1, n);
+
+    while (q--) {
+        char tipo;
+        int x, y;
+        cin >> tipo >> x >> y;
+        if (tipo == 'M') muda(1, 1, n, x, y);                        // M k x: o dia k passa a ter temperatura x
+        else cout << consulta(1, 1, n, x, y).best << "\n";           // Q a b: maior subida entre os dias a e b
+    }
+}
+```
+
+`consulta(...).best` pega o campo `best` do resumo devolvido: a consulta devolve o pacote inteiro, e só a resposta é impressa.
+
+**Entrada:**
+
+```
+8 7
+3 5 7 4 6 8 9 2
+Q 1 8
+Q 2 5
+M 4 8
+Q 1 8
+M 5 9
+Q 1 8
+Q 3 6
+```
+
+**Saída:**
+
+```
+4
+2
+4
+5
+3
+```
+
+São as cinco perguntas da tabela da motivação, na ordem.
+
+- **Tempo:** $O(n + q \log n)$. O `junta` faz um número fixo de contas, então custa $O(1)$, como o `min`.
+- **Memória:** $O(n)$: $4n$ nós de seis inteiros cada.
+
+### O mesmo código no formato de contest
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+typedef vector<int> vi;
+#define rep(i,a,b) for(int i=(a);i<(b);i++)
+void fastio(){ ios::sync_with_stdio(false); cin.tie(nullptr); }
+
+struct No { int tam, pre, suf, best, ini, fim; };
+No folha(int t) { return {1, 1, 1, 1, t, t}; }
+No junta(const No& A, const No& B) {
+    bool liga = A.fim < B.ini;
+    return { A.tam + B.tam,
+             (A.pre == A.tam && liga) ? A.tam + B.pre : A.pre,
+             (B.suf == B.tam && liga) ? B.tam + A.suf : B.suf,
+             max({A.best, B.best, liga ? A.suf + B.pre : 0}),
+             A.ini, B.fim };
+}
+
+struct Seg {
+    int n; vector<No> t;
+    Seg(const vi& v) : n(v.size() - 1), t(4 * v.size()) { build(1, 1, n, v); }
+    void build(int no, int l, int r, const vi& v) {
+        if (l == r) { t[no] = folha(v[l]); return; }
+        int m = (l + r) / 2;
+        build(2*no, l, m, v); build(2*no+1, m+1, r, v);
+        t[no] = junta(t[2*no], t[2*no+1]);
+    }
+    void upd(int k, int x, int no, int l, int r) {
+        if (l == r) { t[no] = folha(x); return; }
+        int m = (l + r) / 2;
+        if (k <= m) upd(k, x, 2*no, l, m); else upd(k, x, 2*no+1, m+1, r);
+        t[no] = junta(t[2*no], t[2*no+1]);
+    }
+    No qry(int a, int b, int no, int l, int r) {
+        if (a <= l && r <= b) return t[no];
+        int m = (l + r) / 2;
+        if (b <= m) return qry(a, b, 2*no, l, m);
+        if (a > m) return qry(a, b, 2*no+1, m+1, r);
+        return junta(qry(a, b, 2*no, l, m), qry(a, b, 2*no+1, m+1, r));
+    }
+    void upd(int k, int x) { upd(k, x, 1, 1, n); }
+    No qry(int a, int b) { return qry(a, b, 1, 1, n); }
+};
+
+int main(){
+    fastio();
+    int n, q; cin >> n >> q;
+    vi v(n + 1);
+    rep(i,1,n+1) cin >> v[i];
+    Seg s(v);
+    while (q--) {
+        char c; int x, y; cin >> c >> x >> y;
+        if (c == 'M') s.upd(x, y);
+        else cout << s.qry(x, y).best << "\n";
+    }
+}
+```
+
+É a mesma `Seg` da aula passada, com `junta` e `folha` no lugar de `min` e do valor. O `junta` monta o resultado direto com chaves, na ordem dos campos da `struct` (`tam`, `pre`, `suf`, `best`, `ini`, `fim`). `cond ? x : y` vale `x` se a condição for verdadeira e `y` se não. `max({a, b, c})`, com chaves, pega o maior de vários valores de uma vez. `const No&` recebe o nó sem copiá-lo.
+
+## Armadilhas comuns
+
+- **Guardar só a resposta.** Se dois pares de filhos com as mesmas respostas podem gerar pais diferentes, falta campo.
+- **Esquecer o termo do meio** no `best`: a resposta nunca passa do maior `best` das folhas.
+- **Estender `pre` ou `suf` sem conferir se o filho é inteiro.** `pre` só cresce para dentro da direita quando a esquerda toda faz parte da subida (`A.pre == A.tam`).
+- **Esquecer a condição de encaixe** (`liga`). As bordas só se somam se o último valor da esquerda e o primeiro da direita combinam.
+- **Juntar fora de ordem.** `junta(A, B)` é "A seguido de B". Na consulta, a esquerda vem sempre primeiro.
+- **Neutro falso.** Um nó de zeros parece vazio, mas tem `ini` e `fim` iguais a 0, que participam das comparações. Ou evite visitar nós de fora, ou trate o nó vazio explicitamente no `junta`.
+- **Folha errada.** Um dia sozinho tem `pre`, `suf` e `best` iguais a 1, não 0.
+- **`int` nos campos de soma.** Em problemas em que os campos guardam somas (melhor prefixo, por exemplo), use `long long`.
+
+<details class="para-depois">
+<summary>Para depois: nós ainda maiores</summary>
+
+**Nós com vetores.** Um nó pode guardar uma lista inteira, como os valores do trecho em ordem. A árvore resultante (às vezes chamada de *merge sort tree*) responde "quantos valores do trecho são menores que $x$?" com uma busca binária em cada nó usado: $O(\log^2 n)$ por pergunta, com memória $O(n \log n)$. É o assunto da seção 28.3 do CPH.
+
+**Nós com matrizes.** Quando cada posição é uma pequena transformação (uma matriz $2 \times 2$, uma função de um conjunto pequeno nele mesmo), o nó guarda a composição das transformações do trecho. O `junta` é a multiplicação de matrizes, e a ordem importa ainda mais.
+
+**Nó vazio honesto.** Se você prefere manter o neutro da aula passada, defina o nó vazio com `tam = 0` e comece o `junta` com `if (A.tam == 0) return B; if (B.tam == 0) return A;`. Assim o resto do código pode devolver o vazio para nós de fora, como antes.
+
+**Testar o `junta` sozinho.** Um bom teste é gerar vetores pequenos, calcular o resumo de cada trecho por força bruta e conferir, para todo corte do trecho em duas partes, que `junta(resumo da esquerda, resumo da direita)` é igual ao resumo do todo. Pega quase todo erro de campo.
+
+</details>
+
+## Referências
+
+- **CPH, capítulo 9 — Range queries, seção 9.3 *Segment tree*:** a observação de que a árvore funciona para qualquer operação em que o resultado de um trecho sai dos resultados das duas metades. **Capítulo 28 — Segment trees revisited, seção 28.3 *Data structures*:** nós que guardam estruturas inteiras.
+- [USACO Guide — More Applications of Segment Tree](https://usaco.guide/plat/seg-ext), com problemas que exigem projetar o nó.
+- [cp-algorithms — Segment Tree](https://cp-algorithms.com/data_structures/segment_tree.html), seções sobre guardar mais de um valor por nó (o mínimo com a quantidade e o trecho de soma máxima).
+
+## Mini-quiz
+
+<Quiz
+  client:visible
+  questions={[
+    {
+      q: 'A = trecho com temperaturas 2, 4, 6 e B = trecho com temperaturas 7, 9, 1. Quanto valem `best` e `pre` de `junta(A, B)`?',
+      code: 'bool liga = A.fim < B.ini;\nR.pre = A.pre;\nif (A.pre == A.tam && liga) R.pre = A.tam + B.pre;\nR.best = max(A.best, B.best);\nif (liga) R.best = max(R.best, A.suf + B.pre);',
+      options: ['best 5 e pre 5', 'best 3 e pre 3', 'best 5 e pre 3', 'best 6 e pre 6'],
+      answer: 0,
+      why: 'A sobe inteiro (pre 3 = tam 3) e 6 < 7 liga. pre = 3 + 2 = 5 (2, 4, 6, 7, 9). best = maior entre 3, 2 e 3 + 2 = 5. "3 e 3" é o que sai esquecendo o termo do meio; "5 e 3" esquece de estender o pre.',
+    },
+    {
+      q: 'Agora A = 2, 4, 6 e B = 5, 9, 1. Quanto vale `best` de `junta(A, B)`?',
+      code: 'bool liga = A.fim < B.ini;\nR.best = max(A.best, B.best);\nif (liga) R.best = max(R.best, A.suf + B.pre);',
+      options: ['5', '4', '2', '3'],
+      answer: 3,
+      why: '6 ≥ 5: não liga, então só contam os best dos filhos, 3 (2, 4, 6) e 2 (5, 9). O 5 seria a resposta de quem esquece de testar o encaixe.',
+    },
+    {
+      q: 'A = 5, 1, 3 e B = 4, 6, 8. Quanto valem `suf` e `best` de `junta(A, B)`?',
+      code: 'R.suf = B.suf;\nif (B.suf == B.tam && liga) R.suf = B.tam + A.suf;\nR.best = max(A.best, B.best);\nif (liga) R.best = max(R.best, A.suf + B.pre);',
+      options: ['suf 3 e best 3', 'suf 5 e best 5', 'suf 6 e best 6', 'suf 5 e best 3'],
+      answer: 1,
+      why: 'B sobe inteiro (suf 3 = tam 3) e 3 < 4 liga. suf = 3 + A.suf, e A.suf é 2 (1, 3), não o tam de A: 5. A subida é 1, 3, 4, 6, 8. "6 e 6" soma o tam de A no lugar do suf.',
+    },
+    {
+      q: 'No fim do exemplo (temperaturas 3, 5, 7, 8, 9, 8, 9, 2), quanto `Q 2 7` responde, e quantos nós são usados inteiros?',
+      code: 'No consulta(int no, int l, int r, int a, int b) {\n    if (a <= l && r <= b) return arv[no];\n    int m = (l + r) / 2;\n    if (b <= m) return consulta(2 * no, l, m, a, b);\n    if (a > m) return consulta(2 * no + 1, m + 1, r, a, b);\n    return junta(consulta(2 * no, l, m, a, b),\n                 consulta(2 * no + 1, m + 1, r, a, b));\n}',
+      options: ['5, com 3 nós inteiros', '4, com 6 nós inteiros', '4, com 4 nós inteiros', '3, com 4 nós inteiros'],
+      answer: 2,
+      why: 'Os nós inteiros são o dia 2, os dias 3 a 4, os dias 5 a 6 e o dia 7. A maior subida é 5, 7, 8, 9 (dias 2 a 5): 4. O 5 seria a subida 3, 5, 7, 8, 9, que começa no dia 1, fora do trecho.',
+    },
+    {
+      q: 'Por que guardar só a resposta (`best`) em cada nó não basta?',
+      options: [
+        'Porque a árvore ficaria lenta',
+        'Porque filhos com as mesmas respostas podem formar pais com respostas diferentes: 1, 2 | 3, 4 dá 4, e 1, 2 | 1, 2 dá 2',
+        'Porque o best não cabe em int',
+        'Basta, desde que o junta use max',
+      ],
+      answer: 1,
+      why: 'Nos dois casos os filhos respondem 2 e 2. O que muda é o que acontece no meio, e isso depende das bordas: suf da esquerda, pre da direita e se os valores se encaixam.',
+    },
+    {
+      q: 'Por que a consulta desta aula pergunta só ao lado que interessa, em vez de devolver um nó neutro para os de fora?',
+      options: [
+        'Porque assim visita menos nós',
+        'Porque um nó de zeros participa das comparações de ini e fim e erra com temperaturas negativas',
+        'Porque a struct não pode ser devolvida vazia',
+        'Porque a ordem dos filhos não importa',
+      ],
+      answer: 1,
+      why: 'Com o nó de zeros à esquerda de -3, -1, o teste 0 < -3 falha e o pre sai 0 em vez de 2. Perguntar só ao lado certo evita inventar um neutro (ou o nó vazio precisa de tratamento explícito).',
+    },
+  ]}
+/>
