@@ -1,0 +1,135 @@
+# Dicas do milestone 15 — árvores: DFS, diâmetro, DP em árvore e rerooting.
+problems:
+  1674: # Subordinates
+    hints:
+      - >-
+        Os subordinados de um funcionário são todos os que estão abaixo dele na hierarquia: a subárvore dele, sem contar ele mesmo.
+      - >-
+        Enraíze no diretor (funcionário 1) e calcule o tamanho de cada subárvore na volta da DFS, como na aula de árvores. A resposta de cada um é o tamanho menos 1.
+    pitfalls:
+      - >-
+        A entrada dá o chefe de cada funcionário de 2 a $n$: dá para montar a lista de filhos direto, sem a lista de vizinhos. Com $2 \cdot 10^5$ funcionários em fila, a recursão fica funda; no CSES a pilha aguenta.
+
+  1702: # Tree Traversals
+    hints:
+      - >-
+        Na pré-ordem, o primeiro número é sempre a raiz. Onde a raiz aparece na ordem simétrica (inorder), e o que fica de cada lado dela?
+      - >-
+        Na ordem simétrica, tudo à esquerda da raiz é a subárvore esquerda e tudo à direita é a direita. Isso diz o tamanho de cada subárvore, e então você sabe onde cada uma começa e termina na pré-ordem.
+      - >-
+        Resolva recursivamente: as duas subárvores primeiro, depois imprima a raiz (é exatamente a pós-ordem).
+    pitfalls:
+      - >-
+        Procurar a raiz na ordem simétrica com um laço custa $O(n)$ por chamada. Guarde antes a posição de cada rótulo num vetor.
+
+  1131: # Tree Diameter
+    hints:
+      - >-
+        É o diâmetro da aula de árvores, com todas as arestas de comprimento 1.
+      - >-
+        Duas buscas: do vértice 1 até o mais distante dele, e dali até o mais distante de novo. A distância da segunda busca é a resposta.
+    pitfalls:
+      - >-
+        Uma busca só não basta. Com $n = 1$, a resposta é 0.
+
+  1132: # Tree Distances I
+    hints:
+      - >-
+        Para cada vértice, a maior distância até outro vértice. Na aula de árvores, para qual vértice essa distância máxima sempre aponta?
+      - >-
+        Para uma das pontas do diâmetro. Ache as duas pontas $A$ e $B$ com duas buscas, faça uma terceira a partir de $B$, e a resposta de cada vértice é o maior entre a distância até $A$ e a distância até $B$.
+    pitfalls:
+      - >-
+        Não rode uma busca por vértice: são $O(n^2)$ passos. Três buscas bastam.
+
+  1130: # Tree Matching
+    hints:
+      - >-
+        Pense numa folha. Ela só pode ser emparelhada com o pai. Vale a pena fazer isso?
+      - >-
+        Vale: emparelhar a folha com o pai nunca é pior do que deixar a folha sozinha. Então dá para decidir de baixo para cima, na volta da DFS: se um vértice e o pai dele ainda estão livres, emparelhe os dois.
+      - >-
+        Outra forma, no estilo da DP de dois estados da aula: para cada vértice, o melhor na subárvore com ele livre e com ele já emparelhado com um filho.
+    pitfalls:
+      - >-
+        No guloso, a decisão acontece **depois** de processar todos os filhos (na volta). Na DP, "emparelhado com um filho" exige escolher qual filho, trocando o melhor dele pelo caso "filho livre".
+
+  1133: # Tree Distances II
+    hints:
+      - >-
+        A soma das distâncias de um vértice até todos os outros. Para a raiz, ela sai de uma DP nas subárvores. E para os outros vértices?
+      - >-
+        É o rerooting da aula de DP em árvore, com um morador em cada vértice e todas as arestas de comprimento 1. Mover a raiz de $v$ para um filho $u$ aproxima os vértices da subárvore de $u$ e afasta todos os outros.
+    pitfalls:
+      - >-
+        As somas passam de `int` (chegam a cerca de $2 \cdot 10^{10}$). O tamanho da subárvore usado na fórmula é o da árvore enraizada no vértice da primeira busca.
+
+  1134: # Prüfer Code
+    hints:
+      - >-
+        Quantas vezes cada vértice aparece no código? Pense no grau: um vértice aparece uma vez para cada vizinho que foi removido como folha.
+      - >-
+        Um vértice aparece no código exatamente (grau − 1) vezes. Então os que nunca aparecem são as folhas da árvore original, e o primeiro número do código é o vizinho da menor delas.
+      - >-
+        Refaça o processo: mantenha os vértices de grau 1 restante num conjunto ordenado (ou fila de prioridade). Para cada número do código, ligue a menor folha a ele, e diminua o grau dele. No fim sobram dois vértices: ligue-os.
+    pitfalls:
+      - >-
+        Um vértice vira folha quando seu grau restante chega a 1: só então ele entra no conjunto. A última aresta liga os dois vértices que sobraram.
+
+  2079: # Finding a Centroid
+    hints:
+      - >-
+        Enraíze no vértice 1 e calcule os tamanhos das subárvores. Se algum filho da raiz tem mais de $n/2$ vértices, o centroide pode estar fora dele?
+      - >-
+        Não pode. Ande para esse filho "pesado" e repita: em cada vértice, se algum filho tem subárvore maior que $n/2$, desça para ele. Quando nenhum filho tiver, pare.
+      - >-
+        Por que a parte de cima também fica pequena? Você só desceu para um vértice porque a subárvore dele tinha mais de $n/2$; então o que sobra fora dela tem menos de $n/2$.
+    pitfalls:
+      - >-
+        Centroide não é o centro da aula de árvores: o centro minimiza a maior distância, o centroide limita o tamanho dos pedaços.
+
+  1700: # Tree Isomorphism I
+    hints:
+      - >-
+        Duas árvores enraizadas são iguais (desenhadas do mesmo jeito) quando as raízes têm os mesmos "tipos" de subárvores filhas, em qualquer ordem. Como dar um nome a cada tipo de subárvore?
+      - >-
+        De baixo para cima: o nome de um vértice depende só da **lista ordenada** dos nomes dos filhos. Use um `map` de "lista ordenada de nomes" para um número novo, compartilhado pelas duas árvores. As árvores são isomorfas se as raízes recebem o mesmo número.
+    pitfalls:
+      - >-
+        O `map` tem que ser o mesmo para as duas árvores (e pode ser reaproveitado entre os testes). Ordene a lista dos filhos antes de procurar no `map`.
+
+  1701: # Tree Isomorphism II
+    hints:
+      - >-
+        Sem raiz, o problema anterior não se aplica direto. Existe algum vértice que dá para escolher como raiz de um jeito que não depende da numeração?
+      - >-
+        O **centro** da aula de árvores (o vértice de menor excentricidade): ele é o mesmo em árvores isomorfas. Uma árvore tem um ou dois centros.
+      - >-
+        Enraíze cada árvore no(s) seu(s) centro(s) e compare como no problema anterior. Com dois centros, teste as combinações (ou trate a aresta entre eles como raiz).
+    pitfalls:
+      - >-
+        Se uma árvore tem um centro e a outra dois, elas não são isomorfas. Com dois centros, basta que alguma combinação dê o mesmo nome.
+
+  1752: # Creating Offices
+    hints:
+      - >-
+        Um guloso que vem das folhas: o vértice mais fundo de todos (com a raiz em 1) sempre pode estar numa solução ótima. Por quê?
+      - >-
+        Trocando qualquer escritório da sua subárvore "de cima" por ele, as distâncias até os outros escritórios não diminuem. Então: percorra os vértices do mais fundo para o mais raso e coloque um escritório sempre que ele estiver a pelo menos $d$ de todos os já escolhidos.
+      - >-
+        Para testar "está a pelo menos $d$ de todos" rápido, guarde para cada vértice a distância até o escritório mais próximo **na sua subárvore** e suba essa informação pelos ancestrais.
+    pitfalls:
+      - >-
+        Testar a distância contra cada escritório escolhido é $O(n^2)$. A ordem por profundidade é essencial: em outra ordem, o guloso perde escritórios.
+
+  1704: # Network Renovation
+    hints:
+      - >-
+        Uma conexão que quebra só desconecta a rede se ela é a única ligação entre duas partes. Numa árvore, toda conexão é assim. Qual é o mínimo de conexões novas que tira esse problema?
+      - >-
+        Toda folha precisa ganhar pelo menos uma conexão nova (senão a conexão dela com o resto é uma ponte). Uma conexão nova atende no máximo duas folhas: o mínimo é $\lceil L/2 \rceil$, com $L$ folhas. Dá para sempre atingir esse mínimo?
+      - >-
+        Liste as folhas na ordem em que uma DFS as encontra e ligue a $i$-ésima com a $(i + L/2)$-ésima. Cada conexão nova cobre um caminho que "atravessa" a árvore. Se $L$ for ímpar, ligue a folha que sobrou a qualquer outra.
+    pitfalls:
+      - >-
+        Ligar folhas vizinhas na ordem da DFS (1 com 2, 3 com 4…) não basta: algumas pontes no meio continuam sem cobertura. Comece a DFS de um vértice que não seja folha.
