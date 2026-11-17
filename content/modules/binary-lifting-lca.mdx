@@ -1,0 +1,399 @@
+---
+title: Binary lifting e LCA
+description: Guardando, para cada vértice, os ancestrais a 1, 2, 4, 8… passos acima, qualquer subida na árvore vira poucos saltos. Com isso, o primeiro ancestral comum de dois vértices (o LCA) - e a distância entre eles - sai em O(log n) por pergunta.
+---
+import Callout from '../../src/components/mdx/Callout.astro';
+import Quiz from '../../src/components/mdx/Quiz.tsx';
+import LiftViz from '../../src/components/mdx/viz/LiftViz.tsx';
+
+## Motivação: muitas perguntas de distância
+
+O problema desta aula, do começo ao fim:
+
+> Um parque tem $n$ clareiras e $n - 1$ trilhas com comprimentos, formando uma árvore. Chegam $q$ perguntas `a b`: qual é a distância, pelas trilhas, entre as clareiras $a$ e $b$?
+
+O exemplo desta aula é um parque mais comprido que o das aulas anteriores, com 12 clareiras:
+
+| Trilha | 1–2 | 2–3 | 3–4 | 4–5 | 5–6 | 6–7 | 3–8 | 8–9 | 5–10 | 10–11 | 1–12 |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Comprimento | 4 | 1 | 3 | 2 | 5 | 1 | 2 | 6 | 3 | 2 | 7 |
+
+| Pergunta | 7 11 | 9 7 | 11 12 | 6 9 | 10 4 |
+|---|---|---|---|---|---|
+| Resposta | **11** | **19** | **22** | **18** | **5** |
+
+Uma busca por pergunta, como na aula de árvores, custa $O(n)$ cada. Com $2 \cdot 10^5$ clareiras e $2 \cdot 10^5$ perguntas, $4 \cdot 10^{10}$ passos. Não passa.
+
+## Parte 1: a distância passa pelo ancestral comum
+
+Enraíze a árvore na clareira 1 e guarde, para cada clareira $v$, a **profundidade** (quantas trilhas até a raiz) e $\text{dist}(v)$, a distância até a raiz somando os comprimentos:
+
+| Clareira | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Profundidade | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 3 | 4 | 5 | 6 | 1 |
+| dist | 0 | 4 | 5 | 8 | 10 | 15 | 16 | 7 | 13 | 13 | 15 | 7 |
+
+Pegue a pergunta `9 7`. Subindo de cada uma em direção à raiz, os dois caminhos se juntam pela primeira vez na clareira 3. Esse é o **menor ancestral comum** (*lowest common ancestor*, **LCA**): o ancestral comum mais fundo. O caminho de 9 até 7 sobe de 9 até 3 e desce de 3 até 7.
+
+A distância de 9 até a raiz conta o trecho de 3 até a raiz, e a de 7 até a raiz também. Somando as duas, esse trecho entra duas vezes e não faz parte do caminho entre 9 e 7. Basta tirá-lo:
+
+$$
+\text{distância}(a, b) = \text{dist}(a) + \text{dist}(b) - 2 \cdot \text{dist}(\text{lca}(a, b))
+$$
+
+$\text{dist}(v)$ é a distância de $v$ até a raiz, e $\text{lca}(a, b)$ é o menor ancestral comum de $a$ e $b$.
+
+Para `9 7`: $13 + 16 - 2 \cdot 5 = 19$. Com os vetores `dist` prontos (uma DFS), cada pergunta vira "achar o LCA".
+
+### O LCA de um em um
+
+O jeito direto: suba o mais fundo dos dois, um passo por vez, até os dois ficarem na mesma profundidade. Depois suba os dois juntos até se encontrarem. Para `9 7`: a 7 (profundidade 6) sobe até a 5 (profundidade 4, a mesma da 9). Depois 5 e 9 sobem juntos: 4 e 8, depois 3 e 3. Encontro na 3.
+
+O problema é o custo: cada passo sobe uma trilha. Numa árvore em forma de caminho com $2 \cdot 10^5$ clareiras, uma pergunta pode subir $2 \cdot 10^5$ trilhas. Voltamos aos $4 \cdot 10^{10}$ passos.
+
+## Parte 2: saltos de 1, 2, 4, 8… passos
+
+A ideia é parecida com a da Fenwick tree: qualquer número é soma de potências de 2. Subir 5 passos é subir 4 e depois 1. Se cada clareira souber de antemão quem está 1, 2, 4, 8… passos acima dela, qualquer subida vira poucos saltos.
+
+Guarde em `up[v][k]` o ancestral de $v$ que está $2^k$ passos acima. Para a raiz, e para saltos que passariam dela, use a própria raiz.
+
+| Clareira | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| `up[v][0]` (1 acima) | 1 | 1 | 2 | 3 | 4 | 5 | 6 | 3 | 8 | 5 | 10 | 1 |
+| `up[v][1]` (2 acima) | 1 | 1 | 1 | 2 | 3 | 4 | 5 | 2 | 3 | 4 | 5 | 1 |
+| `up[v][2]` (4 acima) | 1 | 1 | 1 | 1 | 1 | 2 | 3 | 1 | 1 | 2 | 3 | 1 |
+
+A tabela se monta com uma observação só: subir $2^k$ passos é subir $2^{k-1}$ e depois mais $2^{k-1}$.
+
+$$
+\text{up}[v][k] = \text{up}\big[\,\text{up}[v][k-1]\,\big][k-1]
+$$
+
+$\text{up}[v][k-1]$ é a clareira a meio caminho; dela, mais $2^{k-1}$ passos.
+
+Para a clareira 7: `up[7][1]` $=$ `up[6][0]` $= 5$ (dois passos: 7 → 6 → 5). E `up[7][2]` $=$ `up[5][1]` $= 3$ (quatro passos: 7 → 6 → 5 → 4 → 3). Se a DFS preenche a tabela de $v$ quando chega nele, as linhas dos ancestrais já estão prontas:
+
+```cpp
+void dfs(int v, int pai) {
+    up[v][0] = pai;
+    for (int k = 1; k < LOG; k++) up[v][k] = up[up[v][k - 1]][k - 1];   // 2^k = 2^(k-1) + 2^(k-1)
+    for (auto [u, w] : adj[v]) {
+        if (u == pai) continue;
+        prof[u] = prof[v] + 1;
+        dist[u] = dist[v] + w;
+        dfs(u, v);
+    }
+}
+```
+
+`LOG` é quantas potências guardar: com $2^{18} > 2 \cdot 10^5$, 18 bastam para qualquer profundidade. `vector<array<int, LOG>>` é um vetor em que cada posição é um `array` de tamanho fixo `LOG`. A chamada inicial é `dfs(1, 1)`: a raiz é pai de si mesma.
+
+### Subir $k$ passos
+
+Escreva $k$ em binário e dê um salto para cada bit ligado. Subir 5 passos a partir da 7: $5 = 101$ em binário, bits 0 e 2.
+
+| Bit | Salto | De | Para |
+|---|---|---|---|
+| 0 | 1 passo | 7 | 6 |
+| 2 | 4 passos | 6 | 2 |
+
+Cinco passos acima da 7 está a 2 (7 → 6 → 5 → 4 → 3 → 2). Foram 2 saltos em vez de 5 passos; em geral, no máximo $\log_2 n$ saltos.
+
+```cpp
+int sobe(int v, int k) {
+    for (int b = 0; b < LOG; b++)
+        if (k >> b & 1) v = up[v][b];          // o bit b de k está ligado: pula 2^b
+    return v;
+}
+```
+
+`k >> b & 1` desloca $k$ para a direita $b$ casas e olha o último bit: vale 1 quando o bit $b$ de $k$ está ligado. É o mesmo truque de máscaras da aula de busca completa.
+
+<Callout type="tente">
+Quanto vale `sobe(7, 6)`? Quais saltos são dados?
+
+<details>
+<summary>Ver resposta</summary>
+
+$6 = 110$ em binário: bits 1 e 2. O salto de 2 leva da 7 à 5 (`up[7][1]`), e o de 4 leva da 5 à 1 (`up[5][2]`). Seis passos acima da 7 está a raiz, 1. A ordem dos saltos não muda o destino: subir 2 e depois 4 é o mesmo que 4 e depois 2.
+
+</details>
+</Callout>
+
+## O LCA com saltos
+
+Os dois passos do LCA de um em um continuam, agora com saltos:
+
+1. **Igualar as profundidades.** Suba o mais fundo a diferença de profundidades com `sobe`. Se os dois ficarem iguais, um era ancestral do outro, e ele é o LCA.
+2. **Subir os dois juntos, do maior salto para o menor.** Para cada $k$, de `LOG - 1` até 0: se `up[a][k]` e `up[b][k]` são **diferentes**, os dois ainda não se encontram $2^k$ passos acima, então salte os dois. Se são **iguais**, o salto cairia num ancestral comum, talvez acima do LCA: não salte.
+
+No fim, $a$ e $b$ estão um passo abaixo do LCA, e a resposta é o pai deles. Para `9 7` (os saltos de 8 passos ou mais passam da raiz e dão sempre "iguais", então a tabela começa no de 4):
+
+| Passo | $a$ | $b$ | O que acontece |
+|---|---|---|---|
+| igualar | 7 → **5** | 9 | diferença $6 - 4 = 2$: salto de 2 |
+| $k = 2$ | 5 | 9 | `up[5][2]` = `up[9][2]` = 1: iguais, não salta |
+| $k = 1$ | 5 | 9 | `up[5][1]` = `up[9][1]` = 3: iguais, não salta |
+| $k = 0$ | 5 → **4** | 9 → **8** | `up[5][0]` = 4, `up[9][0]` = 8: diferentes, salta |
+| fim | 4 | 8 | o LCA é o pai deles: **3** |
+
+Por que do maior para o menor? Os saltos que **são** dados formam, em binário, a distância de $a$ até o filho do LCA. Decidir do bit mais alto para o mais baixo é como escrever um número em binário começando pela esquerda: em cada bit, se ainda cabe, você usa. Na ordem contrária, um salto pequeno dado cedo demais impede um salto maior depois.
+
+```cpp
+int lca(int a, int b) {
+    if (prof[a] < prof[b]) swap(a, b);         // a é o mais fundo
+    a = sobe(a, prof[a] - prof[b]);            // agora os dois estão na mesma profundidade
+    if (a == b) return a;
+    for (int k = LOG - 1; k >= 0; k--) {       // do maior salto para o menor
+        if (up[a][k] != up[b][k]) {            // ainda não se encontraram: pode pular
+            a = up[a][k];
+            b = up[b][k];
+        }
+    }
+    return up[a][0];                           // um passo abaixo do encontro: o pai é o LCA
+}
+```
+
+<LiftViz client:visible />
+
+<Callout type="tente">
+Faça a pergunta `10 4` à mão: qual é o LCA, e qual é a distância?
+
+<details>
+<summary>Ver resposta</summary>
+
+A 10 está na profundidade 5 e a 4 na 3: a 10 sobe 2 (um salto de 2) e chega à **4**. Os dois ficaram iguais logo na primeira etapa: a 4 é ancestral da 10, e é o próprio LCA. Distância: $13 + 8 - 2 \cdot 8 = 5$ (as trilhas 4–5 e 5–10, de comprimento 2 e 3). Sem o teste `if (a == b) return a`, a segunda etapa não daria salto nenhum e devolveria o pai da 4, a 3.
+
+</details>
+</Callout>
+
+## Dois cuidados, cada um com seu contraexemplo
+
+**Igualar as profundidades primeiro.** A segunda etapa supõe que $a$ e $b$ estão na mesma altura: só assim "$2^k$ acima de $a$" e "$2^k$ acima de $b$" são comparáveis. Pulando a primeira etapa, `lca(9, 7)` compara a 9 (profundidade 4) com a 7 (profundidade 6), os ancestrais nunca coincidem no momento certo, e a resposta sai **1** em vez de 3. A distância calculada vira $13 + 16 - 0 = 29$ em vez de 19.
+
+**Saltar do maior para o menor.** Num "V" com dois braços de três trilhas saindo da raiz (1–2–3–4 e 1–5–6–7), o LCA de 4 e 7 é a raiz, 1. Com os saltos do menor para o maior: o salto de 1 leva a 3 e 6 (diferentes, salta); o de 2 levaria os dois à raiz (iguais, não salta); o de 4 também. O resultado é o pai da 3, **2**, que nem é ancestral da 7.
+
+Na árvore do exemplo esse erro não aparece: depois de igualar, nenhum par fica mais de 2 passos abaixo do LCA, e com tão poucos passos a ordem não importa. Um teste só com o exemplo não pegaria.
+
+## Código: o problema das distâncias completo
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+const int LOG = 18;                            // 2^18 > 2·10^5: saltos suficientes para qualquer profundidade
+int n;
+vector<vector<pair<int, int>>> adj;            // (vizinho, comprimento da trilha)
+vector<int> prof;                              // profundidade: quantas trilhas até a raiz
+vector<long long> dist;                        // distância (somando comprimentos) até a raiz
+vector<array<int, LOG>> up;                    // up[v][k] = ancestral de v 2^k passos acima
+
+void dfs(int v, int pai) {
+    up[v][0] = pai;
+    for (int k = 1; k < LOG; k++) up[v][k] = up[up[v][k - 1]][k - 1];   // 2^k = 2^(k-1) + 2^(k-1)
+    for (auto [u, w] : adj[v]) {
+        if (u == pai) continue;
+        prof[u] = prof[v] + 1;
+        dist[u] = dist[v] + w;
+        dfs(u, v);
+    }
+}
+
+// Sobe k passos a partir de v, usando os bits de k.
+int sobe(int v, int k) {
+    for (int b = 0; b < LOG; b++)
+        if (k >> b & 1) v = up[v][b];          // o bit b de k está ligado: pula 2^b
+    return v;
+}
+
+int lca(int a, int b) {
+    if (prof[a] < prof[b]) swap(a, b);         // a é o mais fundo
+    a = sobe(a, prof[a] - prof[b]);            // agora os dois estão na mesma profundidade
+    if (a == b) return a;
+    for (int k = LOG - 1; k >= 0; k--) {       // do maior salto para o menor
+        if (up[a][k] != up[b][k]) {            // ainda não se encontraram: pode pular
+            a = up[a][k];
+            b = up[b][k];
+        }
+    }
+    return up[a][0];                           // um passo abaixo do encontro: o pai é o LCA
+}
+
+int main() {
+    int q;
+    cin >> n >> q;
+    adj.resize(n + 1);
+    for (int i = 0; i < n - 1; i++) {
+        int a, b, w;
+        cin >> a >> b >> w;
+        adj[a].push_back({b, w});
+        adj[b].push_back({a, w});
+    }
+    prof.assign(n + 1, 0);
+    dist.assign(n + 1, 0);
+    up.assign(n + 1, {});
+    dfs(1, 1);                                 // a raiz é pai de si mesma: saltos além dela param nela
+
+    while (q--) {
+        int a, b;
+        cin >> a >> b;
+        int c = lca(a, b);
+        cout << dist[a] + dist[b] - 2 * dist[c] << "\n";
+    }
+}
+```
+
+**Entrada:**
+
+```
+12 5
+1 2 4
+2 3 1
+3 4 3
+4 5 2
+5 6 5
+6 7 1
+3 8 2
+8 9 6
+5 10 3
+10 11 2
+1 12 7
+7 11
+9 7
+11 12
+6 9
+10 4
+```
+
+**Saída:**
+
+```
+11
+19
+22
+18
+5
+```
+
+São as cinco respostas da tabela da motivação. Na primeira, por exemplo, o LCA de 7 e 11 é a 5: $16 + 15 - 2 \cdot 10 = 11$.
+
+- **Tempo:** $O(n \log n)$ para montar a tabela e $O(\log n)$ por pergunta.
+- **Memória:** $O(n \log n)$: `LOG` inteiros por clareira.
+
+### O mesmo código no formato de contest
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+typedef long long ll;
+#define rep(i,a,b) for(int i=(a);i<(b);i++)
+void fastio(){ ios::sync_with_stdio(false); cin.tie(nullptr); }
+const int LOG = 18;
+
+int main(){
+    fastio();
+    int n, q; cin >> n >> q;
+    vector<vector<pair<int,int>>> adj(n + 1);
+    rep(i,0,n-1) { int a, b, w; cin >> a >> b >> w; adj[a].push_back({b, w}); adj[b].push_back({a, w}); }
+    vector<int> dep(n + 1, 0); vector<ll> d(n + 1, 0);
+    vector<array<int, LOG>> up(n + 1);
+    auto dfs = [&](auto& self, int v, int p) -> void {
+        up[v][0] = p;
+        rep(k,1,LOG) up[v][k] = up[up[v][k-1]][k-1];
+        for (auto [u, w] : adj[v]) if (u != p) { dep[u] = dep[v] + 1; d[u] = d[v] + w; self(self, u, v); }
+    };
+    dfs(dfs, 1, 1);
+    auto lca = [&](int a, int b) {
+        if (dep[a] < dep[b]) swap(a, b);
+        rep(k,0,LOG) if ((dep[a] - dep[b]) >> k & 1) a = up[a][k];
+        if (a == b) return a;
+        for (int k = LOG - 1; k >= 0; k--) if (up[a][k] != up[b][k]) a = up[a][k], b = up[b][k];
+        return up[a][0];
+    };
+    while (q--) { int a, b; cin >> a >> b; cout << d[a] + d[b] - 2 * d[lca(a, b)] << "\n"; }
+}
+```
+
+O `sobe` virou uma linha dentro do `lca`. Na linha `a = up[a][k], b = up[b][k];`, a vírgula separa duas atribuições numa instrução só, para caber no `if` sem chaves.
+
+## Armadilhas comuns
+
+- **Pular a etapa de igualar as profundidades.** A comparação `up[a][k] != up[b][k]` só faz sentido com os dois na mesma altura.
+- **Esquecer o caso "um é ancestral do outro".** Depois de igualar, se `a == b`, a resposta já é $a$.
+- **Saltar do menor para o maior.** A segunda etapa vai do maior salto para o menor.
+- **Pai da raiz indefinido.** Com `up[raiz][0]` sem valor (lixo), os saltos longos leem lixo. Use a própria raiz (ou um vértice 0 que aponta para si mesmo).
+- **`LOG` pequeno.** Precisa de $2^{\text{LOG}}$ maior que a maior profundidade possível: 18 para $2 \cdot 10^5$.
+- **Montar a linha de $v$ antes da do pai.** A fórmula usa a tabela dos ancestrais: preencha na ida da DFS, quando o pai já está pronto.
+- **Distância em `int`.** Com comprimentos até $10^9$, `dist` passa de `int`: `long long`.
+
+<details class="para-depois">
+<summary>Para depois: o que mais os saltos guardam</summary>
+
+**Informação sobre o caminho.** Junto com `up[v][k]`, dá para guardar algo sobre as $2^k$ trilhas do salto: o maior comprimento, o menor, a soma. Combinando os saltos que o LCA dá (de $a$ e de $b$ até o encontro), sai o maior comprimento no caminho entre $a$ e $b$, com a mesma conta de "dobrar" usada na tabela.
+
+**O $k$-ésimo ancestral.** O `sobe` sozinho já responde "quem está $k$ passos acima de $v$" (ou "não existe", se $k$ passar da profundidade).
+
+**LCA em $O(1)$.** Com o *Euler tour* (próximas aulas) a árvore vira um vetor em que o LCA de dois vértices é o de menor profundidade num trecho, e uma sparse table responde isso em $O(1)$. Útil quando há milhões de perguntas.
+
+**Saltos fora de árvores.** A tabela `up[v][k]` funciona em qualquer estrutura em que cada vértice tem exatamente um "próximo": é o assunto da aula de grafos funcionais, com os mesmos saltos.
+
+</details>
+
+## Referências
+
+- **CPH, capítulo 18 — Tree queries:** seção 18.1 *Finding ancestors* (a tabela de saltos e o $k$-ésimo ancestral) e seção 18.3 *Lowest common ancestor* (o LCA com saltos, a distância entre vértices e o método com Euler tour).
+- [USACO Guide — Binary Jumping](https://usaco.guide/plat/binary-jump), com a tabela de saltos e problemas.
+- [cp-algorithms — LCA com binary lifting](https://cp-algorithms.com/graph/lca_binary_lifting.html) e [cp-algorithms — LCA](https://cp-algorithms.com/graph/lca.html), este com a versão por Euler tour.
+
+## Mini-quiz
+
+<Quiz
+  client:visible
+  questions={[
+    {
+      q: 'Na árvore do exemplo, quanto vale `sobe(11, 5)`?',
+      code: 'int sobe(int v, int k) {\n    for (int b = 0; b < LOG; b++)\n        if (k >> b & 1) v = up[v][b];\n    return v;\n}',
+      options: ['5', '3', '2', '1'],
+      answer: 2,
+      why: '5 = 101 em binário. O salto de 1 leva da 11 à 10; o de 4 leva da 10 à 2 (up[10][2]). Confira: 11 → 10 → 5 → 4 → 3 → 2.',
+    },
+    {
+      q: 'Quanto vale `up[9][1]`, montado pela fórmula da DFS?',
+      code: 'up[v][k] = up[ up[v][k - 1] ][k - 1];',
+      options: ['8', '3', '2', '1'],
+      answer: 1,
+      why: 'up[9][1] = up[up[9][0]][0] = up[8][0] = 3. Dois passos acima da 9: 9 → 8 → 3.',
+    },
+    {
+      q: 'Siga `lca(6, 9)` no exemplo. Qual é o LCA e qual é a distância?',
+      code: 'if (prof[a] < prof[b]) swap(a, b);\na = sobe(a, prof[a] - prof[b]);\nif (a == b) return a;\nfor (int k = LOG - 1; k >= 0; k--)\n    if (up[a][k] != up[b][k]) { a = up[a][k]; b = up[b][k]; }\nreturn up[a][0];',
+      options: ['LCA 5 e distância 8', 'LCA 1 e distância 28', 'LCA 4 e distância 12', 'LCA 3 e distância 18'],
+      answer: 3,
+      why: 'A 6 (profundidade 5) sobe 1 até a 5. Os saltos de 4 e de 2 são iguais (1 e 3); o de 1 é diferente (4 e 8): saltam. O pai de 4 e 8 é a 3. Distância: 15 + 13 − 2·5 = 18.',
+    },
+    {
+      q: 'No "V" com braços 1–2–3–4 e 1–5–6–7, uma versão que salta do **menor** para o maior responde que o LCA de 4 e 7 é qual vértice?',
+      code: 'for (int k = 0; k < LOG; k++)            // ordem errada\n    if (up[a][k] != up[b][k]) { a = up[a][k]; b = up[b][k]; }\nreturn up[a][0];',
+      options: ['1', '2', '3', '5'],
+      answer: 1,
+      why: 'O salto de 1 leva a 3 e 6 (diferentes: salta). Os saltos de 2 e 4 levariam os dois à raiz (iguais: não salta). Devolve o pai da 3, que é 2. O certo é 1.',
+    },
+    {
+      q: 'Quanto custam a preparação e cada pergunta, com n clareiras?',
+      options: ['O(n) e O(1)', 'O(n log n) e O(log n)', 'O(n²) e O(1)', 'O(n) e O(n)'],
+      answer: 1,
+      why: 'A tabela tem LOG ≈ log n casas por clareira, cada uma em O(1). Cada pergunta faz no máximo LOG saltos para igualar e LOG para subir junto.',
+    },
+    {
+      q: 'Por que o LCA precisa do teste `if (a == b) return a` logo depois de igualar as profundidades?',
+      options: [
+        'Para economizar tempo',
+        'Porque, se um é ancestral do outro, a segunda etapa não salta nada e devolveria o pai desse ancestral',
+        'Porque a e b podem ser iguais desde o início',
+        'Não precisa: a segunda etapa já trata esse caso',
+      ],
+      answer: 1,
+      why: 'Na pergunta 10 4, depois de igualar os dois são a 4. Sem o teste, todos os up[a][k] e up[b][k] são iguais, nada salta, e o return up[a][0] devolve a 3, o pai da resposta certa.',
+    },
+  ]}
+/>
