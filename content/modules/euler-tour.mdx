@@ -1,0 +1,329 @@
+---
+title: 'Euler tour: subárvores e caminhos como intervalos'
+description: Numerando os vértices na ordem em que a DFS entra neles, toda subárvore vira um trecho contínuo de um vetor. Perguntas sobre subárvores passam a ser perguntas sobre trechos, e a Fenwick tree e a segment tree voltam a servir.
+---
+import Callout from '../../src/components/mdx/Callout.astro';
+import Quiz from '../../src/components/mdx/Quiz.tsx';
+import EulerViz from '../../src/components/mdx/viz/EulerViz.tsx';
+
+## Motivação: bônus para a equipe inteira
+
+O problema desta aula, do começo ao fim:
+
+> Uma empresa tem $n$ funcionários; o funcionário 1 é o diretor e cada um dos outros tem um chefe. A **equipe** de alguém é ele mesmo mais todos que estão abaixo dele na hierarquia, em qualquer nível. Chegam $q$ eventos. `B v x`: todos da equipe de $v$ ganham um bônus de $x$ no salário. `Q v`: qual é o salário atual de $v$?
+
+Um exemplo com 8 funcionários:
+
+| Funcionário | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+|---|---|---|---|---|---|---|---|---|
+| Chefe | — | 1 | 1 | 2 | 2 | 3 | 6 | 6 |
+| Salário inicial | 10 | 7 | 8 | 5 | 4 | 6 | 3 | 2 |
+
+| Evento | `Q 7` | `B 3 5` | `Q 7` | `B 2 2` | `B 1 1` | `Q 5` | `Q 6` | `Q 1` |
+|---|---|---|---|---|---|---|---|---|
+| Resposta | **3** | | **8** | | | **7** | **12** | **11** |
+
+A equipe do 3 é 3, 6, 7 e 8; a do 2 é 2, 4 e 5; a do 1 é a empresa inteira. O funcionário 6, por exemplo, recebe o bônus do 3 e o do 1: $6 + 5 + 1 = 12$.
+
+A força bruta dá o bônus funcionário por funcionário da equipe. Uma equipe pode ter quase todo mundo: com $2 \cdot 10^5$ funcionários e $2 \cdot 10^5$ bônus, são $4 \cdot 10^{10}$ passos. Não passa.
+
+"Somar $x$ num trecho, ler um valor" é um problema que a aula de Fenwick tree já resolve, com o vetor de diferenças. Só que uma equipe não é um trecho: os funcionários 2, 4 e 5 não são vizinhos na numeração. A aula mostra como **renumerar** os funcionários para que toda equipe vire um trecho.
+
+## A ideia: numerar na ordem da DFS
+
+Faça uma DFS a partir do diretor e dê a cada funcionário uma **posição**: a ordem em que a DFS entra nele. No exemplo, a DFS entra em 1, 2, 4, 5, 3, 6, 7, 8:
+
+| Posição | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+|---|---|---|---|---|---|---|---|---|
+| Funcionário | 1 | 2 | 4 | 5 | 3 | 6 | 7 | 8 |
+
+Olhe para a equipe do 2 (2, 4 e 5): posições 2, 3 e 4. A do 3 (3, 6, 7 e 8): posições 5 a 8. A do 6 (6, 7 e 8): posições 6 a 8. Todas são **trechos contínuos**.
+
+Não é coincidência. Quando a DFS entra num funcionário $v$, ela só sai dele depois de visitar a equipe inteira dele, e não visita mais ninguém nesse meio-tempo. Então a equipe de $v$ ocupa as posições a partir da de $v$, sem buracos. Guarde duas informações:
+
+- `ent[v]`: a posição de $v$ (dada quando a DFS **entra** nele);
+- `sai[v]`: a última posição usada dentro da equipe de $v$ (anotada quando a DFS **sai** dele).
+
+| Funcionário | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+|---|---|---|---|---|---|---|---|---|
+| `ent` | 1 | 2 | 5 | 3 | 4 | 6 | 7 | 8 |
+| `sai` | 8 | 4 | 8 | 3 | 4 | 8 | 7 | 8 |
+
+A equipe de $v$ é exatamente o trecho de posições `ent[v]` a `sai[v]`, e o tamanho dela é `sai[v] - ent[v] + 1`. Essa numeração se chama **Euler tour** (o "passeio" da DFS pela árvore).
+
+```cpp
+void dfs(int v) {
+    ent[v] = ++relogio;                        // v ganha a próxima posição
+    for (int u : filhos[v]) dfs(u);
+    sai[v] = relogio;                          // a última posição usada dentro da equipe de v
+}
+```
+
+`++relogio` soma 1 ao contador **antes** de usar o valor: o diretor fica com a posição 1, não 0. Como a entrada já diz quem é o chefe de cada um, a lista de filhos é suficiente e não é preciso pular o pai.
+
+<Callout type="tente">
+Pela tabela, qual é o trecho da equipe do 6, e quem está nele? E que funcionário ocupa a posição 5?
+
+<details>
+<summary>Ver resposta</summary>
+
+`ent[6]` $= 6$ e `sai[6]` $= 8$: posições 6, 7 e 8, que são os funcionários 6, 7 e 8. A posição 5 é do funcionário **3**: a DFS só entra nele depois de terminar toda a equipe do 2 (posições 2 a 4). A posição de um funcionário diz quando a DFS chegou nele, não o número dele.
+
+</details>
+</Callout>
+
+## Bônus num trecho, salário numa posição
+
+Com as equipes virando trechos, o problema é o da aula de Fenwick tree ("alterar um trecho, consultar uma posição"): guarde as **diferenças** entre posições vizinhas.
+
+- `B v x`: some $x$ na posição `ent[v]` e $-x$ na posição `sai[v] + 1`. A partir do começo da equipe todos ganham $x$; a partir do fim, deixam de ganhar.
+- `Q v`: o salário é o inicial mais a soma das diferenças das posições 1 a `ent[v]`.
+
+O vetor de diferenças (posições 1 a 9) depois de cada bônus do exemplo:
+
+| Evento | Trecho | Diferenças nas posições 1 a 9 |
+|---|---|---|
+| `B 3 5` | 5 a 8 | 0, 0, 0, 0, **5**, 0, 0, 0, **−5** |
+| `B 2 2` | 2 a 4 | 0, **2**, 0, 0, **3**, 0, 0, 0, −5 |
+| `B 1 1` | 1 a 8 | **1**, 2, 0, 0, 3, 0, 0, 0, **−6** |
+
+O `B 2 2` somou $-2$ na posição 5, que já tinha o 5 do primeiro bônus: ficou 3. Na pergunta `Q 6` do fim, a posição do 6 é 6, e a soma das posições 1 a 6 é $1 + 2 + 0 + 0 + 3 + 0 = 6$: salário $6 + 6 = 12$. A posição 9 só existe para receber o $-x$ de equipes que terminam na posição 8; nenhuma pergunta chega a ela.
+
+Com a Fenwick tree, cada bônus e cada pergunta custam $O(\log n)$.
+
+<EulerViz client:visible />
+
+## Três cuidados, cada um com seu contraexemplo
+
+**Usar o número do funcionário no lugar da posição.** A equipe é contínua nas **posições**, não nos números. Somando o bônus do 2 nos números de 2 a $2 + 3 - 1 = 4$ (o tamanho da equipe é 3), quem ganha são os funcionários 2, **3** e 4. O 3 nem é da equipe, e o 5 fica sem o bônus.
+
+**Esquecer o $-x$ no fim da equipe.** Sem a segunda atualização, o bônus "vaza" para todo mundo depois da equipe na fila. O `B 2 2` sozinho daria o bônus a 2, 4, 5, 3, 6, 7 e 8: todos os que têm posição 2 ou mais, em vez de só 2, 4 e 5.
+
+**Pôr o $-x$ em `sai[v]` em vez de `sai[v] + 1`.** Aí o último da equipe fica de fora. O `B 3 5` daria o bônus a 3, 6 e 7, e o 8, que está na última posição da equipe, não receberia nada.
+
+<Callout type="tente">
+Ao fim dos eventos do exemplo, qual é o salário do funcionário 4? E o do 3?
+
+<details>
+<summary>Ver resposta</summary>
+
+O 4 está na posição 3: a soma das diferenças de 1 a 3 é $1 + 2 + 0 = 3$, salário $5 + 3 = 8$ (bônus do 2 e do diretor). O 3 está na posição 5: soma $1 + 2 + 0 + 0 + 3 = 6$, salário $8 + 6 = 14$ (bônus do próprio 3 e do diretor; o $+2$ do bônus do 2 é cancelado pelo $-2$ na posição 5).
+
+</details>
+</Callout>
+
+## O mesmo achatamento para outras perguntas
+
+A numeração não depende do problema: depois dela, cada pergunta sobre a árvore vira uma pergunta sobre trechos ou prefixos, e a estrutura certa é escolhida como nas aulas de Fenwick tree e segment tree.
+
+| Mudança | Pergunta | No vetor achatado |
+|---|---|---|
+| somar $x$ à equipe de $v$ | valor de um funcionário | diferenças: $+x$ em `ent[v]`, $-x$ em `sai[v] + 1`; prefixo até `ent` (esta aula) |
+| mudar o valor de um funcionário | soma da equipe de $v$ | valor na posição `ent`; soma do trecho `ent[v]` a `sai[v]` |
+| mudar o valor de um funcionário | maior valor da equipe de $v$ | segment tree de máximo no trecho `ent[v]` a `sai[v]` |
+
+## Código: o problema dos bônus completo
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int n;
+vector<vector<int>> filhos;
+vector<int> ent, sai;                          // ent[v], sai[v]: a equipe de v ocupa as posições ent[v]..sai[v]
+int relogio = 0;
+vector<long long> bit;                         // Fenwick tree sobre as posições 1..n
+
+void dfs(int v) {
+    ent[v] = ++relogio;                        // v ganha a próxima posição
+    for (int u : filhos[v]) dfs(u);
+    sai[v] = relogio;                          // a última posição usada dentro da equipe de v
+}
+
+void atualiza(int k, long long x) {
+    for (int i = k; i <= n; i += i & -i) bit[i] += x;
+}
+
+long long soma(int k) {
+    long long s = 0;
+    for (int i = k; i > 0; i -= i & -i) s += bit[i];
+    return s;
+}
+
+int main() {
+    int q;
+    cin >> n >> q;
+    vector<long long> salario(n + 1);
+    for (int v = 1; v <= n; v++) cin >> salario[v];
+    filhos.resize(n + 1);
+    for (int v = 2; v <= n; v++) {
+        int chefe;
+        cin >> chefe;
+        filhos[chefe].push_back(v);
+    }
+    ent.assign(n + 1, 0);
+    sai.assign(n + 1, 0);
+    dfs(1);                                    // o funcionário 1 é o diretor
+    bit.assign(n + 1, 0);
+
+    while (q--) {
+        char tipo;
+        int v;
+        cin >> tipo >> v;
+        if (tipo == 'B') {                     // B v x: todos da equipe de v ganham x
+            long long x;
+            cin >> x;
+            atualiza(ent[v], x);               // a partir da posição de v, todos ganham x...
+            atualiza(sai[v] + 1, -x);          // ...e a partir do fim da equipe, deixam de ganhar
+        } else {                               // Q v: o salário atual de v
+            cout << salario[v] + soma(ent[v]) << "\n";
+        }
+    }
+}
+```
+
+Quando `sai[v] + 1` passa de $n$, o laço de `atualiza` não roda nenhuma vez: o $-x$ de quem termina na última posição simplesmente não é guardado, e nenhuma pergunta precisaria dele.
+
+**Entrada** (salários, depois o chefe de cada funcionário de 2 a 8, depois os eventos):
+
+```
+8 8
+10 7 8 5 4 6 3 2
+1 1 2 2 3 6 6
+Q 7
+B 3 5
+Q 7
+B 2 2
+B 1 1
+Q 5
+Q 6
+Q 1
+```
+
+**Saída:**
+
+```
+3
+8
+7
+12
+11
+```
+
+São as cinco perguntas da tabela da motivação. O 5, por exemplo, ganhou o bônus do chefe 2 e o do diretor: $4 + 2 + 1 = 7$.
+
+- **Tempo:** $O(n + q \log n)$: uma DFS e uma Fenwick tree.
+- **Memória:** $O(n)$.
+
+### O mesmo código no formato de contest
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+typedef long long ll;
+typedef vector<int> vi;
+#define rep(i,a,b) for(int i=(a);i<(b);i++)
+void fastio(){ ios::sync_with_stdio(false); cin.tie(nullptr); }
+
+int main(){
+    fastio();
+    int n, q; cin >> n >> q;
+    vector<ll> sal(n + 1);
+    rep(v,1,n+1) cin >> sal[v];
+    vector<vi> ch(n + 1);
+    rep(v,2,n+1) { int p; cin >> p; ch[p].push_back(v); }
+    vi in(n + 1), out(n + 1); int t = 0;
+    auto dfs = [&](auto& self, int v) -> void { in[v] = ++t; for (int u : ch[v]) self(self, u); out[v] = t; };
+    dfs(dfs, 1);
+    vector<ll> f(n + 2, 0);
+    auto add = [&](int k, ll x) { for (; k <= n; k += k & -k) f[k] += x; };
+    auto sum = [&](int k) { ll s = 0; for (; k > 0; k -= k & -k) s += f[k]; return s; };
+    while (q--) {
+        char c; int v; cin >> c >> v;
+        if (c == 'B') { ll x; cin >> x; add(in[v], x); add(out[v] + 1, -x); }
+        else cout << sal[v] + sum(in[v]) << "\n";
+    }
+}
+```
+
+A DFS virou lambda recursiva (o truque `self(self, ...)` da aula de DFS), e a Fenwick tree, duas lambdas que usam o vetor `f` de fora. Os nomes `in` e `out` são os mais comuns em código de competição para `ent` e `sai`.
+
+## Armadilhas comuns
+
+- **Usar o número do vértice no lugar da posição.** A subárvore só é contínua nas posições `ent`.
+- **Esquecer a segunda atualização** ($-x$ em `sai[v] + 1`): o bônus vaza para quem vem depois na fila.
+- **Errar a ponta do trecho.** A equipe vai de `ent[v]` a `sai[v]`, com as duas pontas incluídas; o $-x$ vai em `sai[v] + 1`.
+- **Anotar `sai[v]` antes de visitar os filhos.** `sai` é a última posição dada dentro da equipe: só se sabe depois que a DFS terminou todos os filhos.
+- **Começar o relógio em 0 com Fenwick tree.** A Fenwick tree não aceita a posição 0: use `++relogio`, que começa em 1.
+- **`int` nos salários.** Muitos bônus somados passam de `int`.
+- **Recursão funda.** Uma hierarquia em fila de $2 \cdot 10^5$ funcionários empilha $2 \cdot 10^5$ chamadas. No CSES passa; se não passar, faça a DFS com uma pilha explícita.
+
+<details class="para-depois">
+<summary>Para depois: caminhos, LCA e o passeio completo</summary>
+
+**Caminhos até a raiz.** Somar $x$ na posição `ent[v]` e $-x$ em `sai[v] + 1` também serve para outra pergunta: a soma de prefixo até `ent[u]` passa a contar o $x$ de **todos os ancestrais** $v$ de $u$ (e do próprio $u$). Então "mudar o valor de um vértice" com essas duas atualizações e "soma dos valores no caminho de $u$ até a raiz" com um prefixo funcionam juntos. Com o LCA, isso dá a soma no caminho entre dois vértices quaisquer.
+
+**O passeio completo.** Em vez de anotar cada vértice uma vez, anote-o toda vez que a DFS passa por ele (na entrada e na volta de cada filho). O vetor fica com $2n - 1$ posições, e o LCA de dois vértices é o de menor profundidade no trecho entre as primeiras aparições deles. Com uma sparse table, cada LCA custa $O(1)$.
+
+**Mudar o valor de um trecho e perguntar sobre trechos.** Com a numeração pronta, "somar $x$ à equipe de $v$ e perguntar a soma da equipe de $u$" é soma em trecho com consulta em trecho: a lazy propagation da aula de segment tree resolve.
+
+**Árvores que mudam.** Se funcionários trocam de chefe, a numeração muda, e o Euler tour simples não basta. Existem estruturas para isso (*link-cut trees*, *Euler tour trees*), bem além do que aparece no CSES.
+
+</details>
+
+## Referências
+
+- **CPH, capítulo 18 — Tree queries, seção 18.2 *Subtrees and paths*:** a numeração pela DFS, as subárvores como trechos e as somas no caminho até a raiz.
+- [USACO Guide — Euler Tour Technique](https://usaco.guide/gold/tree-euler), com subárvores, caminhos e o LCA pelo passeio completo.
+
+## Mini-quiz
+
+<Quiz
+  client:visible
+  questions={[
+    {
+      q: 'Na DFS do exemplo, quanto valem `ent[6]` e `sai[6]`?',
+      code: 'void dfs(int v) {\n    ent[v] = ++relogio;\n    for (int u : filhos[v]) dfs(u);\n    sai[v] = relogio;\n}',
+      options: ['6 e 6', '6 e 8', '4 e 6', '6 e 9'],
+      answer: 1,
+      why: 'A DFS entra no 6 com o relógio indo para 6, visita o 7 (posição 7) e o 8 (posição 8) e sai. sai[6] é a última posição dada dentro da equipe: 8.',
+    },
+    {
+      q: 'Que funcionário ocupa a posição 3 da fila?',
+      options: ['O 3', 'O 4', 'O 2', 'O 5'],
+      answer: 1,
+      why: 'A ordem de entrada é 1, 2, 4, 5, 3, 6, 7, 8: a posição 3 é do 4. A DFS desce pelo 2 até as folhas dele antes de passar para o 3.',
+    },
+    {
+      q: 'O evento `B 2 2` mexe em quais posições do vetor de diferenças?',
+      code: 'atualiza(ent[v], x);\natualiza(sai[v] + 1, -x);',
+      options: ['+2 na 2 e −2 na 4', '+2 na 2 e −2 na 5', '+2 na 2, na 3 e na 4', '+2 na 2 e −2 na 3'],
+      answer: 1,
+      why: 'ent[2] = 2 e sai[2] = 4: +2 na posição 2 e −2 na posição 5. Com −2 na 4, o funcionário 5 (posição 4) ficaria sem o bônus.',
+    },
+    {
+      q: 'Depois de todos os eventos do exemplo, qual é o salário do funcionário 3?',
+      code: 'cout << salario[v] + soma(ent[v]) << "\\n";',
+      options: ['8', '13', '14', '16'],
+      answer: 2,
+      why: 'A posição do 3 é a 5. Diferenças de 1 a 5: 1 + 2 + 0 + 0 + 3 = 6. Salário 8 + 6 = 14: bônus de 5 (o próprio 3) e de 1 (o diretor). O 16 somaria também o bônus do 2, que não é chefe do 3.',
+    },
+    {
+      q: 'Uma versão dá o bônus nos **números** de v até v + tamanho − 1. Quem recebe o `B 2 2`?',
+      options: ['2, 4 e 5', '2, 3 e 4', 'Só o 2', '2, 3, 4 e 5'],
+      answer: 1,
+      why: 'A equipe do 2 tem 3 funcionários: os números 2, 3 e 4. O 3 não é da equipe e o 5 fica de fora. Só as posições da DFS deixam a equipe contínua.',
+    },
+    {
+      q: 'Por que a equipe de um funcionário sempre ocupa posições seguidas?',
+      options: [
+        'Porque os funcionários são numerados em ordem',
+        'Porque a DFS, depois de entrar em v, só sai dele quando terminou toda a equipe dele, sem visitar mais ninguém no meio',
+        'Porque a árvore é binária',
+        'Nem sempre: depende da ordem dos filhos',
+      ],
+      answer: 1,
+      why: 'Tudo o que a DFS visita entre entrar em v e sair dele está abaixo de v, e tudo o que está abaixo de v é visitado nesse intervalo. A ordem dos filhos muda as posições, mas não a continuidade.',
+    },
+  ]}
+/>
