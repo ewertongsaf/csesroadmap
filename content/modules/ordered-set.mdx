@@ -1,0 +1,469 @@
+---
+title: ordered_set e k-ésimo elemento
+description: Um set que também responde "qual é o k-ésimo menor?" e "quantos são menores que x?". Primeiro com a estrutura pronta do GCC, depois construindo a mesma coisa à mão com uma árvore de contagens.
+---
+import Callout from '../../src/components/mdx/Callout.astro';
+import Quiz from '../../src/components/mdx/Quiz.tsx';
+import KthViz from '../../src/components/mdx/viz/KthViz.tsx';
+
+## Motivação: o placar que muda o tempo todo
+
+O problema desta aula, do começo ao fim:
+
+> Um placar guarda pontuações, todas diferentes. Chegam $q$ eventos, um de cada vez. `I x`: **entra** a pontuação $x$. `R x`: a pontuação $x$ **sai**. `K k`: qual é a **$k$-ésima menor** pontuação do placar agora? `C x`: **quantas** pontuações do placar são menores que $x$?
+
+Um exemplo:
+
+| Evento | Placar depois (em ordem) | Resposta |
+|---|---|---|
+| `I 50` | 50 | |
+| `I 20` | 20, 50 | |
+| `I 80` | 20, 50, 80 | |
+| `I 30` | 20, 30, 50, 80 | |
+| `K 2` | | **30** (a 2ª menor) |
+| `C 60` | | **3** (20, 30 e 50) |
+| `R 30` | 20, 50, 80 | |
+| `K 2` | | **50** |
+| `I 10` | 10, 20, 50, 80 | |
+| `C 30` | | **2** (10 e 20) |
+| `K 4` | | **80** |
+
+Entrar e sair são o trabalho de um `set`, que você já conhece. As duas perguntas é que são o problema:
+
+| | Entrar / sair | $k$-ésimo menor | Quantos menores que $x$ |
+|---|---|---|---|
+| Vetor ordenado | até $n$ passos (empurrar todo mundo) | 1 passo | $\log n$ (busca binária) |
+| `set` | $\log n$ | até $n$ passos (andar com o iterador) | até $n$ passos |
+
+O `set` guarda os elementos em ordem, mas não sabe **em que posição** cada um está. Para chegar ao $k$-ésimo, só resta partir do começo e avançar $k$ vezes. Com $2 \cdot 10^5$ eventos, isso chega a $4 \cdot 10^{10}$ passos.
+
+Falta uma estrutura que faça as quatro coisas em $O(\log n)$. Há duas saídas: uma estrutura pronta, e uma feita à mão com o que você aprendeu nas duas últimas aulas.
+
+## A estrutura pronta: `ordered_set`
+
+O compilador GCC (o do CSES, da OBI e de quase todo juiz) traz, fora da biblioteca padrão, uma árvore que faz tudo o que o `set` faz e mais duas operações:
+
+- **`find_by_order(i)`**: devolve um iterador para o elemento que ocupa a posição $i$ na ordem, **contando a partir de 0**.
+- **`order_of_key(x)`**: devolve quantos elementos são **estritamente menores** que $x$. O $x$ nem precisa estar no conjunto.
+
+Com o placar 20, 30, 50, 80:
+
+| Chamada | Resultado | Por quê |
+|---|---|---|
+| `*s.find_by_order(0)` | 20 | posição 0 = o menor |
+| `*s.find_by_order(1)` | 30 | posição 1 = o 2º menor |
+| `*s.find_by_order(3)` | 80 | posição 3 = o 4º menor |
+| `s.find_by_order(4)` | `s.end()` | não existe 5º elemento |
+| `s.order_of_key(50)` | 2 | 20 e 30 são menores |
+| `s.order_of_key(60)` | 3 | 20, 30 e 50 |
+| `s.order_of_key(20)` | 0 | ninguém é menor |
+
+As duas operações são inversas uma da outra: `order_of_key` leva de um valor à sua posição, e `find_by_order` leva de uma posição ao valor.
+
+Para usar, são necessárias três linhas que ninguém decora na primeira vez:
+
+```cpp
+#include <ext/pb_ds/assoc_container.hpp>
+using namespace __gnu_pbds;
+
+template <class T>
+using ordered_set = tree<T, null_type, less<T>, rb_tree_tag, tree_order_statistics_node_update>;
+```
+
+O que cada pedaço diz:
+
+- `#include <ext/pb_ds/...>` e `__gnu_pbds`: as estruturas extras do GCC moram nesse arquivo e nesse `namespace`.
+- `template <class T> using ordered_set = ...`: cria um **apelido**. Daqui em diante, `ordered_set<int>` significa aquele tipo comprido com `T` trocado por `int`.
+- `tree<...>`: uma árvore balanceada, a mesma ideia por trás do `set`. Os parâmetros são: o tipo guardado (`T`); `null_type`, que diz "não há valor associado" (é conjunto, não mapa); `less<T>`, ordem crescente; `rb_tree_tag`, o tipo de árvore; e por último a peça que importa, `tree_order_statistics_node_update`, que faz cada nó guardar o **tamanho da sua subárvore**. É isso que permite achar posições sem andar elemento por elemento.
+
+O resto é igual ao `set`: `insert`, `erase`, `find`, `lower_bound`, `size`, percorrer com `for`.
+
+O problema do placar inteiro vira quatro linhas:
+
+```cpp
+if (tipo == 'I') s.insert(x);
+else if (tipo == 'R') s.erase(x);
+else if (tipo == 'K') cout << *s.find_by_order(x - 1) << "\n";   // k-ésimo: posição k - 1
+else cout << s.order_of_key(x) << "\n";
+```
+
+### O cuidado do "menos 1"
+
+`find_by_order` conta a partir de 0, e o enunciado quase sempre conta a partir de 1. O $k$-ésimo menor é `find_by_order(k - 1)`.
+
+Esquecer o $-1$ dá respostas erradas que parecem razoáveis. No exemplo, o primeiro `K 2` responderia 50 em vez de 30, e o segundo, 80 em vez de 50. No último evento, `K 4` chamaria `find_by_order(4)` num placar de 4 elementos: o resultado é `s.end()`, e ler `*s.end()` é comportamento indefinido (lixo ou travamento).
+
+<Callout type="tente">
+O conjunto guarda 7, 3, 9, 1. Quanto valem `*s.find_by_order(2)`, `s.order_of_key(7)` e `s.order_of_key(4)`?
+
+<details>
+<summary>Ver resposta</summary>
+
+Em ordem: 1, 3, 7, 9. `*s.find_by_order(2)` é o da posição 2 contando do 0: **7**. `s.order_of_key(7)` conta os menores que 7 (1 e 3): **2**. As duas respostas combinam: o 7 está na posição 2 porque há 2 elementos antes dele. `s.order_of_key(4)` também dá **2** (1 e 3), mesmo sem o 4 estar no conjunto.
+
+</details>
+</Callout>
+
+### Valores repetidos
+
+Como o `set`, o `ordered_set` ignora a segunda inserção de um valor que já está lá. Inserindo 20, 20 e 50 num `ordered_set<int>`, o tamanho fica **2**, e pedir o 3º menor devolve `end()`.
+
+Quando o problema tem repetidos, guarde **pares** (valor, identificador), com um identificador diferente para cada inserção. Os pares são todos distintos, e a ordem continua sendo pelo valor:
+
+```cpp
+ordered_set<pair<int,int>> s;
+int id = 0;
+
+s.insert({x, id++});                           // entra um x (cada um com seu identificador)
+
+s.order_of_key({x, 0});                        // quantos são menores que x
+
+s.find_by_order(k - 1)->first;                 // o k-ésimo menor valor
+
+auto it = s.lower_bound({x, 0});               // o primeiro par com valor >= x
+if (it != s.end() && it->first == x) s.erase(it);   // sai UM x, se houver
+```
+
+Com 20, 20 e 50 inseridos assim, o tamanho é 3, o 3º menor é 50 e há 2 menores que 50. O par `{x, 0}` vem antes de todos os pares de valor $x$ (os identificadores começam em 0), então `order_of_key({x, 0})` conta só os de valor estritamente menor. A seta em `->first` pega o primeiro campo do par para o qual o iterador aponta.
+
+## A mesma coisa, feita à mão
+
+Vale saber construir isso sem a estrutura pronta, por três motivos: nem todo juiz usa GCC; a versão à mão é mais rápida; e a ideia reaparece em problemas em que o `ordered_set` não encaixa.
+
+O ponto de partida é o truque de **contar** da aula de Fenwick tree: use o valor como posição. Guarde, para cada valor possível, quantas vezes ele está no conjunto. Um exemplo com notas de 1 a 8, em que entraram as notas 1, 2, 5, 5 e 8:
+
+| Valor | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+|---|---|---|---|---|---|---|---|---|
+| Quantidade | 1 | 1 | 0 | 0 | 2 | 0 | 0 | 1 |
+
+Repetidos não são problema: a quantidade do 5 simplesmente é 2.
+
+- **Entrar ou sair** uma nota é somar ou tirar 1 de uma posição.
+- **Quantas são menores que $x$** é a soma das quantidades de 1 a $x - 1$: uma consulta de trecho.
+- **A $k$-ésima menor** é a novidade: é a primeira posição em que a soma acumulada chega a $k$.
+
+Acompanhe a soma acumulada para achar a 4ª menor nota: valor 1 (acumulado 1), valor 2 (acumulado 2), valores 3 e 4 (continua 2), valor 5 (acumulado 4). Chegou a 4: a resposta é **5**. E de fato as notas em ordem são 1, 2, 5, 5, 8.
+
+Andar valor por valor é lento. Uma **segment tree de soma** sobre essa tabela faz o mesmo salto de uma vez, descendo da raiz, como na "primeira posição que serve" da aula passada:
+
+> No nó atual, procurando o $k$-ésimo: se o filho da esquerda tem **pelo menos $k$** elementos, o $k$-ésimo está lá. Senão, pule todos os da esquerda e procure, na direita, o de número $k$ menos a quantidade da esquerda.
+
+A busca pela 4ª menor nota:
+
+| Nó (valores) | Procurando | Quantidade na esquerda | Decisão |
+|---|---|---|---|
+| 1 a 8 | a 4ª | 2 (valores 1 a 4) | não basta: direita, agora procurando a 2ª |
+| 5 a 8 | a 2ª | 2 (valores 5 a 6) | basta: esquerda |
+| 5 a 6 | a 2ª | 2 (valor 5) | basta: esquerda |
+| valor 5 | | | chegou: **5** |
+
+```cpp
+// O k-ésimo menor valor guardado (1 <= k <= total).
+int kesimo(int no, int l, int r, int k) {
+    if (l == r) return l;                      // folha: é este valor
+    int mid = (l + r) / 2;
+    if (arv[2 * no] >= k) return kesimo(2 * no, l, mid, k);          // os k menores cabem na esquerda
+    return kesimo(2 * no + 1, mid + 1, r, k - arv[2 * no]);          // pula todos os da esquerda
+}
+```
+
+Um nó por andar: $O(\log m)$, em que $m$ é a quantidade de valores possíveis.
+
+Na visualização, os eventos são entradas e saídas de notas de 1 a 8, com as duas perguntas no meio:
+
+<KthViz client:visible />
+
+<Callout type="tente">
+Com as notas 1, 2, 5, 5 e 8 guardadas, siga a descida para a **5ª** menor. Por quais nós ela passa, e que número ela procura em cada um?
+
+<details>
+<summary>Ver resposta</summary>
+
+Na raiz (1 a 8), procura a 5ª: a esquerda tem 2, não basta. Vai para a direita procurando a $5 - 2 = 3$ª. No nó 5 a 8: a esquerda (5 a 6) tem 2, não basta. Vai para a direita procurando a $3 - 2 = 1$ª. No nó 7 a 8: a esquerda (valor 7) tem 0, não basta. Vai para a direita, ainda procurando a 1ª. Chegou à folha do valor 8: a 5ª menor é **8**.
+
+</details>
+</Callout>
+
+### Quando os valores são grandes
+
+A tabela tem uma casa por valor possível. Com pontuações até $10^9$, isso não cabe. O remédio é o mesmo da aula de Fenwick tree, a **compressão de coordenadas**: leia **todos** os eventos antes de responder, junte os valores que aparecem, ordene-os e use a posição de cada um nessa ordem. No exemplo do placar aparecem 10, 20, 30, 50 e 80, que viram 1, 2, 3, 4 e 5; ao imprimir a resposta de um `K`, converta a posição de volta para o valor.
+
+Isso exige conhecer os eventos de antemão. Quando não dá (num problema interativo, por exemplo), o `ordered_set` continua funcionando.
+
+### A mesma árvore em listas
+
+A tabela não precisa ser de valores. Ponha **1 em cada posição ocupada** de uma lista e 0 nas posições vazias: a descida acha o $k$-ésimo elemento **que ainda está na lista**, e remover alguém é trocar seu 1 por 0. É assim que se resolvem os problemas do tipo "remova o $k$-ésimo da lista, várias vezes", sem nunca deslocar ninguém.
+
+| | `ordered_set` | Árvore de contagens |
+|---|---|---|
+| Código | 3 linhas de preparo | uma segment tree (ou Fenwick) |
+| Valores grandes | funciona direto | precisa comprimir (ler tudo antes) |
+| Repetidos | precisa de pares | funciona direto |
+| Velocidade | mais lento (constante alta) | rápido |
+| Onde funciona | só no GCC | em qualquer compilador |
+
+## Código: o problema do placar completo
+
+```cpp
+#include <bits/stdc++.h>
+#include <ext/pb_ds/assoc_container.hpp>       // as estruturas extras do GCC
+using namespace std;
+using namespace __gnu_pbds;
+
+// Um set que também sabe a posição de cada elemento na ordem.
+template <class T>
+using ordered_set = tree<T, null_type, less<T>, rb_tree_tag, tree_order_statistics_node_update>;
+
+int main() {
+    int q;
+    cin >> q;
+    ordered_set<int> s;
+
+    while (q--) {
+        char tipo;
+        int x;
+        cin >> tipo >> x;
+        if (tipo == 'I') s.insert(x);                            // I x: entra a pontuação x
+        else if (tipo == 'R') s.erase(x);                        // R x: sai a pontuação x
+        else if (tipo == 'K') cout << *s.find_by_order(x - 1) << "\n";   // K k: a k-ésima menor (a contagem interna começa em 0)
+        else cout << s.order_of_key(x) << "\n";                  // C x: quantas são menores que x
+    }
+}
+```
+
+**Entrada:**
+
+```
+11
+I 50
+I 20
+I 80
+I 30
+K 2
+C 60
+R 30
+K 2
+I 10
+C 30
+K 4
+```
+
+**Saída:**
+
+```
+30
+3
+50
+2
+80
+```
+
+São as cinco perguntas da tabela da motivação, na ordem.
+
+- **Tempo:** $O(q \log q)$: cada uma das quatro operações custa $O(\log n)$, com $n$ sendo o tamanho do placar.
+- **Memória:** $O(q)$.
+
+### A versão à mão, com notas de 1 a $m$
+
+O mesmo tipo de problema quando os valores são pequenos (ou já foram comprimidos) e **podem repetir**. A entrada começa com $m$ e $q$.
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int m;                                         // os valores vão de 1 a m
+vector<int> arv;                               // arv[no] = quantos valores guardados caem no trecho do nó
+
+// Soma d (+1 ou -1) à quantidade do valor v.
+void muda(int no, int l, int r, int v, int d) {
+    if (l == r) {
+        arv[no] += d;
+        return;
+    }
+    int mid = (l + r) / 2;
+    if (v <= mid) muda(2 * no, l, mid, v, d);
+    else muda(2 * no + 1, mid + 1, r, v, d);
+    arv[no] = arv[2 * no] + arv[2 * no + 1];
+}
+
+// Quantos valores guardados estão entre a e b.
+int conta(int no, int l, int r, int a, int b) {
+    if (b < l || r < a) return 0;
+    if (a <= l && r <= b) return arv[no];
+    int mid = (l + r) / 2;
+    return conta(2 * no, l, mid, a, b) + conta(2 * no + 1, mid + 1, r, a, b);
+}
+
+// O k-ésimo menor valor guardado (1 <= k <= total).
+int kesimo(int no, int l, int r, int k) {
+    if (l == r) return l;                      // folha: é este valor
+    int mid = (l + r) / 2;
+    if (arv[2 * no] >= k) return kesimo(2 * no, l, mid, k);          // os k menores cabem na esquerda
+    return kesimo(2 * no + 1, mid + 1, r, k - arv[2 * no]);          // pula todos os da esquerda
+}
+
+int main() {
+    int q;
+    cin >> m >> q;
+    arv.assign(4 * m, 0);
+
+    while (q--) {
+        char tipo;
+        int x;
+        cin >> tipo >> x;
+        if (tipo == 'I') muda(1, 1, m, x, +1);                       // I x: entra uma nota x (pode repetir)
+        else if (tipo == 'R') {                                      // R x: sai uma nota x, se houver
+            if (conta(1, 1, m, x, x) > 0) muda(1, 1, m, x, -1);
+        }
+        else if (tipo == 'K') cout << kesimo(1, 1, m, x) << "\n";    // K k: a k-ésima menor nota
+        else cout << conta(1, 1, m, 1, x - 1) << "\n";               // C x: quantas notas são menores que x
+    }
+}
+```
+
+**Entrada** (os eventos da visualização):
+
+```
+8 12
+I 5
+I 2
+I 8
+I 3
+K 2
+C 6
+R 3
+K 2
+I 1
+I 5
+K 4
+C 5
+```
+
+**Saída:**
+
+```
+3
+3
+5
+5
+2
+```
+
+O primeiro `K 2` vê as notas 2, 3, 5, 8 e responde 3; `C 6` conta 2, 3 e 5. Depois que o 3 sai, `K 2` responde 5. No fim as notas são 1, 2, 5, 5, 8: a 4ª menor é 5, e as menores que 5 são duas.
+
+- **Tempo:** $O(q \log m)$. **Memória:** $O(m)$.
+
+### O mesmo código no formato de contest
+
+```cpp
+#include <bits/stdc++.h>
+#include <ext/pb_ds/assoc_container.hpp>
+using namespace std;
+using namespace __gnu_pbds;
+template <class T> using oset = tree<T, null_type, less<T>, rb_tree_tag, tree_order_statistics_node_update>;
+void fastio(){ ios::sync_with_stdio(false); cin.tie(nullptr); }
+
+int main(){
+    fastio();
+    int q; cin >> q;
+    oset<int> s;
+    while (q--) {
+        char t; int x; cin >> t >> x;
+        if (t == 'I') s.insert(x);
+        else if (t == 'R') s.erase(x);
+        else if (t == 'K') cout << *s.find_by_order(x - 1) << "\n";
+        else cout << s.order_of_key(x) << "\n";
+    }
+}
+```
+
+A linha do `template` é a que vale deixar pronta no seu arquivo de template.
+
+## Armadilhas comuns
+
+- **Esquecer o $-1$.** `find_by_order` conta do 0. O $k$-ésimo é `find_by_order(k - 1)`.
+- **Ler `*s.find_by_order(i)` com $i$ fora do tamanho.** O resultado é `end()`. Confira $i < $ `s.size()` quando o enunciado não garantir.
+- **Repetidos num `ordered_set<int>`.** O segundo valor igual some. Use pares (valor, identificador).
+- **`s.erase({x, 0})` com pares.** Só apaga se existir exatamente esse par. Para tirar um $x$ qualquer, ache-o com `lower_bound({x, 0})` e confira o valor.
+- **Confundir "menores" com "menores ou iguais".** `order_of_key(x)` é estrito. Para contar os menores ou iguais com inteiros, use `order_of_key(x + 1)`.
+- **Na árvore de contagens, chamar `kesimo` com $k$ maior que o total.** A descida não confere nada: vai parar na última folha e devolve um valor que não é resposta. Compare $k$ com `arv[1]` antes.
+- **Comprimir só parte dos valores.** A compressão precisa conhecer todos os valores que vão aparecer, inclusive os das perguntas.
+
+<details class="para-depois">
+<summary>Para depois: variações e atalhos</summary>
+
+**Fenwick tree no lugar da segment tree.** A tabela de contagens também pode morar numa Fenwick tree. `conta` é a soma de prefixo de sempre. Para o $k$-ésimo, a descida anda pelos blocos de tamanho decrescente (a maior potência de 2 que cabe, depois a metade, e assim por diante): se o bloco seguinte inteiro tem menos de $k$ elementos, entra nele e desconta. Fica mais curto e mais rápido que a segment tree.
+
+**Busca binária na resposta.** Sem descer na árvore, dá para achar o $k$-ésimo com uma busca binária sobre o valor $v$, perguntando "quantos são menores ou iguais a $v$?". Funciona, com um $\log$ a mais: $O(\log^2 m)$ por pergunta.
+
+**`less_equal` para aceitar repetidos.** Trocar `less<T>` por `less_equal<T>` na definição faz o `ordered_set` guardar repetidos. É um atalho popular, mas quebra regras que a árvore supõe: `erase(x)` e `find(x)` deixam de funcionar, e `lower_bound` e `upper_bound` trocam de papel. Os pares são mais seguros.
+
+**Ordem decrescente.** Com `greater<T>` no lugar de `less<T>`, `find_by_order(0)` é o maior e `order_of_key(x)` conta os maiores que $x$.
+
+**Quando o `set` comum basta.** Se as perguntas forem só "o menor", "o maior" ou "o vizinho de $x$", o `set` resolve. O `ordered_set` só é necessário quando a pergunta envolve uma **posição** na ordem.
+
+</details>
+
+## Referências
+
+- **CPH, capítulo 4 — Data structures, seção 4.5 *Other structures*:** a parte *Policy-based data structures* apresenta o mesmo `indexed_set`, com `find_by_order` e `order_of_key`.
+- **CPH, capítulo 9 — Range queries, seção 9.4 *Additional techniques*:** compressão de índices, usada na versão à mão.
+- [USACO Guide — Point Update Range Sum](https://usaco.guide/gold/PURS), com a seção sobre o conjunto indexado (*order statistic tree*) e exemplos de uso.
+- [cp-algorithms — Segment Tree](https://cp-algorithms.com/data_structures/segment_tree.html), com a descida para achar o $k$-ésimo elemento numa árvore de contagens.
+
+## Mini-quiz
+
+<Quiz
+  client:visible
+  questions={[
+    {
+      q: 'O conjunto guarda 20, 30, 50, 80. O que este trecho imprime?',
+      code: 'cout << *s.find_by_order(1) << " " << s.order_of_key(50) << "\\n";',
+      options: ['20 2', '30 2', '30 3', '50 3'],
+      answer: 1,
+      why: 'A posição 1, contando do 0, é o 30. Menores que 50 são 20 e 30: 2. O próprio 50 não entra na conta.',
+    },
+    {
+      q: 'Um `ordered_set<int>` vazio recebe as inserções 7, 3, 9, 1, 3. Qual é o tamanho final e o que `*s.find_by_order(3)` devolve?',
+      code: 'for (int x : {7, 3, 9, 1, 3}) s.insert(x);\ncout << s.size() << " " << *s.find_by_order(3) << "\\n";',
+      options: ['5 e 7', '4 e 9', '4 e 7', '5 e 9'],
+      answer: 1,
+      why: 'O segundo 3 é ignorado: ficam 1, 3, 7, 9 (tamanho 4). A posição 3, contando do 0, é o 9.',
+    },
+    {
+      q: 'Na árvore de contagens com as notas 1, 2, 5, 5, 8 (valores de 1 a 8), a busca pela **3ª** menor chega ao nó dos valores 5 a 8 procurando qual número?',
+      code: 'int kesimo(int no, int l, int r, int k) {\n    if (l == r) return l;\n    int mid = (l + r) / 2;\n    if (arv[2 * no] >= k) return kesimo(2 * no, l, mid, k);\n    return kesimo(2 * no + 1, mid + 1, r, k - arv[2 * no]);\n}',
+      options: ['a 3ª', 'a 2ª', 'a 1ª', 'não chega lá: fica na esquerda'],
+      answer: 2,
+      why: 'Na raiz, a esquerda (valores 1 a 4) tem 2 notas, menos que 3. A busca pula essas 2 e procura a 3 − 2 = 1ª na direita. De lá desce até a folha do valor 5.',
+    },
+    {
+      q: 'Com pares (valor, identificador) e identificadores a partir de 0, foram inseridos 20, 20 e 50. Quanto vale `s.order_of_key({20, 0})`?',
+      options: ['0', '1', '2', '3'],
+      answer: 0,
+      why: 'O par {20, 0} não é maior que nenhum par guardado: é igual ao primeiro 20 e menor que os outros. A conta dá os elementos de valor estritamente menor que 20, que não existem.',
+    },
+    {
+      q: 'Por que um `set` comum não responde "qual é o k-ésimo menor?" em O(log n)?',
+      options: [
+        'Porque ele não guarda os elementos em ordem',
+        'Porque seus nós não guardam o tamanho das subárvores: só resta avançar o iterador k vezes',
+        'Porque ele não aceita repetidos',
+        'Responde, com s[k]',
+      ],
+      answer: 1,
+      why: 'O set está em ordem, mas não sabe quantos elementos há em cada lado de um nó. A peça tree_order_statistics_node_update acrescenta exatamente essa informação.',
+    },
+    {
+      q: 'Quando a árvore de contagens à mão NÃO pode substituir o `ordered_set`?',
+      options: [
+        'Quando há valores repetidos',
+        'Quando os valores são grandes e não é possível ler todos os eventos antes de responder',
+        'Quando há mais de 1000 eventos',
+        'Quando a pergunta é pelo menor elemento',
+      ],
+      answer: 1,
+      why: 'Valores grandes exigem compressão, e a compressão exige conhecer todos os valores de antemão. Repetidos, pelo contrário, são o ponto forte da árvore de contagens.',
+    },
+  ]}
+/>
