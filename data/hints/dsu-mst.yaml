@@ -1,0 +1,85 @@
+# Dicas do milestone 12 — DSU e árvore geradora mínima.
+problems:
+  1676: # Road Construction
+    hints:
+      - >-
+        As estradas só são construídas, nunca destruídas: os grupos de cidades só se juntam. Qual estrutura mantém grupos que só se unem?
+      - >-
+        DSU com o tamanho de cada grupo guardado na raiz. Quantos grupos existem muda de que jeito quando uma união acontece de verdade? E quando a estrada liga duas cidades que já estavam juntas?
+      - >-
+        Mantenha duas variáveis: o número de componentes (cai 1 a cada união de verdade) e o maior tamanho já visto. Um grupo nunca encolhe, então o maior só pode ser o que acabou de ser formado ou o recorde anterior.
+    pitfalls:
+      - >-
+        Uma estrada entre cidades do mesmo grupo não muda nada, mas ainda exige a linha de saída. São até $2 \cdot 10^5$ linhas: use `'\n'`, não `endl`.
+
+  1675: # Road Reparation
+    hints:
+      - >-
+        Você escolhe quais estradas consertar para que todas as cidades fiquem ligadas, pagando o mínimo. Que nome tem o conjunto de arestas mais barato que liga tudo?
+      - >-
+        Árvore geradora mínima: Kruskal. E como o algoritmo percebe que é impossível ligar todas as cidades?
+      - >-
+        Conte as arestas aceitas. Uma árvore geradora de $n$ cidades tem exatamente $n - 1$; se o Kruskal terminar com menos, o grafo não era conexo.
+    pitfalls:
+      - >-
+        A soma dos custos chega a $10^{14}$: `long long`. Decida o "impossível" pela contagem de arestas, não pelo valor da soma.
+
+  3111: # Transfer Speeds Sum
+    hints:
+      - >-
+        Somar par a par é $O(n^2)$ pares. Vire a pergunta: em vez de "qual é a velocidade deste par?", pergunte "para quantos pares **esta conexão** é a mais lenta do caminho?".
+      - >-
+        Imagine a rede vazia e vá acrescentando as conexões da mais rápida para a mais lenta. No instante em que uma conexão entra e junta dois grupos, o que ela é para todo par com um computador de cada lado?
+      - >-
+        Ela é a mais lenta do caminho desses pares (tudo o que já estava lá é pelo menos tão rápido). São `tamanho(A) × tamanho(B)` pares, cada um contribuindo com a velocidade dela. Um DSU com tamanhos dá os dois números.
+    pitfalls:
+      - >-
+        O produto dos tamanhos chega a $10^{10}$ e a resposta passa de $10^{16}$: faça a conta inteira em `long long`, convertendo antes de multiplicar. Pegue os tamanhos **antes** de unir.
+
+  3407: # MST Edge Check
+    hints:
+      - >-
+        No Kruskal, uma aresta é recusada quando os extremos já estão ligados por arestas anteriores. Se todos os pesos fossem diferentes, a resposta seria só "aceita ou recusada". O que complica é o empate: a ordem entre arestas de mesmo peso é arbitrária.
+      - >-
+        Uma aresta de peso $w$ cabe em alguma MST exatamente quando seus extremos **não** estão ligados usando só arestas de peso **menor** que $w$. As de mesmo peso não a impedem: bastaria colocá-la primeiro na ordenação.
+      - >-
+        Processe as arestas ordenadas, um bloco de mesmo peso por vez. Primeiro responda todas as do bloco (extremos em componentes diferentes?), sem unir nada. Só depois una todas as do bloco.
+    pitfalls:
+      - >-
+        Unir enquanto responde, dentro do mesmo bloco, faz uma aresta derrubar a outra de mesmo peso e imprime NO onde é YES. A saída é na ordem da entrada: guarde o índice original de cada aresta antes de ordenar.
+
+  2101: # New Roads Queries
+    hints:
+      - >-
+        Com uma consulta só, bastaria um DSU: una as estradas dia a dia e pare quando as duas cidades caírem no mesmo grupo. Com $2 \cdot 10^5$ consultas, refazer isso para cada uma é demais. Dá para guardar **dentro** do DSU o dia em que cada ligação foi feita?
+      - >-
+        Use união por tamanho e **não** use compressão de caminho. Assim cada vértice ganha um pai uma única vez e nunca mais muda: anote no vértice o dia em que isso aconteceu. A árvore do DSU fica com altura no máximo $\log_2 n$.
+      - >-
+        Duas cidades do mesmo grupo se encontram subindo pelos pais. A resposta é o maior dia anotado nos elos percorridos até o ponto de encontro. Para parar no ponto certo, suba sempre a cidade cujo elo para o pai é o mais antigo; a raiz, que não tem elo, conta como dia infinito.
+    pitfalls:
+      - >-
+        Com compressão de caminho os elos mudam e os dias anotados perdem o sentido. Se as raízes forem diferentes a resposta é $-1$; se as duas cidades forem a mesma, é 0. Estradas que ligam cidades já conectadas não criam elo, mas o dia conta mesmo assim.
+
+  1677: # Network Breakdown
+    hints:
+      - >-
+        O DSU sabe juntar, mas não sabe separar. Só que aqui você conhece todas as quebras de antemão. O que acontece se você assistir ao filme de trás para a frente?
+      - >-
+        De trás para a frente, cada quebra vira uma **construção**. Comece pela rede final (só as conexões que nunca quebram), conte os componentes e vá devolvendo as conexões quebradas, da última para a primeira.
+      - >-
+        A resposta depois da quebra $i$ é o número de componentes **antes** de devolver a conexão $i$ no filme invertido. Guarde as respostas num vetor e imprima na ordem original.
+    pitfalls:
+      - >-
+        Para saber quais conexões nunca quebram, é preciso reconhecer cada quebra na lista de conexões; o par pode vir como $(a, b)$ ou $(b, a)$, então normalize (menor primeiro) e use um `set` ou ordene. Cuidado com o deslocamento de 1: anote o número de componentes antes de unir, não depois.
+
+  3294: # Subarray Sum Constraints
+    hints:
+      - >-
+        A soma de um trecho é uma diferença de duas somas de prefixo. Reescreva cada restrição em termos de $P_0, P_1, \dots, P_n$, com $P_0 = 0$: o que a restrição $(l, r, s)$ diz sobre $P_r$ e $P_{l-1}$?
+      - >-
+        Diz que $P_r - P_{l-1} = s$. Cada restrição liga duas posições e fixa a diferença entre elas. Dentro de um grupo de posições ligadas, escolhido o valor de uma, todas as outras estão determinadas. Quando aparece uma contradição?
+      - >-
+        Use um DSU em que cada vértice guarda sua diferença em relação ao pai (e, com a compressão, em relação à raiz). Se os dois extremos de uma restrição já estão no mesmo grupo, confira se a diferença calculada bate com $s$; se não bate, a resposta é NO. No fim, dê valor 0 à raiz de cada grupo, calcule todos os $P_i$ e imprima $x_i = P_i - P_{i-1}$.
+    pitfalls:
+      - >-
+        O DSU tem $n + 1$ vértices, de 0 a $n$. Ao comprimir o caminho, some as diferenças na ordem certa (primeiro resolva o pai, depois acumule). As diferenças chegam a $5 \cdot 10^{12}$: `long long`, e isso ainda cabe no limite de $10^{15}$ do enunciado. Com $m = 0$, qualquer vetor serve.

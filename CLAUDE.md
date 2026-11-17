@@ -42,7 +42,7 @@ Cuidado com MDX: `{` e `<` em texto corrido são interpretados como JSX. Use `$\
 
 Os 15 módulos dos milestones 1–7, os 4 dos milestones 8–9 (DP), os 2 do milestone 10 (grafos: DFS e BFS) os 3 do milestone 11 (Dijkstra, Bellman-Ford/Floyd-Warshall, ordenação topológica) e os 2 do milestone 12 (DSU, MST) seguem esses princípios, o que fecha as fases 1 e 2; `busca-completa` e `busca-binaria` são as referências de estilo mais completas. Os programas e os números das tabelas das aulas a partir do milestone 8 ficam em `drafts/tests/<slug>/` (`stress.sh` roda tudo). Ao escrever um módulo, mude `status` para `'written'` em `data/modules.ts`.
 
-Os milestones 1–11 têm dicas em `data/hints/` (o 12 tem aulas mas ainda não tem dicas); as ideias das dicas dos milestones 8–11 foram conferidas contra os exemplos dos enunciados (e, nas menos óbvias, contra força bruta).
+Os milestones 1–12 têm dicas em `data/hints/`; as ideias das dicas dos milestones 8–12 foram conferidas contra os exemplos dos enunciados (e, nas menos óbvias, contra força bruta).
 
 **Módulos só com referências.** Por decisão do usuário (créditos limitados), os módulos ainda `'planned'` (milestones 13–33, fases 3 a 5) têm página em `/modulos/<slug>` só com o capítulo do CPH e links verificados de `data/module-refs.ts`. O validador exige referências para todo módulo planejado e `check-links` verifica esse arquivo. Quando uma aula for escrita, o MDX passa a ser renderizado no lugar; a entrada em `module-refs.ts` pode ficar ou sair.
 
