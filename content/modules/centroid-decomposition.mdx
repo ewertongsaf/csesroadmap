@@ -1,0 +1,407 @@
+---
+title: Centroid decomposition
+description: Cortando a árvore no centroide e repetindo em cada pedaço, cada vértice fica com no máximo log n "ancestrais de corte", e todo caminho passa por um deles. Perguntas sobre distâncias viram poucas consultas a esses ancestrais.
+---
+import Callout from '../../src/components/mdx/Callout.astro';
+import Quiz from '../../src/components/mdx/Quiz.tsx';
+import CentroidViz from '../../src/components/mdx/viz/CentroidViz.tsx';
+
+## Motivação: o posto mais próximo
+
+O problema desta aula, do começo ao fim:
+
+> Um parque tem $n$ clareiras e $n - 1$ trilhas, formando uma árvore; todas as trilhas têm comprimento 1. No começo, só a clareira 1 tem um posto de primeiros socorros. Chegam $q$ eventos. `A v`: abre um posto na clareira $v$. `Q v`: qual é a distância da clareira $v$ até o posto aberto mais próximo?
+
+O exemplo usa o parque de 12 clareiras das aulas de LCA e HLD (as trilhas 1–2, 2–3, 3–4, 4–5, 5–6, 6–7, 3–8, 8–9, 5–10, 10–11 e 1–12), agora sem comprimentos:
+
+| Evento | `Q 9` | `A 7` | `Q 9` | `Q 11` | `A 9` | `Q 8` | `Q 12` |
+|---|---|---|---|---|---|---|---|
+| Resposta | **4** | | **4** | **4** | | **1** | **1** |
+
+Da 9 até o único posto (na 1) são 4 trilhas: 9 – 8 – 3 – 2 – 1. Abrir o posto da 7 não ajuda a 9 (a 7 também fica a 4), mas depois que a própria 9 ganha um posto, a 8 passa a estar a 1.
+
+Uma busca em largura por pergunta custa $O(n)$: com $2 \cdot 10^5$ perguntas, $4 \cdot 10^{10}$ passos. Nenhuma das ferramentas anteriores ajuda: os postos mudam, e "o mais próximo" depende de caminhos em todas as direções, não só subindo para a raiz.
+
+## A ideia: cortar no centroide
+
+A aula de árvores mencionou o **centroide**: o vértice que, removido, deixa pedaços de no máximo metade dos vértices. Toda árvore tem um. No parque do exemplo, o centroide é a clareira **3**. Tirando-a, sobram três pedaços:
+
+- 1, 2 e 12 (3 clareiras);
+- 4, 5, 6, 7, 10 e 11 (6 clareiras);
+- 8 e 9 (2 clareiras).
+
+Nenhum passa de $12 / 2 = 6$.
+
+Para achar o centroide de um pedaço, calcule os tamanhos das subárvores a partir de qualquer vértice dele e desça sempre para o filho com mais da metade do pedaço, enquanto houver um. Onde parar, nenhum filho tem mais da metade, e a parte "de cima" também não (se tivesse, você não teria descido até ali).
+
+Agora a técnica: **corte o centroide e repita em cada pedaço que sobrou**. Cada pedaço tem seu centroide, que é cortado, e assim por diante, até os pedaços terem um vértice só. Cada vértice vira centroide exatamente uma vez, em algum **nível**:
+
+| Nível | Centroides (e os pedaços de onde saíram) |
+|---|---|
+| 0 | 3 (a árvore inteira) |
+| 1 | 1 (pedaço 1, 2, 12); 5 (pedaço 4, 5, 6, 7, 10, 11); 8 (pedaço 8, 9) |
+| 2 | 2; 12; 4; 6 (pedaço 6, 7); 10 (pedaço 10, 11); 9 |
+| 3 | 7; 11 |
+
+Como cada nível pelo menos divide o tamanho dos pedaços por 2, existem no máximo $\log_2 n + 1$ níveis. Os centroides de níveis acima de $v$ cujos pedaços continham $v$ são os **centroides ancestrais** de $v$: no máximo um por nível, então no máximo $\log_2 n + 1$.
+
+<Callout type="tente">
+Quais são os centroides ancestrais da clareira 11, e a que distância ela está de cada um?
+
+<details>
+<summary>Ver resposta</summary>
+
+O pedaço da 11 foi cortado em 3 (nível 0), depois em 5 (nível 1), depois em 10 (nível 2), e por fim a 11 é o próprio centroide (nível 3). As distâncias são 4 (11 – 10 – 5 – 4 – 3), 2 (11 – 10 – 5), 1 e 0. Repare que os ancestrais de corte não têm nada a ver com os ancestrais na árvore enraizada: a 3 nem é ancestral da 11 se a raiz for a 1.
+
+</details>
+</Callout>
+
+## O fato que faz tudo funcionar
+
+Pegue duas clareiras quaisquer $u$ e $v$. Olhe o primeiro centroide (o de menor nível) que separou as duas, ou que era uma delas: ele estava no pedaço que continha as duas, e o caminho entre elas, que fica inteiro dentro desse pedaço, **passa por ele**. Esse centroide é ancestral de corte de $u$ e de $v$.
+
+Então a distância de $v$ até o posto mais próximo é o menor valor de
+
+$$
+\text{dist}(v, c) + \text{dist}(c, p)
+$$
+
+$c$ percorre os centroides ancestrais de $v$, e $p$ percorre os postos abertos no pedaço de $c$.
+
+Para cada centroide $c$, basta guardar o menor $\text{dist}(c, p)$ entre os postos abertos do pedaço dele: `melhor[c]`. Algumas combinações $(c, p)$ podem dar um passeio que não é o caminho mais curto (ida e volta por $c$), mas nunca um valor **menor** que a distância verdadeira, então o mínimo continua certo.
+
+- **Abrir um posto em $v$:** para cada centroide ancestral $c$ de $v$, `melhor[c] = min(melhor[c], dist(v, c))`.
+- **Perguntar por $v$:** o menor `dist(v, c) + melhor[c]` entre os centroides ancestrais.
+
+As duas operações olham no máximo $\log_2 n + 1$ centroides. Para não calcular distâncias na hora, durante a decomposição cada vértice anota a distância até cada centroide ancestral (uma busca dentro de cada pedaço).
+
+| Clareira | Lista "acima" (centroide, distância) |
+|---|---|
+| 1 | (3, 2), (1, 0) |
+| 7 | (3, 4), (5, 2), (6, 1), (7, 0) |
+| 8 | (3, 1), (8, 0) |
+| 9 | (3, 2), (8, 1), (9, 0) |
+| 12 | (3, 3), (1, 1), (12, 0) |
+
+O posto inicial na 1 deixa `melhor[3] = 2` e `melhor[1] = 0`; todos os outros, infinito.
+
+```cpp
+int calculaTam(int v, int p) {                 // tamanho das subárvores dentro do pedaço atual
+    tam[v] = 1;
+    for (int u : adj[v])
+        if (u != p && !removido[u]) tam[v] += calculaTam(u, v);
+    return tam[v];
+}
+
+int achaCentroide(int v, int p, int total) {   // desce enquanto algum filho tiver mais da metade do pedaço
+    for (int u : adj[v])
+        if (u != p && !removido[u] && tam[u] > total / 2) return achaCentroide(u, v, total);
+    return v;
+}
+
+void anotaDistancias(int v, int p, int c, int d) {   // todos do pedaço guardam a distância até o centroide c
+    acima[v].push_back({c, d});
+    for (int u : adj[v])
+        if (u != p && !removido[u]) anotaDistancias(u, v, c, d + 1);
+}
+
+void decompoe(int v) {
+    int total = calculaTam(v, 0);
+    int c = achaCentroide(v, 0, total);
+    anotaDistancias(c, 0, c, 0);
+    removido[c] = true;                        // corta o pedaço no centroide
+    for (int u : adj[c])
+        if (!removido[u]) decompoe(u);         // cada pedaço que sobrou é decomposto do mesmo jeito
+}
+```
+
+O vetor `removido` é o que separa os pedaços: todas as buscas param nos vértices já cortados. Cada nível visita cada vértice uma vez, então a decomposição custa $O(n \log n)$.
+
+## O exemplo, evento por evento
+
+| Evento | Centroides consultados (distância + melhor) | Resposta |
+|---|---|---|
+| `Q 9` | 3: $2 + 2$; 8: $1 + \infty$; 9: $0 + \infty$ | 4 |
+| `A 7` | atualiza `melhor` de 3 (fica 2), 5 (2), 6 (1), 7 (0) | |
+| `Q 9` | 3: $2 + 2$; 8: $1 + \infty$; 9: $0 + \infty$ | 4 |
+| `Q 11` | 3: $4 + 2$; 5: $2 + 2$; 10: $1 + \infty$; 11: $0 + \infty$ | 4 |
+| `A 9` | atualiza `melhor` de 3 (fica 2), 8 (1), 9 (0) | |
+| `Q 8` | 3: $1 + 2$; 8: $0 + 1$ | 1 |
+| `Q 12` | 3: $3 + 2$; 1: $1 + 0$; 12: $0 + \infty$ | 1 |
+
+Na `Q 11`, o posto mais próximo é o da 7, e quem o encontra é o centroide 5: a 11 está a 2 dele, e ele está a 2 da 7. O caminho 11 – 10 – 5 – 6 – 7 passa mesmo pelo 5.
+
+<CentroidViz client:visible />
+
+<Callout type="tente">
+Se o próximo evento fosse `Q 6`, quais centroides seriam consultados, e qual seria a resposta?
+
+<details>
+<summary>Ver resposta</summary>
+
+A lista da 6 é (3, 3), (5, 1), (6, 0). Depois dos dois postos novos, `melhor[3] = 2`, `melhor[5] = 2` (o posto da 7) e `melhor[6] = 1` (também o da 7). As somas são $3 + 2 = 5$, $1 + 2 = 3$ e $0 + 1 = 1$. Resposta: **1**, o posto da 7, vizinho da 6. A soma pelo 5 (3) é um passeio 6 – 5 – 6 – 7, mais longo que o caminho de verdade, mas o mínimo não se engana.
+
+</details>
+</Callout>
+
+## Dois cuidados, cada um com seu contraexemplo
+
+**Cortar no centroide, não num vértice qualquer.** O limite de $\log_2 n + 1$ níveis vem de cada pedaço ter no máximo metade do anterior. Cortando sempre no primeiro vértice do pedaço, numa árvore em forma de caminho o corte tira um vértice de cada vez:
+
+| Árvore | Cortando no primeiro vértice | Cortando no centroide |
+|---|---|---|
+| caminho de 3000 clareiras | 3000 níveis | 12 níveis |
+| caminho de $2 \cdot 10^5$ clareiras | $2 \cdot 10^5$ níveis | 18 níveis |
+| aleatórias de $2 \cdot 10^4$ clareiras | | no máximo 13 níveis |
+
+Com 3000 níveis, cada vértice teria até 3000 centroides ancestrais, e cada evento olharia todos: a solução volta a ser quadrática, na memória e no tempo.
+
+**Olhar todos os centroides ancestrais, não só o de cima.** Usando só o centroide de nível 0 (o 3), cada pergunta vira "distância até o 3 mais o melhor do 3". Depois dos dois postos novos, `Q 8` responderia $1 + 2 = 3$ em vez de 1, e `Q 12` responderia $3 + 2 = 5$ em vez de 1. O posto mais próximo da 8 (o da 9) é encontrado pelo centroide 8, de nível 1.
+
+## O mesmo molde em outros problemas
+
+O fato central (todo caminho passa por um centroide ancestral comum, e cada vértice tem $O(\log n)$ deles) serve para outras perguntas sobre caminhos:
+
+- **Contar caminhos com uma propriedade** (por exemplo, de comprimento fixo): conte, para cada centroide, os caminhos que passam por ele. Eles juntam um pedaço que desce por um ramo com outro que desce por um ramo **diferente**. Uma contagem das distâncias até o centroide, ramo por ramo, faz a junção. Cada vértice participa de $O(\log n)$ níveis.
+- **Perguntas "o mais próximo com tal característica"**, como a desta aula, com qualquer coisa que se combine por mínimo.
+
+O cuidado novo em contagens é não juntar dois pedaços do **mesmo** ramo: esse par não passa pelo centroide, e será contado num nível abaixo.
+
+## Código: o problema dos postos completo
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+const int INF = 1e9;
+int n;
+vector<vector<int>> adj;
+vector<bool> removido;                         // vértices que já foram centroides (cortam a árvore)
+vector<int> tam;
+vector<vector<pair<int, int>>> acima;          // acima[v] = lista de (centroide ancestral c, distância de v até c)
+vector<int> melhor;                            // melhor[c] = menor distância de c até um posto aberto do pedaço de c
+
+int calculaTam(int v, int p) {                 // tamanho das subárvores dentro do pedaço atual
+    tam[v] = 1;
+    for (int u : adj[v])
+        if (u != p && !removido[u]) tam[v] += calculaTam(u, v);
+    return tam[v];
+}
+
+int achaCentroide(int v, int p, int total) {   // desce enquanto algum filho tiver mais da metade do pedaço
+    for (int u : adj[v])
+        if (u != p && !removido[u] && tam[u] > total / 2) return achaCentroide(u, v, total);
+    return v;
+}
+
+void anotaDistancias(int v, int p, int c, int d) {   // todos do pedaço guardam a distância até o centroide c
+    acima[v].push_back({c, d});
+    for (int u : adj[v])
+        if (u != p && !removido[u]) anotaDistancias(u, v, c, d + 1);
+}
+
+void decompoe(int v) {
+    int total = calculaTam(v, 0);
+    int c = achaCentroide(v, 0, total);
+    anotaDistancias(c, 0, c, 0);
+    removido[c] = true;                        // corta o pedaço no centroide
+    for (int u : adj[c])
+        if (!removido[u]) decompoe(u);         // cada pedaço que sobrou é decomposto do mesmo jeito
+}
+
+void abre(int v) {                             // abre um posto em v
+    for (auto [c, d] : acima[v]) melhor[c] = min(melhor[c], d);
+}
+
+int maisProximo(int v) {                       // distância de v até o posto aberto mais próximo
+    int res = INF;
+    for (auto [c, d] : acima[v]) res = min(res, d + melhor[c]);
+    return res;
+}
+
+int main() {
+    int q;
+    cin >> n >> q;
+    adj.resize(n + 1);
+    for (int i = 0; i < n - 1; i++) {
+        int a, b;
+        cin >> a >> b;
+        adj[a].push_back(b);
+        adj[b].push_back(a);
+    }
+    removido.assign(n + 1, false);
+    tam.assign(n + 1, 0);
+    acima.resize(n + 1);
+    melhor.assign(n + 1, INF);
+    decompoe(1);
+    abre(1);                                   // no começo, só a clareira 1 tem posto
+
+    while (q--) {
+        char tipo;
+        int v;
+        cin >> tipo >> v;
+        if (tipo == 'A') abre(v);              // A v: abre um posto em v
+        else cout << maisProximo(v) << "\n";   // Q v: distância até o posto mais próximo
+    }
+}
+```
+
+`INF` é $10^9$, grande o bastante para nunca ser uma distância de verdade e pequeno o bastante para que `d + melhor[c]` não estoure um `int`.
+
+**Entrada:**
+
+```
+12 7
+1 2
+2 3
+3 4
+4 5
+5 6
+6 7
+3 8
+8 9
+5 10
+10 11
+1 12
+Q 9
+A 7
+Q 9
+Q 11
+A 9
+Q 8
+Q 12
+```
+
+**Saída:**
+
+```
+4
+4
+4
+1
+1
+```
+
+São as cinco perguntas da tabela da motivação, na ordem.
+
+- **Tempo:** $O(n \log n)$ para a decomposição e $O(\log n)$ por evento.
+- **Memória:** $O(n \log n)$: cada vértice guarda até $\log_2 n + 1$ pares.
+
+### O mesmo código no formato de contest
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+typedef vector<int> vi;
+#define rep(i,a,b) for(int i=(a);i<(b);i++)
+void fastio(){ ios::sync_with_stdio(false); cin.tie(nullptr); }
+const int INF = 1e9;
+
+int main(){
+    fastio();
+    int n, q; cin >> n >> q;
+    vector<vi> adj(n + 1);
+    rep(i,0,n-1) { int a, b; cin >> a >> b; adj[a].push_back(b); adj[b].push_back(a); }
+    vector<char> rem(n + 1, 0); vi sz(n + 1), best(n + 1, INF);
+    vector<vector<pair<int,int>>> up(n + 1);
+    auto calc = [&](auto& self, int v, int p) -> int { sz[v] = 1; for (int u : adj[v]) if (u != p && !rem[u]) sz[v] += self(self, u, v); return sz[v]; };
+    auto cen = [&](auto& self, int v, int p, int tot) -> int { for (int u : adj[v]) if (u != p && !rem[u] && sz[u] > tot / 2) return self(self, u, v, tot); return v; };
+    auto mark = [&](auto& self, int v, int p, int c, int d) -> void { up[v].push_back({c, d}); for (int u : adj[v]) if (u != p && !rem[u]) self(self, u, v, c, d + 1); };
+    auto dec = [&](auto& self, int v) -> void {
+        int c = cen(cen, v, 0, calc(calc, v, 0));
+        mark(mark, c, 0, c, 0); rem[c] = 1;
+        for (int u : adj[c]) if (!rem[u]) self(self, u);
+    };
+    dec(dec, 1);
+    auto open = [&](int v) { for (auto [c, d] : up[v]) best[c] = min(best[c], d); };
+    open(1);
+    while (q--) {
+        char t; int v; cin >> t >> v;
+        if (t == 'A') open(v);
+        else { int r = INF; for (auto [c, d] : up[v]) r = min(r, d + best[c]); cout << r << "\n"; }
+    }
+}
+```
+
+`vector<char>` no lugar de `vector<bool>` é um costume de competição: `vector<bool>` guarda um bit por posição e é um pouco mais lento de acessar. As quatro funções recursivas viraram lambdas com o truque `self(self, ...)`.
+
+## Armadilhas comuns
+
+- **Cortar num vértice qualquer.** Só o centroide garante $O(\log n)$ níveis.
+- **Esquecer o `removido`** em alguma busca: ela atravessa vértices já cortados e passa para outros pedaços, com tamanhos e distâncias erradas.
+- **Calcular o tamanho uma vez só.** Os tamanhos mudam a cada corte: `calculaTam` roda de novo em cada pedaço, antes de procurar o centroide dele.
+- **Olhar só um centroide ancestral.** A resposta é o mínimo sobre **todos** eles.
+- **Infinito que estoura.** `d + melhor[c]` com `melhor[c] = INT_MAX` estoura o `int`. Use um infinito com folga, como $10^9$.
+- **Memória.** A lista `acima` tem $O(n \log n)$ pares: cerca de $3{,}6 \cdot 10^6$ para $2 \cdot 10^5$ vértices. Cabe, mas não guarde estruturas grandes por par.
+- **Recursão funda.** A busca dentro de um pedaço grande em forma de caminho empilha muitas chamadas; no CSES passa.
+
+<details class="para-depois">
+<summary>Para depois: pesos, contagens e a árvore de centroides</summary>
+
+**Trilhas com comprimento.** Nada muda além de somar o comprimento em `anotaDistancias` (e usar `long long`). A ideia do mínimo pelos centroides ancestrais continua valendo.
+
+**Fechar postos.** Com remoções, `melhor[c]` precisa lembrar todas as distâncias, não só a menor: um `multiset` por centroide, de onde se tira a distância do posto fechado. Cada evento custa $O(\log^2 n)$.
+
+**A árvore de centroides.** Ligando cada centroide ao centroide do nível de cima de onde ele saiu, forma-se uma nova árvore, de altura $O(\log n)$. A lista `acima` de cada vértice é o caminho dele até a raiz nessa árvore. Muitos problemas ficam mais fáceis de pensar nela.
+
+**Contagem com Fenwick tree.** Em contagens de caminhos com comprimento num intervalo, a contagem de distâncias de cada centroide pode morar numa Fenwick tree, para somar um intervalo de comprimentos de uma vez.
+
+</details>
+
+## Referências
+
+- O CPH não trata da centroid decomposition; a aula se baseia nas duas referências abaixo.
+- [USACO Guide — Centroid Decomposition](https://usaco.guide/plat/centroid), com a construção, a prova dos níveis e problemas de distância e contagem.
+- [cp-algorithms — Centroid decomposition](https://cp-algorithms.com/graph/centroid_decomposition.html), com a definição do centroide, a árvore de centroides e aplicações.
+
+## Mini-quiz
+
+<Quiz
+  client:visible
+  questions={[
+    {
+      q: 'No parque do exemplo, o que `achaCentroide` devolve começando na clareira 1 (com a árvore inteira, total 12)?',
+      code: 'int achaCentroide(int v, int p, int total) {\n    for (int u : adj[v])\n        if (u != p && !removido[u] && tam[u] > total / 2)\n            return achaCentroide(u, v, total);\n    return v;\n}',
+      options: ['1', '2', '3', '5'],
+      answer: 2,
+      why: 'Do 1, o filho 2 tem subárvore 10 > 6: desce. Do 2, o 3 tem 9 > 6: desce. No 3, os filhos têm 6 (o 4) e 2 (o 8), nenhum passa de 6: para no 3.',
+    },
+    {
+      q: 'Quantos níveis tem, no máximo, a decomposição de uma árvore de 2·10⁵ vértices?',
+      options: ['Cerca de 18', 'Cerca de 450', '2·10⁵', 'Depende da altura da árvore'],
+      answer: 0,
+      why: 'Cada nível pelo menos divide o tamanho dos pedaços por 2: log₂(2·10⁵) + 1 ≈ 18. A altura da árvore não importa; numa árvore em forma de caminho, também são 18.',
+    },
+    {
+      q: 'Com os postos da 1, da 7 e da 9 abertos, o que `maisProximo(12)` devolve? A lista da 12 é (3, 3), (1, 1), (12, 0).',
+      code: 'int res = INF;\nfor (auto [c, d] : acima[v]) res = min(res, d + melhor[c]);\nreturn res;',
+      options: ['5', '3', '1', '0'],
+      answer: 2,
+      why: 'melhor[3] = 2, melhor[1] = 0, melhor[12] = ∞. As somas são 3 + 2 = 5, 1 + 0 = 1 e ∞. Resposta: 1, o posto da clareira 1, vizinha da 12.',
+    },
+    {
+      q: 'Uma versão consulta só o centroide de nível 0 (o 3). O que ela responde para `Q 8`, com os postos da 1, da 7 e da 9 abertos?',
+      code: 'auto [c, d] = acima[v].front();   // só o primeiro da lista\nreturn d + melhor[c];',
+      options: ['1', '2', '3', '4'],
+      answer: 2,
+      why: 'A 8 está a 1 do 3, e melhor[3] = 2: 1 + 2 = 3. O posto da 9, vizinho da 8, só aparece pelo centroide 8 (de nível 1), que essa versão não olha.',
+    },
+    {
+      q: 'Por que o caminho entre duas clareiras u e v sempre passa por um centroide ancestral das duas?',
+      options: [
+        'Porque o centroide fica no meio da árvore',
+        'Porque o primeiro centroide que separa u de v estava no pedaço que continha o caminho inteiro entre elas, e cortá-lo separou as duas',
+        'Porque toda clareira é ancestral de si mesma',
+        'Nem sempre: só se u e v estiverem no mesmo nível',
+      ],
+      answer: 1,
+      why: 'Enquanto u e v estão no mesmo pedaço, o caminho inteiro também está (o pedaço é conexo). O primeiro corte que as separa precisa estar nesse caminho, senão elas continuariam juntas.',
+    },
+    {
+      q: 'Quanto custa cada evento (abrir um posto ou perguntar)?',
+      options: ['O(1)', 'O(log n)', 'O(log² n)', 'O(n)'],
+      answer: 1,
+      why: 'Cada vértice tem no máximo log₂ n + 1 centroides ancestrais, e cada um é olhado em O(1), porque a distância já está anotada na lista.',
+    },
+  ]}
+/>

@@ -49,7 +49,7 @@ export const modules: ModuleRef[] = [
   { slug: 'euler-tour', title: 'Euler tour: subárvores e caminhos como intervalos', cph: ['18.2'], status: 'written' },
   { slug: 'small-to-large', title: 'Small-to-large', cph: ['18.4'], status: 'written' },
   { slug: 'hld', title: 'Heavy-light decomposition', cph: [], basedOn: CPA, status: 'written' },
-  { slug: 'centroid-decomposition', title: 'Centroid decomposition', cph: [], basedOn: CPA, status: 'planned' },
+  { slug: 'centroid-decomposition', title: 'Centroid decomposition', cph: [], basedOn: CPA, status: 'written' },
 
   // Fase 4 — DP II e matemática
   { slug: 'dp-intervalo', title: 'DP em intervalo', cph: [], basedOn: 'USACO Guide (o CPH só toca o tema de passagem)', status: 'planned' },
