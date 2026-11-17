@@ -1,0 +1,403 @@
+---
+title: Queries offline (ordenar queries e eventos)
+description: Quando todas as perguntas são conhecidas antes de responder, dá para respondê-las na ordem mais conveniente - e não na ordem em que chegaram. Ordenando perguntas e eventos juntos, uma estrutura simples resolve o que, na ordem original, exigiria uma bem mais complicada.
+---
+import Callout from '../../src/components/mdx/Callout.astro';
+import Quiz from '../../src/components/mdx/Quiz.tsx';
+import OfflineSweepViz from '../../src/components/mdx/viz/OfflineSweepViz.tsx';
+
+## Motivação: a compra com teto de preço
+
+O problema desta aula, do começo ao fim:
+
+> Uma loja tem $n$ produtos numa prateleira comprida, e o produto da posição $i$ custa $p_i$. Chegam $q$ perguntas `a b x`: se um cliente comprar **todos** os produtos das posições $a$ a $b$ que custam **no máximo** $x$, quanto ele gasta?
+
+Um exemplo com 8 produtos, que custam 4, 7, 2, 9, 5, 3, 8 e 6:
+
+| Pergunta | Trecho | Produtos do trecho | Os que custam até $x$ | Resposta |
+|---|---|---|---|---|
+| 1: `2 6 5` | 2 a 6 | 7, 2, 9, 5, 3 | 2, 5, 3 | **10** |
+| 2: `1 8 3` | 1 a 8 | todos | 2, 3 | **5** |
+| 3: `3 7 8` | 3 a 7 | 2, 9, 5, 3, 8 | 2, 5, 3, 8 | **18** |
+| 4: `1 4 6` | 1 a 4 | 4, 7, 2, 9 | 4, 2 | **6** |
+| 5: `5 8 5` | 5 a 8 | 5, 3, 8, 6 | 5, 3 | **8** |
+| 6: `4 4 8` | só a 4 | 9 | nenhum | **0** |
+
+A força bruta percorre o trecho de cada pergunta somando quem cabe no teto. Com $2 \cdot 10^5$ produtos e $2 \cdot 10^5$ perguntas, são até $4 \cdot 10^{10}$ passos. Não passa.
+
+Uma Fenwick tree soma trechos rápido, mas aqui o que entra na soma **muda de pergunta para pergunta**: o produto de preço 5 entra na pergunta 1 e fica de fora da pergunta 2. Nenhuma das estruturas das aulas anteriores responde "soma do trecho, só dos valores até $x$" com $x$ diferente a cada vez.
+
+Repare, porém, num detalhe do enunciado: as perguntas **não mudam a loja**. Todas podem ser lidas antes de responder qualquer uma. Isso abre uma porta.
+
+## A ideia: responder numa ordem melhor
+
+Pegue uma pergunta só, a 1 (teto 5). Para ela, os produtos se dividem em dois grupos: os que custam até 5 (contam) e os outros (não contam). Se os que contam estivessem **acesos** numa Fenwick tree, com seu preço na sua posição, e os outros valessem 0, a resposta seria uma soma de trecho comum:
+
+| Posição | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+|---|---|---|---|---|---|---|---|---|
+| Preço | 4 | 7 | 2 | 9 | 5 | 3 | 8 | 6 |
+| Aceso para teto 5 | 4 | | 2 | | 5 | 3 | | |
+
+A soma dos acesos de 2 a 6 é $2 + 5 + 3 = 10$.
+
+Agora olhe para a pergunta 3, com teto 8. Os acesos dela são os mesmos da pergunta 1 **mais** alguns (os de preço 6, 7 e 8). Ninguém precisa ser apagado. Então:
+
+- responda as perguntas da de **menor teto** para a de **maior teto**;
+- antes de cada uma, acenda os produtos que passaram a caber.
+
+Cada produto é aceso uma única vez, e nenhum é apagado. É uma **varredura**: um cursor anda pelos preços, do menor para o maior, e encontra pelo caminho dois tipos de **evento**: produtos (que acendem) e perguntas (que são respondidas).
+
+Isso só é possível porque as perguntas foram todas lidas antes. Responder cada pergunta assim que ela chega, na ordem da entrada, é responder **online**. Ler tudo e responder na ordem que for mais conveniente é responder **offline**.
+
+### A varredura do exemplo
+
+Os produtos em ordem de preço são as posições 3, 6, 1, 5, 8, 2, 7, 4 (preços 2 a 9). As perguntas em ordem de teto são 2, 1, 5, 4, 3, 6. Juntando os dois tipos de evento na mesma linha:
+
+| Cursor | Evento | Acesos (posições 1 a 8) | Resposta |
+|---|---|---|---|
+| 2 | acende a posição 3 | ·, ·, 2, ·, ·, ·, ·, · | |
+| 3 | acende a posição 6 | ·, ·, 2, ·, ·, 3, ·, · | |
+| 3 | pergunta 2 (1 a 8) | | $2 + 3 = 5$ |
+| 4 | acende a posição 1 | 4, ·, 2, ·, ·, 3, ·, · | |
+| 5 | acende a posição 5 | 4, ·, 2, ·, 5, 3, ·, · | |
+| 5 | pergunta 1 (2 a 6) | | $2 + 5 + 3 = 10$ |
+| 5 | pergunta 5 (5 a 8) | | $5 + 3 = 8$ |
+| 6 | acende a posição 8 | 4, ·, 2, ·, 5, 3, ·, 6 | |
+| 6 | pergunta 4 (1 a 4) | | $4 + 2 = 6$ |
+| 7 | acende a posição 2 | 4, 7, 2, ·, 5, 3, ·, 6 | |
+| 8 | acende a posição 7 | 4, 7, 2, ·, 5, 3, 8, 6 | |
+| 8 | pergunta 3 (3 a 7) | | $2 + 5 + 3 + 8 = 18$ |
+| 8 | pergunta 6 (4 a 4) | | 0 |
+
+O produto de preço 9 nunca chega a acender: nenhuma pergunta tem teto tão alto.
+
+Em código, a varredura é um `for` nas perguntas ordenadas com um `while` dentro, que acende os produtos que passaram a caber:
+
+```cpp
+int prox = 0;                                  // próximo produto ainda apagado
+for (const Pergunta& p : pergs) {              // perguntas já em ordem de teto
+    while (prox < n && itens[prox].first <= p.x) {         // itens: (preço, posição), em ordem de preço
+        atualiza(itens[prox].second, itens[prox].first);   // acende: soma o preço na posição
+        prox++;
+    }
+    resp[p.id] = soma(p.b) - soma(p.a - 1);
+}
+```
+
+O `prox` só anda para a frente. No total, o `while` roda $n$ vezes, somando todas as perguntas.
+
+<Callout type="tente">
+Quais produtos estão acesos no momento em que a pergunta 4 (posições 1 a 4, teto 6) é respondida? Por que o produto da posição 2, que está no trecho, não entra na conta?
+
+<details>
+<summary>Ver resposta</summary>
+
+Os de preço até 6: posições 3, 6, 1, 5 e 8 (preços 2, 3, 4, 5 e 6). Do trecho 1 a 4, só as posições 1 e 3 estão acesas: $4 + 2 = 6$. O produto da posição 2 custa 7 e só acende quando o cursor chega a 7, **depois** da pergunta 4. É isso que faz a soma do trecho levar o teto em conta sem que a Fenwick tree saiba nada sobre tetos.
+
+</details>
+</Callout>
+
+### Empates: o produto vem antes da pergunta
+
+No exemplo, as perguntas 1 e 5 têm teto 5, e o produto da posição 5 custa exatamente 5. Ele **cabe** no teto ("no máximo $x$"), então precisa estar aceso quando as duas perguntas forem respondidas. Por isso o `while` usa `<=`: no mesmo valor, os produtos acendem antes de a pergunta ser respondida.
+
+Com `<` no lugar de `<=`, cada pergunta é respondida antes de acenderem os produtos de preço igual ao seu teto:
+
+| Pergunta | Teto | Certo (`<=`) | Com `<` | Ficou de fora |
+|---|---|---|---|---|
+| 1 | 5 | 10 | 5 | o produto de preço 5 |
+| 2 | 3 | 5 | 2 | o de preço 3 |
+| 3 | 8 | 18 | 10 | o de preço 8 |
+| 4 | 6 | 6 | 6 | o de preço 6 está fora do trecho: nada muda |
+| 5 | 5 | 8 | 3 | o de preço 5 |
+| 6 | 8 | 0 | 0 | |
+
+Quatro respostas erradas, e duas certas por sorte: um teste só com o exemplo não pegaria o erro se ele tivesse só as perguntas 4 e 6.
+
+A regra geral: decida, para cada empate entre evento e pergunta, quem vem primeiro, olhando se o enunciado diz "no máximo" ou "menor que". Com "menor que", o `<` estaria certo.
+
+## Devolvendo as respostas na ordem certa
+
+A varredura responde as perguntas fora de ordem (2, 1, 5, 4, 3, 6), mas a saída precisa estar na ordem da entrada. A solução é guardar, em cada pergunta, a **posição dela na entrada**, e escrever cada resposta na casa certa de um vetor:
+
+```cpp
+struct Pergunta {
+    int a, b, x;                               // trecho a..b, preço máximo x
+    int id;                                    // posição da pergunta na entrada
+};
+
+sort(pergs.begin(), pergs.end(), [](const Pergunta& p, const Pergunta& r) {
+    return p.x < r.x;                          // perguntas do menor teto para o maior
+});
+```
+
+O terceiro argumento do `sort` é uma **lambda**: uma função escrita ali mesmo, sem nome, que recebe duas perguntas e diz se a primeira deve vir antes. O `[]` no começo marca o início da lambda; `const Pergunta&` recebe cada pergunta sem copiá-la.
+
+Esquecer o `id` e imprimir as respostas na ordem em que foram calculadas produz 5, 10, 8, 6, 18, 0: os números certos, nas linhas erradas. No exemplo, só a pergunta 4 e a 6 acertam, por coincidência da ordem.
+
+<OfflineSweepViz client:visible />
+
+<Callout type="tente">
+Uma sétima pergunta, `1 8 1` (o vetor todo, teto 1), em que ponto da varredura seria respondida? Qual a resposta?
+
+<details>
+<summary>Ver resposta</summary>
+
+Logo no começo, antes de qualquer produto acender: o mais barato custa 2, que passa do teto. A soma de 1 a 8 com tudo apagado é **0**. A varredura trata esse caso sem nenhum `if` especial: o `while` simplesmente não roda antes dessa pergunta.
+
+</details>
+</Callout>
+
+## Quando dá para responder offline
+
+A técnica tem duas exigências. Se uma delas falhar, ela não se aplica.
+
+1. **Todas as perguntas precisam estar disponíveis antes de responder.** Num problema interativo, em que a próxima pergunta só chega depois que você imprime a resposta da anterior, não há o que ordenar.
+2. **A resposta de uma pergunta não pode mudar as seguintes.** Alguns problemas são feitos para impedir o truque: a pergunta vem "codificada" e só pode ser lida somando a resposta anterior (por exemplo, o teto de verdade é o $x$ lido mais a última resposta). Esses problemas são chamados de **forçados online**. Em competição, quando aparece algo assim, é um aviso de que a solução esperada não é offline.
+
+Quando as duas valem, procure **qual quantidade, se crescesse aos poucos, tornaria o problema fácil**. Aqui foi o teto: com o teto fixo, a pergunta vira uma soma de trecho. Ordenar pelo teto faz ele crescer aos poucos.
+
+O custo extra é a ordenação: $O(n \log n + q \log q)$.
+
+## O mesmo truque em outro lugar: conectividade com limite
+
+A varredura não depende da Fenwick tree. Um exemplo com o DSU da fase 2:
+
+> Uma rede tem 5 computadores e 5 cabos, cada um com um custo de uso. Cada pergunta `a b x` quer saber: dá para ir de $a$ até $b$ usando **só** cabos de custo no máximo $x$?
+
+Os cabos são 1–2 (custo 4), 2–3 (7), 3–4 (2), 4–5 (6) e 1–5 (9). Para cada pergunta, sozinha, seria preciso uma busca no grafo só com os cabos baratos. Offline: ordene os cabos e as perguntas pelo custo, e **una** os cabos à medida que o cursor passa por eles. Nenhum cabo precisa ser removido, e o DSU só sabe unir, então encaixa perfeitamente.
+
+| Cursor | Evento | Grupos depois | Resposta |
+|---|---|---|---|
+| 2 | une 3–4 | \{3, 4\} | |
+| 3 | pergunta 4: 2 e 4, teto 3 | | não |
+| 4 | une 1–2 | \{1, 2\}, \{3, 4\} | |
+| 5 | pergunta 1: 1 e 3, teto 5 | | não |
+| 6 | une 4–5 | \{1, 2\}, \{3, 4, 5\} | |
+| 6 | pergunta 2: 3 e 5, teto 6 | | sim |
+| 7 | une 2–3 | \{1, 2, 3, 4, 5\} | |
+| 7 | pergunta 3: 1 e 3, teto 7 | | sim |
+
+Na ordem da entrada, as respostas são: não, sim, sim, não. É a mesma ideia da aula de Kruskal: processar os cabos do mais barato para o mais caro. A diferença é que as perguntas entram no meio da fila.
+
+<Callout type="tente">
+Na mesma rede, a pergunta `2 5 6` (2 e 5, teto 6) teria que resposta? Em que linha da tabela ela entraria?
+
+<details>
+<summary>Ver resposta</summary>
+
+Ela entraria junto com a pergunta 2, depois de unir 4–5 (custo 6, que cabe no teto). Nesse momento os grupos são \{1, 2\} e \{3, 4, 5\}: o 2 e o 5 estão em grupos diferentes, então **não**. O cabo 1–5 ligaria os dois, mas custa 9. O cabo 2–3 também, mas custa 7.
+
+</details>
+</Callout>
+
+## Código: o problema da loja completo
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int n;
+vector<long long> bit;                         // Fenwick tree: soma dos preços já "acesos" em cada posição
+
+void atualiza(int k, long long x) {
+    for (int i = k; i <= n; i += i & -i) bit[i] += x;
+}
+
+long long soma(int k) {
+    long long s = 0;
+    for (int i = k; i > 0; i -= i & -i) s += bit[i];
+    return s;
+}
+
+struct Pergunta {
+    int a, b, x;                               // trecho a..b, preço máximo x
+    int id;                                    // posição da pergunta na entrada
+};
+
+int main() {
+    int q;
+    cin >> n >> q;
+    vector<pair<int, int>> itens(n);           // (preço, posição) de cada produto
+    for (int i = 1; i <= n; i++) {
+        cin >> itens[i - 1].first;
+        itens[i - 1].second = i;
+    }
+    vector<Pergunta> pergs(q);
+    for (int j = 0; j < q; j++) {
+        cin >> pergs[j].a >> pergs[j].b >> pergs[j].x;
+        pergs[j].id = j;
+    }
+
+    sort(itens.begin(), itens.end());          // produtos do mais barato para o mais caro
+    sort(pergs.begin(), pergs.end(), [](const Pergunta& p, const Pergunta& r) {
+        return p.x < r.x;                      // perguntas do menor limite para o maior
+    });
+
+    bit.assign(n + 1, 0);
+    vector<long long> resp(q);
+    int prox = 0;                              // próximo produto ainda apagado
+    for (const Pergunta& p : pergs) {
+        while (prox < n && itens[prox].first <= p.x) {         // acende tudo que custa até x
+            atualiza(itens[prox].second, itens[prox].first);
+            prox++;
+        }
+        resp[p.id] = soma(p.b) - soma(p.a - 1);                // só os acesos contam
+    }
+
+    for (int j = 0; j < q; j++) cout << resp[j] << "\n";      // na ordem da entrada
+}
+```
+
+Ordenar um vetor de `pair` ordena pelo primeiro campo (o preço) e, no empate, pelo segundo. Por isso `itens` guarda o preço primeiro.
+
+**Entrada:**
+
+```
+8 6
+4 7 2 9 5 3 8 6
+2 6 5
+1 8 3
+3 7 8
+1 4 6
+5 8 5
+4 4 8
+```
+
+**Saída:**
+
+```
+10
+5
+18
+6
+8
+0
+```
+
+São as seis respostas da tabela da motivação, na ordem da entrada, embora tenham sido calculadas na ordem 2, 1, 5, 4, 3, 6.
+
+- **Tempo:** $O((n + q) \log n + q \log q)$: duas ordenações, $n$ acendimentos e $q$ somas de trecho, cada um em $O(\log n)$.
+- **Memória:** $O(n + q)$.
+
+### O mesmo código no formato de contest
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+typedef long long ll;
+#define rep(i,a,b) for(int i=(a);i<(b);i++)
+#define all(x) (x).begin(),(x).end()
+#define sz(x) (int)(x).size()
+void fastio(){ ios::sync_with_stdio(false); cin.tie(nullptr); }
+
+struct BIT {
+    int n; vector<ll> t;
+    BIT(int n_) : n(n_), t(n_ + 1, 0) {}
+    void add(int k, ll x) { for (; k <= n; k += k & -k) t[k] += x; }
+    ll sum(int k) { ll s = 0; for (; k > 0; k -= k & -k) s += t[k]; return s; }
+};
+
+int main(){
+    fastio();
+    int n, q; cin >> n >> q;
+    vector<pair<int,int>> it(n);
+    rep(i,0,n) { cin >> it[i].first; it[i].second = i + 1; }
+    vector<array<int,4>> qs(q);                // {x, a, b, id}
+    rep(j,0,q) { cin >> qs[j][1] >> qs[j][2] >> qs[j][0]; qs[j][3] = j; }
+    sort(all(it)); sort(all(qs));
+    BIT f(n);
+    vector<ll> resp(q);
+    int p = 0;
+    for (auto& [x, a, b, id] : qs) {
+        while (p < n && it[p].first <= x) { f.add(it[p].second, it[p].first); p++; }
+        resp[id] = f.sum(b) - f.sum(a - 1);
+    }
+    for (ll r : resp) cout << r << "\n";
+}
+```
+
+Aqui cada pergunta é um `array<int,4>`, um vetor de tamanho fixo, com o teto **na primeira casa**. Como `array` se ordena casa por casa, um `sort` sem lambda já ordena pelo teto, dispensando a `struct`. A linha `auto& [x, a, b, id] : qs` dá um nome a cada casa do `array` dentro do laço.
+
+## Armadilhas comuns
+
+- **Imprimir na ordem em que respondeu.** Guarde o índice de cada pergunta e escreva a resposta em `resp[id]`.
+- **Errar o empate.** "No máximo $x$" pede `<=` no `while`: o produto de preço igual ao teto acende antes da pergunta. "Menor que $x$" pede `<`.
+- **Reiniciar o ponteiro.** O `prox` é declarado fora do `for` das perguntas. Zerado a cada pergunta, ele acende os mesmos produtos de novo (somando o preço duas vezes) e a solução volta a ser lenta.
+- **Esquecer de ordenar uma das listas.** As duas precisam estar na mesma ordem (aqui, crescente de preço e de teto).
+- **Usar a técnica num problema forçado online.** Se a pergunta depende da resposta anterior, não dá para reordenar.
+- **Querer apagar no meio da varredura.** A varredura funciona porque o conjunto de acesos só cresce. Se você se pegar precisando desligar algo, procure outra ordem (decrescente, por exemplo) ou outra quantidade para ordenar.
+- **`int` na soma.** São até $2 \cdot 10^5$ preços de até $10^9$: `long long` na Fenwick tree e no vetor de respostas.
+
+<details class="para-depois">
+<summary>Para depois: outras ordens e outras técnicas offline</summary>
+
+**Ordenar pela ponta direita do trecho.** Outra varredura comum anda pelas **posições** do vetor, da esquerda para a direita, e responde cada pergunta quando o cursor chega à ponta direita $b$ dela. A estrutura guarda informação sobre o prefixo já visto, e a pergunta lê a parte que começa em $a$. Alguns problemas deste milestone se resolvem assim; o desafio é descobrir o que guardar.
+
+**Dois limites.** Quando a pergunta tem um limite de cada lado ("preço entre $c$ e $d$"), muitas vezes basta responder duas perguntas de um limite só e subtrair, como `soma(b) - soma(a - 1)` faz com posições.
+
+**Algoritmo de Mo.** Quando não existe uma quantidade boa para ordenar, ainda dá para reordenar as perguntas de trecho de um jeito que a resposta mude pouco de uma para a próxima (ordenando por bloco de $\sqrt n$). Cada pergunta custa $O(\sqrt n)$ em média. Está no CPH, seção 27.3.
+
+**Divisão e conquista offline e remoções.** Há técnicas que tratam remoções offline (como "ordem inversa", da aula de DSU, que é um caso particular) e respondem perguntas de "quando foi a primeira vez que…" com busca binária em várias perguntas ao mesmo tempo. Aparecem nas fases mais avançadas.
+
+</details>
+
+## Referências
+
+- **CPH, capítulo 18 — Tree queries, seção 18.4 *Offline algorithms*:** a ideia de responder as perguntas numa ordem escolhida pelo algoritmo, aplicada a árvores. **Capítulo 27 — Square root algorithms, seção 27.3 *Mo's algorithm*:** a reordenação de perguntas de trecho por blocos.
+- [USACO Guide — Point Update Range Sum](https://usaco.guide/gold/PURS): os problemas marcados como *Offline* usam exatamente a varredura desta aula com Fenwick tree.
+- [USACO Guide — Disjoint Set Union](https://usaco.guide/gold/dsu), com problemas de conectividade em que as perguntas são ordenadas pelo limite.
+- [cp-algorithms — Sqrt Decomposition](https://cp-algorithms.com/data_structures/sqrt_decomposition.html), com o algoritmo de Mo.
+
+## Mini-quiz
+
+<Quiz
+  client:visible
+  questions={[
+    {
+      q: 'Os preços são 3, 1, 4, 1, 5 (posições 1 a 5). Quanto a varredura responde para a pergunta `1 5 3` (o vetor todo, teto 3)?',
+      code: 'for (const Pergunta& p : pergs) {\n    while (prox < n && itens[prox].first <= p.x) {\n        atualiza(itens[prox].second, itens[prox].first);\n        prox++;\n    }\n    resp[p.id] = soma(p.b) - soma(p.a - 1);\n}',
+      options: ['2', '5', '8', '3'],
+      answer: 1,
+      why: 'Acendem os de preço até 3: os dois 1 e o 3. Soma: 1 + 1 + 3 = 5. O 2 é o que sai com < no lugar de <=, deixando o 3 de fora.',
+    },
+    {
+      q: 'Com os mesmos preços (3, 1, 4, 1, 5), alguém trocou o `<=` por `<`. O que esta versão responde para `2 4 4` (posições 2 a 4, teto 4)?',
+      code: 'while (prox < n && itens[prox].first < p.x) {\n    atualiza(itens[prox].second, itens[prox].first);\n    prox++;\n}',
+      options: ['6', '4', '2', '0'],
+      answer: 2,
+      why: 'Só acendem os de preço menor que 4: os dois 1 e o 3. Do trecho 2 a 4 (preços 1, 4, 1), contam os dois 1: 2. A resposta certa é 1 + 4 + 1 = 6: o 4 cabe no teto, mas ficou apagado.',
+    },
+    {
+      q: 'No exemplo da loja, a versão que esquece o `id` imprime as respostas na ordem em que as calcula. Qual número sai na primeira linha?',
+      code: 'for (const Pergunta& p : pergs) {\n    // ... acende ...\n    cout << soma(p.b) - soma(p.a - 1) << "\\n";\n}',
+      options: ['10, a resposta da pergunta 1', '0, a resposta da pergunta 6', '18, a resposta da pergunta 3', '5, a resposta da pergunta 2'],
+      answer: 3,
+      why: 'A primeira pergunta respondida é a de menor teto, a pergunta 2 (teto 3). A saída inteira fica 5, 10, 8, 6, 18, 0: números certos, linhas trocadas.',
+    },
+    {
+      q: 'Em qual destes problemas a varredura offline NÃO pode ser usada?',
+      options: [
+        'Cada pergunta vem com o teto somado à resposta da pergunta anterior',
+        'As perguntas vêm todas no fim da entrada',
+        'Há perguntas com o mesmo teto',
+        'Os preços passam de 10⁹',
+      ],
+      answer: 0,
+      why: 'Se o teto real depende da resposta anterior, não dá para saber o teto de uma pergunta antes de responder a outra: o problema é forçado online. Tetos repetidos e preços grandes não atrapalham a varredura.',
+    },
+    {
+      q: 'Com n produtos e q perguntas, quanto custa a solução offline com Fenwick tree?',
+      options: ['O(n · q)', 'O(q log n), sem contar nada mais', 'O(n + q)', 'O((n + q) log n + q log q)'],
+      answer: 3,
+      why: 'As duas ordenações custam O(n log n + q log q). Cada produto acende uma vez e cada pergunta faz duas somas, todas em O(log n). O ponteiro prox nunca volta, por isso não aparece o produto n · q.',
+    },
+    {
+      q: 'Na rede com os cabos 1–2 (4), 2–3 (7), 3–4 (2), 4–5 (6) e 1–5 (9), qual é a resposta para `1 3 5` (1 e 3, teto 5)?',
+      code: 'while (k < m && cabos[k].custo <= p.x) {\n    une(cabos[k].a, cabos[k].b);\n    k++;\n}\nresp[p.id] = (acha(p.a) == acha(p.b));',
+      options: ['sim', 'não', 'depende da ordem das perguntas', 'sim, pelo cabo 1–5'],
+      answer: 1,
+      why: 'Até o custo 5, só os cabos 3–4 e 1–2 estão unidos: os grupos são {1, 2} e {3, 4}. O 1 e o 3 estão separados. O cabo 1–5 custa 9 e não entra.',
+    },
+  ]}
+/>
